@@ -1,0 +1,20 @@
+{
+  "name": "deepspeech-models",
+  "version": "1.0.0",
+  "description": "download deepspeech models as an npm package",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "preinstall" : "install.sh"
+   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syntithenai/hermod.git"
+  },
+  "author": "Steve Ryan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/syntithenai/hermod/issues"
+  },
+  "homepage": "https://github.com/syntithenai/hermod#readme"
+}

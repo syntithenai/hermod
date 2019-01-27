@@ -1,0 +1,22 @@
+{
+  "name": "rasa",
+  "version": "1.0.0",
+  "description": "voice protocol suite",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "preinstall" : "sudo apt-get -y install python-pip; sudo pip install rasa; pip install rasa_nlu[spacy]; python -m spacy download en_core_web_md; python -m spacy link en_core_web_md en; pip install rasa_nlu[tensorflow]",
+    "start" : "python -m rasa_nlu.server --path /projects & python -m rasa_core.run --enable_api -d models/dialogue -u models/nlu/current -o out.log "
+    "eek": "https://github.com/RasaHQ/starter-pack-rasa-stack.git"
+   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syntithenai/opensnipddds.git"
+  },
+  "author": "Steve Ryan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/syntithenai/opensnips/issues"
+  },
+  "homepage": "https://github.com/syntithenai/opensnips#readme"
+}
