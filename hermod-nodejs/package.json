@@ -1,5 +1,5 @@
 {
-  "name": "hermod",
+  "name": "hermod-nodejs",
   "version": "1.0.0",
   "description": "voice protocol suite",
   "main": "index.js",
@@ -27,7 +27,6 @@
     "deepspeech-gpu": "^0.4.1",
     "express": "^4.16.4",
     "fs": "0.0.1-security",
-    "hermodtest": "file:test",
     "lame": "^1.2.4",
     "mic": "^2.1.2",
     "mic-stream": "^1.0.2",

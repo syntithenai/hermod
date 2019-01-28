@@ -3,7 +3,7 @@
   "version": "1.0.6",
   "description": "The package provides a Microphone Component to stream microphone pcm data to snips via mqtt. Implements audioserver, hotword and tts elements of the Hermod mqtt protocol over mqtt and websockets.",
   "author": "syntithenai",
-  "license": "MIT",
+  "license": "BSD-2-Clause",
   "repository": "https://github.com/syntithenai/opensnips",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
@@ -22,9 +22,6 @@
     "disdeploy": "gh-pages -d example/build"
   },
   "peerDependencies": {
-    "prop-types": "^15.5.4",
-    "react": "^15.0.0 || ^16.0.0",
-    "react-dom": "^15.0.0 || ^16.0.0"
   },
   "devDependencies": {
     "babel-core": "^6.26.3",
@@ -60,6 +57,7 @@
     "dist"
   ],
   "dependencies": {
+    "prop-types": "^15.5.4",
     "crunker": "^0.2.0",
     "hark": "^1.2.3",
     "merge": "^1.2.1",

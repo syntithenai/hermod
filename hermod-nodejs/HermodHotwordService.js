@@ -111,12 +111,12 @@ class HermodHotwordService extends HermodService  {
 		detector.on('hotword', function (index, hotword, buffer) {
 		  console.log(['hotword '+siteId, index, hotword]);
 		//	that.sendMqtt('hermod/'+siteId+'/microphone/stop',{})
-				//let wav = new WaveFile();
-				//console.log('write file and add wav header',siteId,that.audioBuffers[siteId].length)
-				//wav.fromScratch(1, 16000, '16', that.audioBuffers[siteId]);
-				//console.log(wav);
-				//var fs = require('fs');
-				//fs.writeFileSync('./hotword.wav',new Buffer(that.audioBuffers[siteId]))
+				let wav = new WaveFile();
+				console.log('write file and add wav header',siteId,that.audioBuffers[siteId].length)
+				wav.fromScratch(1, 16000, '16', that.audioBuffers[siteId]);
+				console.log(wav);
+				var fs = require('fs');
+				fs.writeFileSync('./hotword.wav',new Buffer(that.audioBuffers[siteId]))
 				
 		  that.sendMqtt('hermod/'+siteId+'/hotword/detected',{hotword:hotword});
 		

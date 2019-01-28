@@ -5,23 +5,24 @@ var config={
 	},
 	services: {
 		HermodMicrophoneService: {
-		},
-		HermodSpeakerService: {
-		},
-		HermodTtsService: {
-		},
-		HermodHotwordService: {
-			models: [{
-			  file: './node_modules/snowboy/resources/models/snowboy.umdl',
-			  sensitivity: '0.5',
-			  hotwords : 'snowboy'
-			}],
-			detector: {
-			  resource: "./node_modules/snowboy/resources/common.res",
-			  audioGain: 2.0,
-			  applyFrontend: true
-			}
 		}
+		//,
+		//HermodSpeakerService: {
+		//},
+		//HermodTtsService: {
+		//},
+		//HermodHotwordService: {
+			//models: [{
+			  //file: './node_modules/snowboy/resources/models/snowboy.umdl',
+			  //sensitivity: '0.5',
+			  //hotwords : 'snowboy'
+			//}],
+			//detector: {
+			  //resource: "./node_modules/snowboy/resources/common.res",
+			  //audioGain: 2.0,
+			  //applyFrontend: true
+			//}
+		//}
 		//,
 		//// ensure export environment variable GOOGLE_APPLICATION_CREDENTIALS associated with billing account and Speech API enabled.
 		//// service account credentials in console https://console.developers.google.com/apis/credentials?authuser=0&project=hermod-1548488627033
@@ -56,9 +57,9 @@ var config={
 			//rasaServer:'http://localhost:5005'
 			/////conversations/{sender_id}/predict  https://rasa.com/docs/core/server/#operation/executeAction
 		//}
-		,
-		HermodDialogManager: {
-		}
+		//,
+		//HermodDialogManager: {
+		//}
 	}
 }
 

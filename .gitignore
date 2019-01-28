@@ -1,4 +1,5 @@
+hermod-nodejs/*.wav
 deepspeech-model/models
-old/
-node_modules/
-rasa/starter-pack-rasa-stack/
+old
+node_modules
+rasa/starter-pack-rasa-stack

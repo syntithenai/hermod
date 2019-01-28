@@ -71,12 +71,14 @@ class HermodDeepSpeechAsrService extends HermodService  {
 				that.stopProcess(siteId)
 		    }
         }
+		console.log(' DS CON');
 		
         this.manager = this.connectToManager(props.manager,eventFunctions);
     }
     
     startProcess(siteId) {
 		let that = this;
+		console.log('START DS PROCESSING');
 		let process = require('child_process').spawn('nodejs',['HermodDeepSpeechAsrDetector','--siteId',siteId]);
 		//console.log(that.processes[siteId])
 		process.stdout.on('error', function( err ){ throw err })
@@ -90,7 +92,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 			console.log('data',String(chunk));
 			if (String(chunk).indexOf('transcription:') === 0) {
 				console.log('transcription:'+String(chunk).slice(13));
-				process.end();
+				//process.end();
 			}
 			
 		});
@@ -103,7 +105,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	}
 
     stopProcess(siteId) {
-		this.processes[siteId].end();
+		//	this.processes[siteId].end();
 	}
 
 }

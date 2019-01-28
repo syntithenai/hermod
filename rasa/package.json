@@ -4,7 +4,7 @@
   "description": "download rasa as an npm package",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "preinstall" : "./install.sh"
+    "preinstall" : "./install.sh",
     "start": "./run.sh"
    },
   "repository": {
