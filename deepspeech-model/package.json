@@ -1,11 +1,10 @@
 {
-  "name": "deepspeech-models",
+  "name": "deepspeech-model",
   "version": "1.0.0",
-  "description": "download deepspeech models as an npm package",
+  "description": "download deepspeech model as an npm package",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "preinstall" : "./install.sh"
+     "preinstall" : "./install.sh"
    },
   "repository": {
     "type": "git",

@@ -4,11 +4,8 @@
   "description": "voice services stack from audio hardware through hotword, ASR, NLU, AI routing and TTS bound by messaging protocol over MQTT",
   "main": "hermod-nodejs/index.js",
   "dependencies": {
-    "deepspeech-models": "^1.0.0",
-    "mongodb": "file:mongodb",
-    "mosquitto": "file:mosquitto",
-    "rasa": "file:rasa"
-  },
+    "mongodb": "file:mongodb"
+   },
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

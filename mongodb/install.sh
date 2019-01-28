@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo apt-get install -y mongodb
+apt-get install -y mongodb
