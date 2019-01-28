@@ -50,12 +50,12 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		
 		this.manager = new HermodSubscriptionManager({siteId:config.siteId});
 		this.manager.mqttConnect().then(function() {
-
+			this.startDetector(args['siteId']);
 			let eventFunctions = {};
 			eventFunctions['hermod/'+args.siteId+'/microphone/audio'] = that.onAudioMessage.bind(that)
 			that.connectToManager(that.manager,eventFunctions);
 		})
-		this.startDetector(args['siteId']);
+		
     }
     
     startDetector(siteId) {
@@ -78,6 +78,7 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		this.mqttStreams[siteId] = new Readable()
 		this.mqttStreams[siteId]._read = () => {} // _read is required but you can noop it
         this.mqttStreams[siteId].pipe(detector)	 
+        //this.mqttStreams[siteId].resume();
         //this.mqttStreams[siteId].pipe(new PassThrough())	 
     }
 	
@@ -204,19 +205,20 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		function finishStream() {
 			try {
 				// save audio
-				let wav = new WaveFile();
-				console.log('write file and add wav header',siteId,that.audioBuffers[siteId].length)
-				wav.fromScratch(1, 16000, '16', that.audioBuffers[siteId]);
-				//console.log(wav);
-				var fs = require('fs');
-				fs.writeFileSync('./nate.wav',wav.toBuffer())
 				//let f = fs.createWriteStream('./joel.wav')
 				//that.audioBuffers[siteId].map(function(buffer) {
 					//console.log(['write',buffer.length]);
 					//f.write(buffer)
 				//});
 				//f.end()
-				
+				let wav = new WaveFile();
+					console.log('write file and add wav header',siteId,that.audioBuffers[siteId].length)
+					wav.fromScratch(1, 16000, '16', that.audioBuffers[siteId]);
+					//console.log(wav);
+					var fs = require('fs');
+					fs.writeFileSync('./smart.wav',wav.toBuffer())	
+					//process.exit();
+					
 				// inference
 				const model_load_start = process.hrtime();
 				console.error('Running inference.');
@@ -238,15 +240,14 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		detector._write = function(chunk,encoding,cb) {
 			try {
 				vad.processAudio(chunk, 16000).then(res => {
-					//console.log(['chunk',chunk.length]);
+					console.log(['chunk',chunk.length,res,silenceCount]);
 					switch (res) {
-						//case VAD.Event.ERROR:
-							//console.log('VAD ERROR');
-							//break;
+						case VAD.Event.ERROR:
+							console.log('VAD ERROR');
+							break;
 						case VAD.Event.SILENCE:
 							silenceCount++;
 						//	console.log([res,silenceCount]);
-								
 							if (state === voice.START && silenceCount > 60) { //30
 								state = voice.STOP;
 								//model.feedAudioContent(sctx, chunk.slice(0, chunk.length / 2));
@@ -260,7 +261,7 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 								}
 								//console.log('setup stream');
 								
-								
+							} else if (that.props.interimResults && false && state === voice.START && silenceCount === 10) { //5
 							} else if (that.props.interimResults && false && state === voice.START && silenceCount === 10) { //5
 								console.log();
 								//model.feedAudioContent(sctx, chunk.slice(0, chunk.length / 2));

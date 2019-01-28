@@ -1,3 +1,4 @@
+deepspeech-model/models
 old/
 node_modules/
-starter-pack-rasa
+rasa/starter-pack-rasa-stack/

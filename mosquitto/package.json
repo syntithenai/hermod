@@ -1,11 +1,11 @@
 {
-  "name": "rasa",
+  "name": "mosquitto",
   "version": "1.0.0",
-  "description": "download rasa as an npm package",
+  "description": "download mosquitto message broker as an npm package",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "preinstall" : "./install.sh"
-    "start": "./run.sh"
    },
   "repository": {
     "type": "git",

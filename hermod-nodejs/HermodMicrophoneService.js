@@ -60,7 +60,7 @@ class HermodMicrophoneService extends HermodService  {
 			//console.log(['DATA',chunk.data.length]);
 			//if (that.vadStream) that.vadStream.push(chunk.data)
 			//if (that.voiceDetected) {
-				console.log(['senddata',chunk.data.length]);
+				//console.log(['senddata',chunk.data.length]);
 				that.manager.sendAudioMqtt("hermod/"+that.props.siteId+"/microphone/audio",chunk.data);
 			//}
 			//that.sendAudioBuffer(chunk.data,context.sampleRate); 
@@ -107,10 +107,10 @@ class HermodMicrophoneService extends HermodService  {
 			//that.voiceDetected = data.speech.state;
 		//});
 		
-		//const fs = require('fs');
-		//const detector = fs.createWriteStream('./dsout.wav');
-		//this.stream.pipe(detector);
+		const fs = require('fs');
+		const file = fs.createWriteStream('./dsout.wav');
 		this.stream.pipe(chunker);
+		//this.stream.pipe(file);
 		//chunker.pipe(vadStream)
 	}
     

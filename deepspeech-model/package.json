@@ -5,14 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "preinstall" : "install.sh"
+    "preinstall" : "./install.sh"
    },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/syntithenai/hermod.git"
   },
   "author": "Steve Ryan",
-  "license": "MIT",
+  "license": "FreeBSD",
   "bugs": {
     "url": "https://github.com/syntithenai/hermod/issues"
   },

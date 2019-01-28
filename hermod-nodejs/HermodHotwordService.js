@@ -115,8 +115,8 @@ class HermodHotwordService extends HermodService  {
 				//console.log('write file and add wav header',siteId,that.audioBuffers[siteId].length)
 				//wav.fromScratch(1, 16000, '16', that.audioBuffers[siteId]);
 				//console.log(wav);
-				var fs = require('fs');
-				fs.writeFileSync('./hotword.wav',new Buffer(that.audioBuffers[siteId]))
+				//var fs = require('fs');
+				//fs.writeFileSync('./hotword.wav',new Buffer(that.audioBuffers[siteId]))
 				
 		  that.sendMqtt('hermod/'+siteId+'/hotword/detected',{hotword:hotword});
 		
@@ -131,15 +131,15 @@ class HermodHotwordService extends HermodService  {
 //});
 
 
-const fs = require('fs');
-const file = fs.createWriteStream('./hotword-direct.wav');
-console.log('CREATED STREAM TO RWIRTE AUDIO');
+//const fs = require('fs');
+//const file = fs.createWriteStream('./hotword-direct.wav');
+//console.log('CREATED STREAM TO RWIRTE AUDIO');
 
 		// mqtt to stream - pushed to when audio packet arrives
 		this.mqttStreams[siteId] = new Readable()
 		this.mqttStreams[siteId]._read = () => {} // _read is required but you can noop it
-       // this.mqttStreams[siteId].pipe(detector)
-        this.mqttStreams[siteId].pipe(file)
+        this.mqttStreams[siteId].pipe(detector)
+        //this.mqttStreams[siteId].pipe(file)
         //this.mqttStreams[siteId].resume();	
 
 	}
@@ -164,7 +164,7 @@ console.log('CREATED STREAM TO RWIRTE AUDIO');
 				let wav = new WaveFile();
 				wav.fromScratch(1, 16000, '16', buffer);
 				this.mqttStreams[siteId].push(wav.toBuffer())
-				this.audioBuffers[siteId].push.apply(this.audioBuffers[siteId],wav.toBuffer())
+				this.audioBuffers[siteId].push.apply(this.audioBuffers[siteId],buffer)
 			} else {
 				this.mqttStreams[siteId].push(buffer)
 				this.audioBuffers[siteId].push.apply(this.audioBuffers[siteId],buffer)

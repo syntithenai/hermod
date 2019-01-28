@@ -1,0 +1,26 @@
+{
+  "name": "hermod",
+  "version": "1.0.0",
+  "description": "voice services stack from audio hardware through hotword, ASR, NLU, AI routing and TTS bound by messaging protocol over MQTT",
+  "main": "hermod-nodejs/index.js",
+  "dependencies": {
+    "deepspeech-models": "^1.0.0",
+    "mongodb": "file:mongodb",
+    "mosquitto": "file:mosquitto",
+    "rasa": "file:rasa"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syntithenai/hermod.git"
+  },
+  "author": "Steve Ryan",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/syntithenai/hermod/issues"
+  },
+  "homepage": "https://github.com/syntithenai/hermod#readme"
+}
