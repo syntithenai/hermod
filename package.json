@@ -5,17 +5,17 @@
   "main": "hermod-nodejs/index.js",
   "dependencies": {
     "babel-eslint": "^10.0.1",
-    "deepspeech-model": "file:deepspeech-model",
     "eslint": "^5.12.1",
     "hermod-nodejs": "file:hermod-nodejs",
-    "hermod-react-satellite": "file:hermod-react-satellite",
-    "mongodb": "file:mongodb",
-    "mosquitto": "file:mosquitto",
-    "rasa": "file:rasa"
+    "hermod-react-satellite": "file:hermod-react-satellite"
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "installdeepspeechmodel": "npm i ./deepspeech-model",
+    "installmongodb": "npm i ./mongodb",
+    "installmosquitto": "npm i ./mosquitto",
+    "installrasa": "npm i ./rasa",
   },
   "repository": {
     "type": "git",
