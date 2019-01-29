@@ -15,7 +15,7 @@
     "installdeepspeechmodel": "npm i ./deepspeech-model",
     "installmongodb": "npm i ./mongodb",
     "installmosquitto": "npm i ./mosquitto",
-    "installrasa": "npm i ./rasa",
+    "installrasa": "npm i ./rasa"
   },
   "repository": {
     "type": "git",
