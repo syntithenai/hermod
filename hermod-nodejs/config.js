@@ -3,7 +3,7 @@ var config={
 	manager: {
 		
 	},
-	skills: ['../rasa/starter-pack-rasa-stack/'],
+	skills: {'joke':'../rasa/joke/'},
 	services: {
 		HermodMicrophoneService: {
 		}
@@ -88,7 +88,7 @@ var config={
 		}
 		,
 		HermodActionService: {
-			domainFile:'../rasa/models/current/dialogue/domain.yml'
+			domainFile:'../rasa/models/current/dialogue/domain.yml',
 		}
 		,
 		HermodDialogManagerService: {

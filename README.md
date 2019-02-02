@@ -1,5 +1,8 @@
 # Hermod Voice Protocol
 
+This project is a work in progress. Ideally the example works but no guarantees yet :)
+
+
 ## Overview
 
 The Hermod (Norse messenger of the gods)  voice protocol describes a series of contracts between services that communicate over MQTT messaging bus and HTTPS to implement the steps in a voice interaction from capturing hardware audio through ASR (Automated Speech Recognition), NLU (Natural Language Understanding), ML (Machine Learning) based routing and finally executing commands.
@@ -108,7 +111,7 @@ The dialog manager creates a new dialogId, then sends a series of MQTT messages 
 The ASR sends `hermod/<siteId>/asr/started` and when the ASR finishes detecting text it sends `hermod/<siteId>/text` with a JSON payload. 
 
 The dialog manager hears this message and sends 
-
+ with a text message to speak in the JSON body (For example asking a question)
 - `hermod/<siteId>/asr/stop`
 - `hermod/<siteId>/nlu/parse`
 
