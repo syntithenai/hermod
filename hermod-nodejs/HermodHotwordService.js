@@ -9,6 +9,7 @@ var speaker = require('speaker')
 var stream = require('stream') 
 var Readable = stream.Readable;
 var WaveFile = require('wavefile')
+var Wav = require('wav')
 
 class HermodHotwordService extends HermodService  {
 
@@ -22,16 +23,19 @@ class HermodHotwordService extends HermodService  {
 		
 		this.mqttStreams = {};
 		this.audioBuffers = {};
+		this.audioDump = {}
 		
         let eventFunctions = {
         // SESSION
-            'hermod/#/hotword/start' : function(topic,siteId,payload) {
+            'hermod/+/hotword/start' : function(topic,siteId,payload) {
 				// TODO access control check siteId against props siteId or siteIds
+				//console.log('hermod/+/hotword/start')
 				that.listening[siteId] = true;
 				that.messageCount[siteId]=0;
 				that.startMqttListener(siteId)
-		    },
-		    'hermod/#/hotword/stop' : function(topic,siteId,payload) {
+		    }
+		    ,
+		    'hermod/+/hotword/stop' : function(topic,siteId,payload) {
 				that.listening[siteId] = false;
 				that.stopMqttListener(siteId)
 		    }
@@ -48,50 +52,38 @@ class HermodHotwordService extends HermodService  {
 		let callbacks = {}
 		callbacks['hermod/'+siteId+'/microphone/audio'] = this.onAudioMessage.bind(this)
 		this.callbackIds[siteId] = this.manager.addCallbacks(callbacks)
-		this.audioBuffers[siteId]=[];
-
+		
+		// LOGGING
+		var FileWriter = require('wav').FileWriter;	
+		//var outputFileStream = new FileWriter('./hotword.wav', {
+		  //sampleRate: 16000,
+		  //channels: 1
+		//});
+		this.audioDump[siteId] = new FileWriter('./hotword.wav', {
+		  sampleRate: 16000,
+		  channels: 1
+		});
+		//new Readable()
+		//this.audioDump[siteId]._read = () => {} // _read is required but you can noop it
+		//this.audioDump[siteId].pipe(outputFileStream) // consume the stream
+				
+				
 		/**	
 		 * Hotword
 		 */
 
-		var config = {
-			models: [
-			{
-				file: './node_modules/snowboy/resources/models/snowboy.umdl',
-				sensitivity: '0.5',
-				hotwords : 'snowboy'
-			}
-			,
-			// jarvis universal model triggers license error
-			//{
-				//file: './node_modules/snowboy/resources/models/jarvis.umdl',
-				//sensitivity: '0.5',
-				//hotwords : 'jarvis'
-			//}
-			//,
-			{
-				file: './node_modules/snowboy/resources/models/smart_mirror.umdl',
-				sensitivity: '0.5',
-				hotwords : 'smart_mirror'
-			}
-			],
-			detector: {
-				resource: "./node_modules/snowboy/resources/common.res",
-				audioGain: 2.0,
-				applyFrontend: true
-			}
-		};
+		
 		const Detector = require('snowboy').Detector;
 		const Models = require('snowboy').Models;
 		var silent = {};
 		 // snowboy setup
 		var models = new Models();
 		//if (typeof this.props.models !== 'object') throw new Exception('Missing hotword configuration for models')
-		config.models.map(function(thisModel) {
+		this.props.models.map(function(thisModel) {
 			models.add(thisModel);
 		})
 
-		var detector = new Detector(Object.assign({models:models},config.detector));
+		var detector = new Detector(Object.assign({models:models},this.props.detector));
 		//detector.on('silence', function () {
 		  //if (!silent[siteId]) console.log('silence '+siteId);
 		  //silent[siteId] = true;
@@ -111,14 +103,17 @@ class HermodHotwordService extends HermodService  {
 		detector.on('hotword', function (index, hotword, buffer) {
 		  console.log(['hotword '+siteId, index, hotword]);
 		//	that.sendMqtt('hermod/'+siteId+'/microphone/stop',{})
-				let wav = new WaveFile();
-				console.log('write file and add wav header',siteId,that.audioBuffers[siteId].length)
-				wav.fromScratch(1, 16000, '16', that.audioBuffers[siteId]);
-				console.log(wav);
-				var fs = require('fs');
-				fs.writeFileSync('./hotword.wav',new Buffer(that.audioBuffers[siteId]))
+				//let wav = new WaveFile();
+				//console.log('write file and add wav header',siteId,that.audioBuffers[siteId].length)
+				//wav.fromScratch(1, 16000, '16', that.audioBuffers[siteId]);
+				////console.log(wav);
+				//var fs = require('fs');
+				//fs.writeFileSync('./hotword.wav',Buffer.from(that.audioBuffers[siteId]))
 				
-		  that.sendMqtt('hermod/'+siteId+'/hotword/detected',{hotword:hotword});
+				
+				
+
+			that.sendMqtt('hermod/'+siteId+'/hotword/detected',{hotword:hotword});
 		
 		});
 //const Speaker = require('speaker');
@@ -136,8 +131,11 @@ class HermodHotwordService extends HermodService  {
 //console.log('CREATED STREAM TO RWIRTE AUDIO');
 
 		// mqtt to stream - pushed to when audio packet arrives
-		this.mqttStreams[siteId] = new Readable()
-		this.mqttStreams[siteId]._read = () => {} // _read is required but you can noop it
+		//this.mqttStreams[siteId] = new Readable()
+		//this.mqttStreams[siteId]._read = () => {} // _read is required but you can noop it
+        
+		this.mqttStreams[siteId] = new Wav.Writer();
+		 
         this.mqttStreams[siteId].pipe(detector)
         //this.mqttStreams[siteId].pipe(file)
         //this.mqttStreams[siteId].resume();	
@@ -146,6 +144,8 @@ class HermodHotwordService extends HermodService  {
 	
 	stopMqttListener(siteId) {
 		let that = this;
+		this.audioDump[siteId].push(null)
+		
 		if (this.callbackIds.hasOwnProperty(siteId) && this.callbackIds[siteId]) {
 			this.callbackIds[siteId].map(function(callbackId) {
 				that.manager.removeCallbackById(callbackId)
@@ -158,19 +158,21 @@ class HermodHotwordService extends HermodService  {
 	}
 	
 	onAudioMessage(topic,siteId,buffer) {
+		//console.log('audio message hotword')
 		if (this.mqttStreams.hasOwnProperty(siteId)) {
 			// add wav header to first packet
-			if (this.messageCount[siteId] == 0) {
-				let wav = new WaveFile();
-				wav.fromScratch(1, 16000, '16', buffer);
-				this.mqttStreams[siteId].push(wav.toBuffer())
-				this.audioBuffers[siteId].push.apply(this.audioBuffers[siteId],buffer)
-			} else {
+			//if (this.messageCount[siteId] == 0) {
+				//let wav = new WaveFile();
+				//wav.fromScratch(1, 16000, '16', buffer);
+				//this.mqttStreams[siteId].push(wav.toBuffer())
+				//this.audioBuffers[siteId].push.apply(this.audioBuffers[siteId],buffer)
+			//} else {
 				this.mqttStreams[siteId].push(buffer)
-				this.audioBuffers[siteId].push.apply(this.audioBuffers[siteId],buffer)
-			}
+				this.audioDump[siteId].push(buffer)
+		
+				//this.audioBuffers[siteId].push.apply(this.audioBuffers[siteId],buffer)
+			//}
 			this.messageCount[siteId]++;
-	
 		}
 	}	
 

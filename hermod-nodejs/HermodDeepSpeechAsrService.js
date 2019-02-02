@@ -55,30 +55,38 @@ class HermodDeepSpeechAsrService extends HermodService  {
 		this.vadSilent = {};
 		this.inWordBreak = {};
 		this.processes = {};
+		this.dialogIds={};
 		
 		this.audioBuffers = {};
 		
         let eventFunctions = {
         // SESSION
-            'hermod/#/asr/start' : function(topic,siteId,payload) {
+            'hermod/+/asr/start' : function(topic,siteId,payload) {
+			//	console.log(['ASR START',that.props.model,payload.model,siteId,payload])
+				let selectModel = payload.model ? payload.model : 'default';
 				// TODO access control check siteId against props siteId or siteIds
-				that.listening[siteId] = true;
-				that.startProcess(siteId)
+				if (selectModel === that.props.model) {
+				//	console.log('start deepspeech asr');
+					that.dialogIds[siteId]= payload.id;
+					that.listening[siteId] = true;
+					that.startProcess(siteId)					
+				}
 		    },
-		    'hermod/#/asr/stop' : function(topic,siteId,payload) {
-				console.log('stop hotword')
-				that.listening[siteId] = false;
-				that.stopProcess(siteId)
+		    'hermod/+/asr/stop' : function(topic,siteId,payload) {
+				if (payload.model === that.props.model) {
+					that.listening[siteId] = false;
+					that.stopProcess(siteId)
+				}
 		    }
         }
-		console.log(' DS CON');
+		//console.log(' DS CON');
 		
         this.manager = this.connectToManager(props.manager,eventFunctions);
     }
     
     startProcess(siteId) {
 		let that = this;
-		console.log('START DS PROCESSING');
+	//	console.log('START DS PROCESSING');
 		let process = require('child_process').spawn('nodejs',['HermodDeepSpeechAsrDetector','--siteId',siteId]);
 		//console.log(that.processes[siteId])
 		process.stdout.on('error', function( err ){ throw err })
@@ -89,16 +97,18 @@ class HermodDeepSpeechAsrService extends HermodService  {
 			console.log(String(chunk));
 		})
 		process.stdout.on('data', chunk => {
-			console.log('data',String(chunk));
+		//	console.log('data',String(chunk));
 			if (String(chunk).indexOf('transcription:') === 0) {
-				console.log('transcription:'+String(chunk).slice(13));
-				//process.end();
+				let transcription = String(chunk).slice(13);
+			//	console.log('transcription:'+transcription);
+				that.sendMqtt('hermod/'+siteId+'/asr/text',{id:that.dialogIds[siteId],text:transcription});
+				
 			}
 			
 		});
 
 		process.stdout.on('close', code => {
-			console.log(['finish ',code]);
+			//console.log(['finish ',code]);
 		})
 	
 		that.processes[siteId] = process;
@@ -117,7 +127,7 @@ module.exports=HermodDeepSpeechAsrService
 		//// subscribe to audio packets
 		//// use siteId from start message
 		////let callbacks = {}
-		////callbacks['hermod/'+siteId+'/microphone/audio'] = this.onAudioMessage.bind(this)
+		////callbacks['hermod/'+siteId+'/microphone/audio/#'] = this.onAudioMessage.bind(this)
 		////this.callbackIds = this.manager.addCallbacks(callbacks)
 		//////let model = this.getAsrModel()
 		

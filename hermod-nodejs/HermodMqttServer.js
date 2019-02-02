@@ -17,7 +17,8 @@ class HermodMqttServer {
      }   
      
      setState(newState) {
-         return Object.assign(this.state,newState);
+         this.state =  Object.assign(this.state,newState);
+		 return this.state;
      };
 
     start() {
@@ -53,7 +54,7 @@ class HermodMqttServer {
      */
     onConnect() {
       let that = this;
-      console.log([' SERVER CONNECTED',this.eventFunctions]);
+     // console.log([' SERVER CONNECTED',this.eventFunctions]);
       this.setState({'connected':true});
       this.failCount = 0;
       //let subscribe = this.props.subscribe && this.props.subscribe.length  > 0 ? this.props.subscribe : '#';
@@ -82,10 +83,15 @@ class HermodMqttServer {
     };
      
     sendMqtt(destination,payload) {
+		//console.log(['sendmqtt',destination,payload,(this.mqttClient ? true : false),this.state.connected]);
         if (this.mqttClient) {
+			//console.log(['sendmqtt really']);
 		   //if (!destination.startsWith('hermod/audioServer')) console.log(['SESSION SEND MQTT LOGGER',destination,payload])
 			if (this.state.connected) {
+			//console.log(['sendmqtt really reaally']);
 				this.mqttClient.publish(destination,JSON.stringify(payload))
+			//console.log(['sentmqtt really reaally',JSON.stringify(payload)]);
+			
 				//let message = new Paho.MQTT.Message(JSON.stringify(payload));
 				//message.destinationName = destination;
 				//this.mqttClient.send(message);

@@ -1,3 +1,4 @@
+rasa/out.log
 hermod-nodejs/*.wav
 deepspeech-model/models
 old

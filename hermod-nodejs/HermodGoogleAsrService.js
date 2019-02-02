@@ -29,14 +29,20 @@ class HermodGoogleAsrService extends HermodService  {
 		
         let eventFunctions = {
         // SESSION
-            'hermod/#/asr/start' : function(topic,siteId,payload) {
+            'hermod/+/asr/start' : function(topic,siteId,payload) {
 				// TODO access control check siteId against props siteId or siteIds
-				that.listening[siteId] = true;
-				that.startMqttListener(siteId)
+				if (payload.model === that.props.model) {
+					console.log('start google asr');
+					that.dialogIds[siteId]= payload.id;
+					that.listening[siteId] = true;
+					that.startMqttListener(siteId)
+				}
 		    },
-		    'hermod/#/asr/stop' : function(topic,siteId,payload) {
-				that.listening[siteId] = false;
-				that.stopMqttListener(siteId)
+		    'hermod/+/asr/stop' : function(topic,siteId,payload) {
+				if (payload.model === that.props.model) {
+					that.listening[siteId] = false;
+					that.stopMqttListener(siteId)
+				}
 		    }
         }
 	//	console.log('google asr '+this.props.siteId);
@@ -51,7 +57,7 @@ class HermodGoogleAsrService extends HermodService  {
 		// subscribe to audio packets
 		// use siteId from start message
 		let callbacks = {}
-		callbacks['hermod/'+siteId+'/microphone/audio'] = this.onAudioMessage.bind(this)
+		callbacks['hermod/'+siteId+'/microphone/audio/#'] = this.onAudioMessage.bind(this)
 		this.callbackIds[siteId] = this.manager.addCallbacks(callbacks)
 		
 
@@ -80,7 +86,7 @@ class HermodGoogleAsrService extends HermodService  {
 			//console.log(
 			  //`Transcription: ${data.results[0].alternatives[0].transcript}`
 			//);
-			that.sendMqtt('hermod/'+siteId+'/asr/text',{text:data.results[0].alternatives[0].transcript});
+			that.sendMqtt('hermod/'+siteId+'/asr/text',{id:that.dialogIds[siteId],text:data.results[0].alternatives[0].transcript});
 			detector.pause()
 			detector.destroy()
 			that.stopMqttListener(siteId);

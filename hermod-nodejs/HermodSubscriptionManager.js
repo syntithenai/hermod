@@ -33,7 +33,7 @@ class HermodSubscriptionManager  extends HermodMqttServer {
             Object.keys(eventCallbackFunctions).map(function(key,loopKey) {
                 let value = eventCallbackFunctions[key];
                 if (typeof value === "function") {
-                    let siteTopic = key.replace("hermod/#/","hermod/"+that.props.siteId+"/");
+                    let siteTopic = key.replace("hermod/+/","hermod/"+that.props.siteId+"/");
 					// if not already subscribed, subscribe now
 					//console.log(['try sub ',siteTopic,that.findEventCallbackFunctions(siteTopic)])
                     if (that.findEventCallbackFunctions(siteTopic).length === 0) {
@@ -50,6 +50,41 @@ class HermodSubscriptionManager  extends HermodMqttServer {
         return callbackIds;
     };
     
+    
+    mqttWildcard(topic, wildcard) {
+        if (topic === wildcard) {
+            return [];
+        } else if (wildcard === '#') {
+            return [topic];
+        }
+
+        var res = [];
+
+        var t = String(topic).split('/');
+        var w = String(wildcard).split('/');
+
+        var i = 0;
+        for (var lt = t.length; i < lt; i++) {
+            if (w[i] === '+') {
+                res.push(t[i]);
+            } else if (w[i] === '#') {
+                res.push(t.slice(i).join('/'));
+                return res;
+            } else if (w[i] !== t[i]) {
+                return null;
+            }
+        }
+
+        if (w[i] === '#') {
+            i += 1;
+        }
+
+        return (i === w.length) ? res : null;
+    }
+
+   
+    
+    
     /**
      * Find all callback functions with matching subscription key 
      */
@@ -57,7 +92,8 @@ class HermodSubscriptionManager  extends HermodMqttServer {
         let that = this;
         let ret=[];
         this.eventCallbackFunctions.map(function(value,vkey) {
-            if (value.subscription === subscriptionKey) {
+			// TODO where subscription involves a wild card (other than siteId), this test fails eg audio packets
+            if (that.mqttWildcard(subscriptionKey,value.subscription)) {
                 ret.push(value);
                 return;
             }
@@ -107,12 +143,16 @@ class HermodSubscriptionManager  extends HermodMqttServer {
         if (parts.length > 0 && parts[0] === "hermod") {
             // Audio Messages pass through message body direct
             if (parts.length > 3 && ((parts[2]==="speaker"&& parts[3]==="play"  ) || (parts[2]==="microphone" && parts[3]==="audio"  )) ) {
+              //  console.log(['audio',topic])
+				
                 let siteId = parts[1];
                 //if (parts.length > 3) {
                     let action = parts[3];
                     //let id = parts.length > 4 ? parts[4] : ''; //this.generateUuid() ;
-                    //let functionKey ='hermod/#/'+parts[2]+'/'+action;
+                    //let functionKey ='hermod/+/'+parts[2]+'/'+action;
 					let callbacks = that.findEventCallbackFunctions(topic);
+					//console.log(['callbacks',callbacks])
+				
 					if (callbacks) {
 						callbacks.map(function(value,ckey) {
 							value.callBack.bind(that)(topic,siteId,message);

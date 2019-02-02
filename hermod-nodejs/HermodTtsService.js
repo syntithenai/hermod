@@ -10,7 +10,7 @@ class HermodTtsService extends HermodService  {
         }
         let eventFunctions = {
         // SESSION
-            'hermod/#/tts/say' : function(topic,siteId,payload) {
+            'hermod/+/tts/say' : function(topic,siteId,payload) {
 				if (payload.text && payload.text.length > 0 ) {
 					that.say(payload.text).then(function() {
 						that.sendMqtt('hermod/' + props.siteId + '/tts/sayFinished',{id:payload.id});    

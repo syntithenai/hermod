@@ -64,15 +64,15 @@ var mic = function mic(options) {
 					arecordOptions.push('-D')
 					arecordOptions.push(device)
 				}
-			  audioProcess = spawn('arecord', arecordOptions, audioProcessOptions);
+			    audioProcess = spawn('arecord', arecordOptions, audioProcessOptions);
             }
 
             audioProcess.on('exit', function(code, sig) {
-                    if(code != null && sig === null) {
-                        audioStream.emit('audioProcessExitComplete');
-                        if(debug) console.log("recording audioProcess has exited with code = %d", code);
-                    }
-                });
+				if(code != null && sig === null) {
+					audioStream.emit('audioProcessExitComplete');
+					if(debug) console.log("recording audioProcess has exited with code = %d", code);
+				}
+			});
             audioProcess.stdout.pipe(audioStream);
             if(debug) {
                 audioProcess.stderr.pipe(infoStream);

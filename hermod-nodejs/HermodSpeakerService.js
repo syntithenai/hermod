@@ -26,17 +26,17 @@ class HermodSpeakerService extends HermodService {
 		this.setVolume(props.volume ? props.volume : 1)	
         let eventFunctions = {
         // SESSION
-            'hermod/#/speaker/play' : function(destination,siteId,audio) {
+            'hermod/+/speaker/play' : function(destination,siteId,audio) {
                 //if (siteId && siteId.length > 0 && siteId === that.props.siteId) {
                     that.playSound(audio).then(function() {
                           that.sendMqtt("hermod/"+siteId+"/speaker/playFinished",{}); 
                     }); 
                 //}
             },
-            'hermod/#/speaker/stop' : function(topic,siteId,payload) {
+            'hermod/+/speaker/stop' : function(topic,siteId,payload) {
 				that.stopPlaying()
 			},
-            'hermod/#/speaker/volume' : function(topic,siteId,payload) {
+            'hermod/+/speaker/volume' : function(topic,siteId,payload) {
 				that.setVolume(payload.volume)
 			}
         } 

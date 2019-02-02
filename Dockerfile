@@ -19,15 +19,15 @@ RUN chmod 777 deepspeech-model/install.sh
 RUN chmod 777 mongodb/install.sh
 RUN chmod 777 mosquitto/install.sh
 
-RUN rasa/install.sh
 RUN deepspeech-model/install.sh
+RUN rasa/install.sh
 RUN mongodb/install.sh
 RUN mosquitto/install.sh
 
 # now copy the rest
 COPY ./* ./
 # and hidden files (git)
-COPY ./.* ./
+# broken COPY ./.* ./
 COPY ./hermod-nodejs ./hermod-nodejs
 COPY ./hermod-react-satellite ./hermod-react-satellite
 

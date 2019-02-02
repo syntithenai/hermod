@@ -11,11 +11,13 @@
   },
   "devDependencies": {},
   "scripts": {
+	"start": "cd hermod-nodejs; node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "installdeepspeechmodel": "npm i ./deepspeech-model",
     "installmongodb": "npm i ./mongodb",
     "installmosquitto": "npm i ./mosquitto",
-    "installrasa": "npm i ./rasa"
+    "installrasa": "npm i ./rasa",
+    "startrasa": "cd rasa && ./run.sh &"
   },
   "repository": {
     "type": "git",
