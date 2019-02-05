@@ -1,9 +1,10 @@
 actions:
+- action_end
 - utter_name
 - utter_thanks
 - utter_greet
 - utter_goodbye
-- action_joke
+- joke_tell_me_a_joke
 config:
   store_entities_as_slots: true
 entities:
@@ -31,7 +32,7 @@ templates:
   utter_goodbye:
   - text: Talk to you later!
   utter_greet:
-  - text: Nice to you meet you {name}. How can I help?
+  - text: Nice to meet you {name}. How can I help?
   utter_name:
   - text: Hey there! Tell me your name.
   utter_thanks:

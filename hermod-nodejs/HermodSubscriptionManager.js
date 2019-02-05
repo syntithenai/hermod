@@ -37,7 +37,7 @@ class HermodSubscriptionManager  extends HermodMqttServer {
 					// if not already subscribed, subscribe now
 					//console.log(['try sub ',siteTopic,that.findEventCallbackFunctions(siteTopic)])
                     if (that.findEventCallbackFunctions(siteTopic).length === 0) {
-						console.log(['try sub really ',siteTopic])
+						//console.log(['try sub really ',siteTopic])
 						that.subscribe(siteTopic)
 					}
 					let genId = parseInt(Math.random()*100000000,10);
@@ -189,7 +189,7 @@ class HermodSubscriptionManager  extends HermodMqttServer {
 									}
 								//	console.log(['try unsub ',topic])
 									if (that.findEventCallbackFunctions(topic).length === 0) {
-										console.log(['try unsub really '])
+										//console.log(['try unsub really '])
 										that.unsubscribe(topic)
 									}
 									return;

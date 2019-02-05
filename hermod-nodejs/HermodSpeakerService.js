@@ -28,9 +28,11 @@ class HermodSpeakerService extends HermodService {
         // SESSION
             'hermod/+/speaker/play' : function(destination,siteId,audio) {
                 //if (siteId && siteId.length > 0 && siteId === that.props.siteId) {
+                    that.sendMqtt("hermod/"+siteId+"/speaker/started",{});
                     that.playSound(audio).then(function() {
-                          that.sendMqtt("hermod/"+siteId+"/speaker/playFinished",{}); 
-                    }); 
+                            console.log('NOW');
+							  that.sendMqtt("hermod/"+siteId+"/speaker/finished",{}); 
+					}); 
                 //}
             },
             'hermod/+/speaker/stop' : function(topic,siteId,payload) {
@@ -45,7 +47,7 @@ class HermodSpeakerService extends HermodService {
    
     /* Set volume between 0 and 1 */
     setVolume(volume) {
-        console.log('set volume '+volume)
+        //console.log('set volume '+volume)
         this.volume.setVolume(volume)
     };
     
@@ -63,7 +65,7 @@ class HermodSpeakerService extends HermodService {
 					console.log(e)
 				}
 				that.reader = null;
-				console.log('stopped');
+			//	console.log('stopped');
 			}
 			resolve();		
 		});
@@ -93,6 +95,10 @@ class HermodSpeakerService extends HermodService {
 						readable.pipe(decoder) 
 						decoder.pipe(that.volume)
 						that.volume.pipe(speaker)
+						decoder.on('end',function() {
+							resolve();
+						
+						});
 						
 					} else if (mediaType ==="wav") {
 						var reader = new wav.Reader();
@@ -101,9 +107,11 @@ class HermodSpeakerService extends HermodService {
 						reader.on('format', function (format) {					 
 						  // the WAVE header is stripped from the output of the reader
 						  speaker = new Speaker(format);
+							speaker.on('close',function() {
+								resolve();
+							});
 						  that.volume.pipe(speaker)
 						});
-						
 						const readable = new Readable()
 						that.reader = reader;
 						readable._read = () => {} // _read is required but you can noop it
@@ -111,6 +119,7 @@ class HermodSpeakerService extends HermodService {
 						readable.push(null)
 						
 						readable.pipe(reader).pipe(that.volume)
+						// TODO readable end event then resolve
 					}
 				} catch (e) {
 					console.log(['PIPE ERROR',e])

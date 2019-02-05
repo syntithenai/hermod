@@ -19,7 +19,7 @@ class HermodService {
             this.manager = manager;
             return this.manager;
         } else {
-			console.log(['create manager',eventFunctions])
+			//console.log(['create manager',eventFunctions])
             this.manager =  new HermodSubscriptionManager(Object.assign({ eventCallbackFunctions :eventFunctions},this.props));
             return this.manager;
         }

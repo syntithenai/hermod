@@ -12,8 +12,8 @@ class HermodTtsService extends HermodService  {
         // SESSION
             'hermod/+/tts/say' : function(topic,siteId,payload) {
 				if (payload.text && payload.text.length > 0 ) {
-					that.say(payload.text).then(function() {
-						that.sendMqtt('hermod/' + props.siteId + '/tts/sayFinished',{id:payload.id});    
+					that.say(payload.text,props.siteId,payload).then(function() {
+						//that.sendMqtt('hermod/' + props.siteId + '/tts/finished',{id:payload.id});    
 					});
 				}
             }
@@ -28,20 +28,28 @@ class HermodTtsService extends HermodService  {
    /**
      * Synthesise speech from text and send to to audio output
      */ 
-    say(text) {
+    say(text,siteId,payload) {
 		let that = this;
 		return new Promise(function(resolve,reject) {
 			const randomFileName=that.ttsOutputDirectory + "/" + String(parseInt(Math.random() * 10000,10) ) + '.wav'
 			const command = that.ttsBinary + " -w " + randomFileName + " " + "'" + text + "'";
+			that.sendMqtt('hermod/'+siteId+'/tts/started',{id:payload.id})
+						
 			const exec = require("child_process").exec
 			exec(command, (error, stdout, stderr) => {
 				// stream the file
 				var fs = require('fs');
 				fs.readFile(randomFileName	, function(err, wav) {
+					let callbacks = {}
+					callbacks['hermod/'+siteId+'/speaker/finished'] = function() {
+						that.sendMqtt('hermod/'+siteId+'/tts/finished',{id:payload.id})
+						fs.unlink(randomFileName,function() {})
+					}
+					// automatic cleanup after single message with true parameter
+					that.manager.addCallbacks(callbacks,true)
+					
 					that.manager.sendAudioMqtt("hermod/"+that.props.siteId+"/speaker/play",wav);
-					fs.unlink(randomFileName)
 				});
-				
 			})
 			resolve()
 		})

@@ -91,12 +91,12 @@ class HermodGoogleAsrService extends HermodService  {
 			detector.destroy()
 			that.stopMqttListener(siteId);
 		  });
-		console.log('got detector');
+		//console.log('got detector');
 		// mqtt to stream - pushed to when audio packet arrives
 		this.mqttStreams[siteId] = new Readable()
 		this.mqttStreams[siteId]._read = () => {} // _read is required but you can noop it
         this.mqttStreams[siteId].pipe(detector)	
-		console.log('piped ');		
+		//console.log('piped ');		
 	}
 	
 	stopMqttListener(siteId) {

@@ -8,8 +8,9 @@ var Chunker = require('stream-chunker');
 //var ReadableStreamClone = require("readable-stream-clone");
 var stream = require('stream') 
 var Readable = stream.Readable;
+var Writable = stream.Writable;
 
-		var Speaker = require("speaker");
+var Speaker = require("speaker");
 
 class HermodMicrophoneService extends HermodService  {
 
@@ -23,7 +24,8 @@ class HermodMicrophoneService extends HermodService  {
         this.packetCount={}
         this.isRecording={}
         this.started = false;
-        this.voiceDetected = true;
+        this.isStreaming = false;
+        this.silenceTimeout = null;
         let eventFunctions = {
         // SESSION
             'hermod/+/microphone/start' : function(topic,siteId,payload) {
@@ -45,42 +47,140 @@ class HermodMicrophoneService extends HermodService  {
 		if (!this.isRecording[siteId]) {
 			//console.log('start recording')
 			let that = this;
-			//var chunker = new SizeChunker({
-				//chunkSize: 512,
-				//flushTail: true
-			//});
+			const vad = new VAD(VAD.Mode.NORMAL);
+ 
+			//const vadProcessor = new Writable();
+			//vadProcessor._write = function(data,encoding,cb) {
+				//vad.processAudio(data, 16000).then(res => {
+					//switch (res) {
+						//case VAD.Event.ERROR:
+							////console.log("ERROR");
+							//break;
+						//case VAD.Event.NOISE:
+							////console.log("NOISE");
+							//break;
+						//case VAD.Event.SILENCE:
+							//console.log("SILENCE");
+							//that.silenceTimeout = setTimeout(function() {
+								//that.isStreaming = false;
+							//},2000);
+							//break;
+						//case VAD.Event.VOICE:
+							//console.log("VOICE");
+							//that.silenceTimeout = setTimeout(function() {
+								//that.isStreaming = true;
+							//},1);
+							//if (that.silenceTimeout) clearTimeout(that.silenceTimeout);
+							//break;
+					 //}
+					 
+				//})
+				//cb();
+				
+				////console.log('vad data')
+				////console.log(data.speech,data)
+				//////that.voiceDetected = data.speech.state;
+			//};
+			
 			var chunker = Chunker(512,{flush:true});
+			chunker.on('data', function(data) {
+				//console.log('chunk send mqtt data')
+				that.manager.sendAudioMqtt("hermod/"+that.props.siteId+"/microphone/audio",data);
+			});
+			let isStreaming = false;
+			let splitStream = new Readable()
+			splitStream._read = () => {} // _read is required but you can noop it
+			splitStream.on('data', function(data) {
+				//console.log('ss on data');
+				//vadProcessor.write(data);
+
+				function sendChunk() {
+					if (isStreaming)  {
+						//console.log('push chunk data')
+						chunker.push(data);
+					}
+				}
+				vad.processAudio(data, 16000).then(res => {
+					switch (res) {
+						case VAD.Event.ERROR:
+							sendChunk()
+							//console.log("ERROR");
+							break;
+						case VAD.Event.NOISE:
+							//console.log("NOISE");
+							sendChunk()
+							break;
+						case VAD.Event.SILENCE:
+							//console.log("SILENCE");
+							that.silenceTimeout = setTimeout(function() {
+								isStreaming = false;
+								sendChunk()
+							},2000);
+							break;
+						case VAD.Event.VOICE:
+							//console.log("VOICE");
+							isStreaming = true;
+							sendChunk()
+							if (that.silenceTimeout) clearTimeout(that.silenceTimeout);
+							break;
+					 }
+					 
+				})
+				//console.log('ss data');
+			});
+			
 			this.started = true;
 			var output;
 			 
-			 
-			chunker.on('data', function(data) {
-				//console.log(['DATA',data.length]);
-				//if (that.vadStream) that.vadStream.push(chunk.data)
-				//if (that.voiceDetected) {
-					that.packetCount[siteId]++;
-					//console.log(['senddata',"hermod/"+that.props.siteId+"/microphone/audio/"+that.packetCount[siteId]]);
-					that.manager.sendAudioMqtt("hermod/"+that.props.siteId+"/microphone/audio",data);
-				//}
-				//that.sendAudioBuffer(chunk.data,context.sampleRate); 
-				//output.write(chunk.data);
-			});
-			 
-			//this.stream = mic({
-			  //bitDepth: 16,
-			  //channels: 1,
-			  //sampleRate: 16000
-			//});
-			
 			var wavConfig = {
 			  "channels": 1,
 			  "sampleRate": 16000,
 			  "bitDepth": 16
 			};
 			var micInstance = Microphone(Object.assign({debug:true},wavConfig));
-			micInstance.start()
 			this.stream = micInstance.getAudioStream()
 			
+			
+			var wav = require('wav');
+			var wavReader = new wav.Reader(wavConfig);
+			var inBody = false;
+			wavReader.on('format', function (format) {					 
+			  //console.log(['format',format]);
+			//   the WAVE header is stripped from the output of the reader
+			 // wavReader.pipe(splitStream)
+			 inBody = true;
+			});
+			wavReader.on('data', function (data) {
+				//console.log(['data',data.length]);
+				if (inBody) splitStream.push(data);
+			});
+			this.stream.pipe(wavReader);
+			
+			micInstance.start()
+			
+			//this.stream.pipe(chunker);
+			//this.stream.pipe(file);
+			//chunker.pipe(vadStream)
+		}
+	}
+    
+	stopRecording(siteId) {
+		this.started = false;
+        this.voiceDetected = false;
+       
+		if (this.stream) {
+			this.stream.pause();
+			this.stream.destroy();
+			//function() {
+				//console.log('stopped');
+			//})
+		}
+	}
+	
+    
+}
+module.exports = HermodMicrophoneService
+
 			//let vadStream = new Readable()
 			//vadStream._read = () => {} // _read is required but you can noop it
 			
@@ -110,53 +210,4 @@ class HermodMicrophoneService extends HermodService  {
 					//const file = fs.createWriteStream('./dsout.wav');
 			//const fs = require('fs');
 			//const file = fs.createWriteStream('./stream6.wav');
-			var FileWriter = require('wav').FileWriter;	
-			//var outputFileStream = new FileWriter('./hotword.wav', {
-			  //sampleRate: 16000,
-			  //channels: 1
-			//});
-			var fileStream = new FileWriter('./microphone.wav', {
-			  sampleRate: 16000,
-			  channels: 1
-			});
-			var speaker = null;
-			var wav = require('wav');
-			var wavReader = new wav.Reader(wavConfig);
-			wavReader.on('format', function (format) {					 
-			 // console.log(['format',format]);
-			//   the WAVE header is stripped from the output of the reader
-			  wavReader.pipe(chunker)
-			  speaker = new Speaker(format)
-			  //wavReader.pipe(speaker);
-				chunker.pipe(fileStream);
-
-			});
-			wavReader.on('data', function (format) {
-				//console.log(['data',format.length]);
-			  
-			});
-			this.stream.pipe(wavReader);
 			
-			
-			//this.stream.pipe(chunker);
-			//this.stream.pipe(file);
-			//chunker.pipe(vadStream)
-		}
-	}
-    
-	stopRecording(siteId) {
-		this.started = false;
-        this.voiceDetected = false;
-       
-		if (this.stream) {
-			this.stream.pause();
-			this.stream.destroy();
-			//function() {
-				//console.log('stopped');
-			//})
-		}
-	}
-	
-    
-}
-module.exports = HermodMicrophoneService

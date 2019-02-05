@@ -1,3 +1,5 @@
+
+
 var HermodService = require('./HermodService')
 var HermodSubscriptionManager = require('./HermodSubscriptionManager')
 
@@ -12,12 +14,9 @@ const argparse = require('argparse');
 const config = require('./config');
 const Ds = require('deepspeech');
 const MemoryStream = require('memory-stream');
-//const Wav = require('node-wav');
 const Duplex = require('stream').Duplex;
 const util = require('util');
 var Wav = require('wav')
-
-//console.log(['ASR INC']);
 
 let parser = new argparse.ArgumentParser({addHelp: true, description: 'Running DeepSpeech inference.'});
 parser.addArgument(['--siteId'], {required: true, help: 'siteId to listen for mqtt messages'});
@@ -29,7 +28,7 @@ let mqttStreams = {};
 //let audioBuffers = {};
 //let messageCount = {};
 let audioDump = {};
-				
+        				
 var speaker = require('speaker')
 var WaveFile = require('wavefile')
 
@@ -41,8 +40,12 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
         this.callbackIds = {};
 		this.listening = {};
 		this.silent = {};
+		this.asrTimeouts={}
+		this.sctx = {}
+		this.models = {}
+		this.isStarted = false;
+		let eventFunctions = {
 		
-        let eventFunctions = {
         // SESSION
             // keep the service alive by subscribing to one fake topic
             //'nosub' : function(topic,siteId,payload) {
@@ -67,7 +70,8 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
     
     startMqttListener(siteId) {
 		let that = this;
-		
+		//console.log('create ASR TIMEOUT');
+			
 		
 		// LOGGING
 		var FileWriter = require('wav').FileWriter;	
@@ -125,9 +129,48 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 	}
 	
 	onAudioMessage(topic,siteId,buffer) {
+		let that = this;
 		//console.log(['onmessage',messageCount[siteId],topic,siteId,buffer.length]);
 		//messageCount[siteId]++;
 		if (mqttStreams.hasOwnProperty(siteId)) {
+			// wait for first voice before starting to push audio packets to detector
+			if (!this.isStarted) {
+				const vad = new VAD(VAD.Mode.NORMAL);
+				
+				// push into stream buffers for the first time (and start timeout)
+				function pushBuffers(siteId,buffer) {
+					if (that.isStarted) mqttStreams[siteId].push(buffer)
+					if (that.isStarted) audioDump[siteId].push(buffer)	
+				}
+				
+					vad.processAudio(buffer, 16000).then(res => {
+						//console.log(['chunk',chunk.length,res,silenceCount]);
+						switch (res) {
+							case VAD.Event.ERROR:
+								console.log('VAD ERROR');
+								break;
+							case VAD.Event.SILENCE:
+								pushBuffers(siteId,buffer)
+								break;
+							case VAD.Event.NOISE:
+								pushBuffers(siteId,buffer)
+								break;
+							case VAD.Event.VOICE:
+								that.isStarted = true;     
+								pushBuffers(siteId,buffer)
+								that.asrTimeouts[siteId] = setTimeout(function() {
+									console.log('ASR TIMEOUT');
+									that.finishStream(siteId)
+								},4000);
+								
+								break;
+						}
+					})
+				
+			} else {
+				if (that.isStarted) mqttStreams[siteId].push(buffer)
+				if (that.isStarted) audioDump[siteId].push(buffer)	
+			}
 			//if (messageCount[siteId] < 200) {
 				//// add wav header to first packet
 				//if (messageCount[siteId] == 0) {
@@ -136,14 +179,12 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 					//mqttStreams[siteId].push(buffer)
 					//audioBuffers[siteId].push.apply(audioBuffers[siteId],buffer)
 				//} else {
-					mqttStreams[siteId].push(buffer)
 					//audioBuffers[siteId].push.apply(audioBuffers[siteId],buffer)
 				//}
 			//} else {
 				//this.stopMqttListener(siteId);
 			//}
-			audioDump[siteId].push(buffer)
-		
+			
 		}
 	}	
 	
@@ -179,42 +220,44 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		return model;
 	}
 
+	finishStream(siteId) {
+		let that = this;
+		let model = this.models[siteId]
+		let sctx = this.sctx[siteId]
+		try {
+			// save audio
+			//let f = fs.createWriteStream('./joel.wav')
+			//that.audioBuffers[siteId].map(function(buffer) {
+				//console.log(['write',buffer.length]);
+				//f.write(buffer)
+			//});
+			//f.end()
+			// inference
+			const model_load_start = process.hrtime();
+			//console.error('Running inference.');
+			let transcription = model.finishStream(sctx);
+			console.log('transcription:'+ transcription);
+			//console.log(['hermod/'+siteId+'/asr/text',{text:transcription}]);
+			
+			//that.sendMqtt('hermod/'+siteId+'/asr/text',{text:transcription});
+			const model_load_end = process.hrtime(model_load_start);
+			console.error('Inference took %ds.', that.totalTime(model_load_end));
+			//that.audioDump[siteId].push(null)
 	
-	getDetector(siteId,model) {
-		if (!model) model = this.getAsrModel();
+			that.stopMqttListener(siteId);
+		} catch (e) {
+			console.log(['FINISH STREAM ERROR',e])
+		}
+	}
+	
+	getDetector(siteId) {
+		if (!this.models[siteId]) this.models[siteId] = this.getAsrModel();
 		const vad = new VAD(VAD.Mode.NORMAL);
 		let that = this;
 		const voice = {START: true, STOP: false};
-		let sctx = model.setupStream(150, 16000);
+		this.sctx[siteId] = this.models[siteId].setupStream(150, 16000);
 		let state = voice.START;
 		
-		function finishStream() {
-			try {
-				// save audio
-				//let f = fs.createWriteStream('./joel.wav')
-				//that.audioBuffers[siteId].map(function(buffer) {
-					//console.log(['write',buffer.length]);
-					//f.write(buffer)
-				//});
-				//f.end()
-				// inference
-				const model_load_start = process.hrtime();
-				//console.error('Running inference.');
-				let transcription = model.finishStream(sctx);
-				console.log('transcription:'+ transcription);
-				//console.log(['hermod/'+siteId+'/asr/text',{text:transcription}]);
-				
-				//that.sendMqtt('hermod/'+siteId+'/asr/text',{text:transcription});
-				const model_load_end = process.hrtime(model_load_start);
-				console.error('Inference took %ds.', that.totalTime(model_load_end));
-				//that.audioDump[siteId].push(null)
-		
-				that.stopMqttListener(siteId);
-			} catch (e) {
-				console.log(['FINISH STREAM ERROR',e])
-			}
-		}
-
 		let detector = new Writable();
 		var silenceCount = 0;
 		detector._write = function(chunk,encoding,cb) {
@@ -228,17 +271,17 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 						case VAD.Event.SILENCE:
 							silenceCount++;
 						//	console.log([res,silenceCount]);
-							if (state === voice.START && silenceCount > 60) { //30
+							if (state === voice.START && silenceCount > 30) { //30
 								state = voice.STOP;
 								//model.feedAudioContent(sctx, chunk.slice(0, chunk.length / 2));
 								silenceCount = 0;
-								finishStream();
+								that.finishStream(siteId,model,that.sctx[siteId]);
 								//console.log('finishStream');
-								try {
-									sctx = model.setupStream(150,16000);
-								} catch (e) {
-									console.log(e);
-								}
+								//try {
+									//sctx = model.setupStream(150,16000);
+								//} catch (e) {
+									//console.log(e);
+								//}
 								//console.log('setup stream');
 								
 							//} else if (config.services.HermodDeepSpeechAsrService.interimResults && false && state === voice.START && silenceCount === 10) { //5
@@ -250,7 +293,7 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 								////console.log(' Stream decoded');
 								
 							} else {
-								model.feedAudioContent(sctx, chunk.slice(0, chunk.length / 2));
+								that.models[siteId].feedAudioContent(that.sctx[siteId], chunk.slice(0, chunk.length / 2));
 								//console.log('Stream fed silent');
 								
 							}
@@ -264,7 +307,7 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 							}
 							silenceCount = 0;
 							state = voice.START;
-							model.feedAudioContent(sctx, chunk.slice(0, chunk.length / 2));
+							that.models[siteId].feedAudioContent(that.sctx[siteId], chunk.slice(0, chunk.length / 2));
 							//console.log('Stream fed noise');
 							break;
 					}

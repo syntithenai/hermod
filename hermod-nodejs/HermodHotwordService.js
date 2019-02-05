@@ -24,20 +24,26 @@ class HermodHotwordService extends HermodService  {
 		this.mqttStreams = {};
 		this.audioBuffers = {};
 		this.audioDump = {}
-		
+		this.isStarted = {};
         let eventFunctions = {
         // SESSION
             'hermod/+/hotword/start' : function(topic,siteId,payload) {
 				// TODO access control check siteId against props siteId or siteIds
 				//console.log('hermod/+/hotword/start')
-				that.listening[siteId] = true;
-				that.messageCount[siteId]=0;
-				that.startMqttListener(siteId)
-		    }
+				if (!that.isStarted[siteId]) {
+					that.listening[siteId] = true;
+					that.messageCount[siteId]=0;
+					that.startMqttListener(siteId)
+					that.isStarted[siteId]= true;					
+				}
+			}
 		    ,
 		    'hermod/+/hotword/stop' : function(topic,siteId,payload) {
-				that.listening[siteId] = false;
-				that.stopMqttListener(siteId)
+				if (that.isStarted[siteId]) {
+					that.listening[siteId] = false;
+					that.stopMqttListener(siteId)
+					that.isStarted[siteId] = false;
+				}
 		    }
         }
 		
@@ -71,7 +77,7 @@ class HermodHotwordService extends HermodService  {
 		/**	
 		 * Hotword
 		 */
-
+		let config = this.props;
 		
 		const Detector = require('snowboy').Detector;
 		const Models = require('snowboy').Models;
@@ -79,11 +85,13 @@ class HermodHotwordService extends HermodService  {
 		 // snowboy setup
 		var models = new Models();
 		//if (typeof this.props.models !== 'object') throw new Exception('Missing hotword configuration for models')
+		
+		
 		this.props.models.map(function(thisModel) {
-			models.add(thisModel);
+		   models.add(thisModel);
 		})
-
 		var detector = new Detector(Object.assign({models:models},this.props.detector));
+
 		//detector.on('silence', function () {
 		  //if (!silent[siteId]) console.log('silence '+siteId);
 		  //silent[siteId] = true;

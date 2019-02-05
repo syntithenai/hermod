@@ -5,6 +5,7 @@
 ## story_goodbye
 * goodbye
  - utter_goodbye
+ - action_restart
 
 ## story_thanks
 * thanks
@@ -17,7 +18,8 @@
 
 ## story_joke_01
 * joke
- - joke.action_joke
+ - joke_tell_me_a_joke
+ - action_restart
  
 ## story_joke_02
 * greet
@@ -25,8 +27,9 @@
 * name{"name":"Lucy"} <!--- User response with an entity. In this case it represents user message 'My name is Lucy.' --> 
  - utter_greet
 * joke
- - joke.action_joke
+ - joke_tell_me_a_joke
 * thanks
  - utter_thanks
 * goodbye
  - utter_goodbye 
+ - action_restart

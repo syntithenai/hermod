@@ -16,12 +16,12 @@ class HermodDialogManagerService extends HermodService  {
         let that = this;
         this.callbackIds = [];
         this.dialogs = {};
-		console.log(['CON DIALOG MANAGER',this.props]);
+		//console.log(['CON DIALOG MANAGER',this.props]);
 		function startDialog(siteId,payload) {
 				//Start a dialog 
 				var dialogId = parseInt(Math.random()*100000000,10)
 				that.dialogs[dialogId] = {asrModels:payload.asrModels ? payload.asrModels : 'default', nluModels:payload.nluModels ? payload.nluModels : 'default'};
-				that.sendMqtt('hermod/'+siteId+'/hotword/stop',{})
+				//that.sendMqtt('hermod/'+siteId+'/hotword/stop',{})
 				that.sendMqtt('hermod/'+siteId+'/microphone/start',{})
 				that.sendMqtt('hermod/'+siteId+'/asr/start',{id:dialogId,models:that.dialogs[dialogId].asrModels})
 				that.sendMqtt('hermod/'+siteId+'/dialog/started',{id:dialogId})
@@ -30,7 +30,7 @@ class HermodDialogManagerService extends HermodService  {
 				//Start a dialog 
 				var dialogId = parseInt(Math.random()*100000000,10)
 				that.dialogs[dialogId] = {asrModels:payload.asrModels ? payload.asrModels : 'default', nluModels:payload.nluModels ? payload.nluModels : 'default'};
-				that.sendMqtt('hermod/'+siteId+'/hotword/stop',{})
+				//that.sendMqtt('hermod/'+siteId+'/hotword/stop',{})
 				//that.sendMqtt('hermod/'+siteId+'/microphone/stop',{})
 				that.sendMqtt('hermod/'+siteId+'/asr/stop',{id:dialogId,models:that.dialogs[dialogId].asrModels})
 				that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:dialogId,models:that.dialogs[dialogId].nluModels,text:payload.text,confidence:payload.confidence})
@@ -59,25 +59,31 @@ class HermodDialogManagerService extends HermodService  {
 		    }
 		    ,
 		    'hermod/+/dialog/continue' : function(topic,siteId,payload) {			
+				//console.log('continue');
+				//console.log(that.dialogs);
 				//Sent by an action to continue a dialog and seek user input.
 				//text - text to speak before waiting for more user input
 				//ASR Model - ASR model to request
 				//NLU Model - NLU model to request
 				//Intents - Allowed Intents
-				if (this.dialogs.hasOwnProperty(payload.id)) {
-					if (payload.nluModels)  this.dialogs[payload.id].nluModels = payload.nluModels  
-					if (payload.asrModels)  this.dialogs[payload.id].asrModels = payload.asrModels 
-					that.sendMqtt('hermod/'+siteId+'/microphone/stop',{})
-					that.sendMqtt('hermod/'+siteId+'/tts/say',{id:payload.id,text:payload.text})
-					// After hermod/<siteId>/tts/sayFinished, send message to restart conversation
-					let callbacks = {}
-					callbacks['hermod/'+siteId+'/tts/sayFinished'] = function() {
+				if (that.dialogs.hasOwnProperty(payload.id)) {
+					if (payload.nluModels)  that.dialogs[payload.id].nluModels = payload.nluModels  
+					if (payload.asrModels)  that.dialogs[payload.id].asrModels = payload.asrModels 
+					if (payload.text && payload.text.length > 0) {
+						//that.sendMqtt('hermod/'+siteId+'/microphone/stop',{})
+						that.sendMqtt('hermod/'+siteId+'/tts/say',{id:payload.id,text:payload.text})
+						// After hermod/<siteId>/tts/finished, send message to restart conversation
+						let callbacks = {}
+						callbacks['hermod/'+siteId+'/tts/finished'] = function() {
+							that.sendMqtt('hermod/'+siteId+'/microphone/start',{})
+							that.sendMqtt('hermod/'+siteId+'/asr/start',{id:payload.id,models: that.dialogs[payload.id].asrModels})
+						}
+						// automatic cleanup after single message with true parameter
+						that.callbackIds[siteId] = that.manager.addCallbacks(callbacks,true)						
+					} else {
 						that.sendMqtt('hermod/'+siteId+'/microphone/start',{})
 						that.sendMqtt('hermod/'+siteId+'/asr/start',{id:payload.id,models: that.dialogs[payload.id].asrModels})
 					}
-					// automatic cleanup after single message with true parameter
-					that.callbackIds[siteId] = this.manager.addCallbacks(callbacks,true)
-					
 				} else {
 					console.error('missing id in dialog continue')
 				}
@@ -86,10 +92,14 @@ class HermodDialogManagerService extends HermodService  {
 		    'hermod/+/asr/text' : function(topic,siteId,payload) {
 				//Sent by asr service
 				if (that.dialogs.hasOwnProperty(payload.id)) {
-					that.dialogs[payload.id].text = payload.text
-					that.sendMqtt('hermod/'+siteId+'/microphone/stop')
-					that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:payload.id,models:that.dialogs[payload.id].nluModels,text:payload.text,confidence:payload.confidence})
+					if (payload.text && payload.text.length > 0) {
+						that.dialogs[payload.id].text = payload.text
+						//that.sendMqtt('hermod/'+siteId+'/microphone/stop')
+						that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:payload.id,models:that.dialogs[payload.id].nluModels,text:payload.text,confidence:payload.confidence})
 					//=> hermod/<siteId>/nlu/query
+					} else {
+						console.error('empty asr text')
+					}
 				} else {
 					console.error('missing id in asr text')
 				}
@@ -101,6 +111,17 @@ class HermodDialogManagerService extends HermodService  {
 					that.dialogs[payload.id].parse = payload
 				}
 				that.sendMqtt('hermod/'+siteId+'/intent',payload)
+				//=> hermod/<siteId>/intent
+				//Wait for voiceid if enabled.
+				//OR
+				//Sent when entity recognition fails because there are no results of sufficient confidence value.
+				//that.sendMqtt('hermod/'+siteId+'/nlu/fail',{})
+				//??? => hermod/<siteId>/dialog/end
+				// that.sendMqtt('hermod/'+siteId+'/dialog/end',{})
+		    }
+		    ,
+		    'hermod/+/nlu/fail' : function(topic,siteId,payload) {
+				that.sendMqtt('hermod/'+siteId+'/dialog/end',{id:payload.id})
 				//=> hermod/<siteId>/intent
 				//Wait for voiceid if enabled.
 				//OR
@@ -134,7 +155,7 @@ class HermodDialogManagerService extends HermodService  {
         
         this.manager = this.connectToManager(props.manager,eventFunctions);
 		
-		console.log(['DIALOG MANAGER CONSTRUCTOR NOW SEND START MESSAGES',that.props.siteId]);
+		//console.log(['DIALOG MANAGER CONSTRUCTOR NOW SEND START MESSAGES',that.props.siteId]);
 		setTimeout(function() {
 			that.sendMqtt('hermod/'+that.props.siteId+'/microphone/start',{})
 			that.sendMqtt('hermod/'+that.props.siteId+'/hotword/start',{})

@@ -1,8 +1,5 @@
 var config={
 	siteId:'default',
-	manager: {
-		
-	},
 	skills: {'joke':'../rasa/joke/'},
 	services: {
 		HermodMicrophoneService: {

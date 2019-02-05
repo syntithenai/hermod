@@ -12,10 +12,11 @@
     "prev_action_restart", 
     "prev_action_default_fallback", 
     "prev_action_deactivate_form", 
+    "prev_action_end", 
     "prev_utter_name", 
     "prev_utter_thanks", 
     "prev_utter_greet", 
     "prev_utter_goodbye", 
-    "prev_action_joke"
+    "prev_joke_tell_me_a_joke"
   ]
 }

@@ -32,6 +32,7 @@ The stack relies on many open source projects including
 - Mozilla Deepspeech to implement ASR (Online Google and Kaldi implementations also available)
 - RASA NLU
 - RASA Core Routing
+- pico2wave
 
 
 The main services involved in implementing a voice interaction include
@@ -76,7 +77,9 @@ A Dockerfile build file is included that incorporates the deepspeech model and i
 
 [To my knowledge] Docker on windows does not support access to audio hardware. I can only think to use pulse audio on the windows host and share sound through to the Linux container via the network.
 
+## Web Suite
 
+The React based sample web application featuring a microphone and logging components has not yet been ported from hermes.
 
 ## Dialog Manager Overview
 
@@ -228,7 +231,7 @@ To minimise traffic on the network, the dialog manager enables and disables medi
 
 **Outgoing**
 
-- `hermod/<siteId>/speaker/playFinished`
+- `hermod/<siteId>/speaker/finished`
     - Sent when the audio from a play request has finished playing on the hardware.
 
 
@@ -486,8 +489,8 @@ Services are considered unresponsive in the following circumstances
 *   For the ASR service, If the time from ASR starting and then silence being detected , to asr/text or asr/fail exceeds the configured asrTimeout.
 *   For the NLU service, If the time between nlu/parse and nlu/intent exceeds the configured nluTimeout
 *   For the core routing service, If the time between nlu/intent and hermod/intent exceeds the configured coreTimeout
-*   For the TTS service, if the time between tts/say and tts/sayFinished
-*   For the media streaming service, if the time between speaker/play and speaker/playFinished
+*   For the TTS service, if the time between tts/say and tts/finished
+*   For the media streaming service, if the time between speaker/play and speaker/finished
 
 #### Logging (TODO)
 
@@ -535,7 +538,7 @@ Outgoing messages are shown with => under the related incoming message.
         - Intents - Allowed Intents
     - => hermod/<siteId>/microphone/stop
     - => hermod/<siteId>/tts/say
-    -    After hermod/<siteId>/tts/sayFinished
+    -    After hermod/<siteId>/tts/finished
         - => hermod/<siteId></pre>/microphone/start
         - => hermod/<siteId>/asr/start
 
@@ -603,12 +606,8 @@ The actions.json file exports an object containing action functions keyed to act
 - `hermod/<siteId>/intent`
 
 **Outgoing**
-
+- `hermod/<siteId>/action/started`
 - `hermod/<siteId>/action/finished`
-OR 
-- `hermod/<siteId>/action/error`
-    - Send when there was a problem executing any actions configured for the intent.
-
 
 
 ### Text to speech Service (TTS)
@@ -632,9 +631,9 @@ Online TTS implementation include Amazon Polly and Google. These services suppor
 *   text - text to generate as audio
 *   lang - (optional default en_GB)  language to use in interpreting text to audio
 
-`hermod/<siteId>/speaker/playFinished`
+`hermod/<siteId>/speaker/finished`
 
-*   When audio has finished playing send a message to hermod/<siteId>/tts/sayFinished  to notify that speech has finished playing.
+*   When audio has finished playing send a message to hermod/<siteId>/tts/finished  to notify that speech has finished playing.
 
 **Outgoing**
 
@@ -643,7 +642,7 @@ Online TTS implementation include Amazon Polly and Google. These services suppor
 *   speechRequestId is generated
 *   Body contains WAV data of generated audio.
 
-`hermod/<siteId>/tts/sayFinished`
+`hermod/<siteId>/tts/finished`
 
 *   Notify applications that TTS has finished speaking.
 
@@ -669,3 +668,81 @@ Topic segmentation also allows flexible implementation of access control. For ex
 https://github.com/RasaHQ/rasa_lookup_demo
 
 https://rasa.com/docs/core/master/policies/#two-stage-fallback-policy
+
+https://github.com/JustinaPetr/Weatherbot_Tutorial
+
+https://github.com/mrbot-ai/rasa-webchat
+
+https://github.com/RasaHQ/conversational-ai-workshop-18
+
+
+## TODO
+- hermod react
+
+- build all skills script
+- generate domain from config and skills folders  	
+
+- code tidy up
+	- remove unused libs/vars
+	- comments
+	- debug
+	- TODO ?
+	
+- rasa 2 stage fallback
+- rasa duckling
+- autostart - duckling, rasa app server, ...  pm2
+- timeouts - nlu, ......
+
+- music player model
+	- play some ...
+	- stop
+	- volume
+	- start
+
+- return events from nodejs action callbacks (via mqtt)
+	- allow python and nodejs application servers to coexist by using python normally and then sending mqtt for nodejs.
+	- the Forms policy requires the python application server.
+
+- deepspeech asr component frequency filtering (as per deepspeech nodejs example)
+
+- !!!! Authentication - login/signup/authorise site.
+
+- Sample music player web application
+
+- tests
+	- mqtt based check each layer of service
+	- rasa segregated training data for testing 
+
+
+## TODO MEDIUM TERM
+
+- mosca
+
+- docker single image example
+
+- nlu/partial parse entity only - how does this work with rasa?
+
+- story and model builder UI 
+	- define some actions
+	- start an interactive learning session
+	- also explicit add intent, slot, action, template
+
+- picovoice hotword detector (more voices)
+
+- train hotword UI
+	
+- logging 
+	- all recordings, transcriptions and parse results in database by conversation.
+	- web UI to show
+
+
+- External proxy base class and example. Run a service that connects to remote mqtt and proxies messages.
+
+- training 
+	- distributed service with training client callbacks.
+	
+- ARM image for pi with lightweight services - snips hotword/ASR/NLU and kaldi asr
+
+
+
+

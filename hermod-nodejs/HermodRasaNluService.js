@@ -71,13 +71,13 @@ class HermodRasaNluService extends HermodService  {
 		// TODO access control check siteId against props siteId or siteIds
 		axios.post(this.props.rasaServer+"/parse",{query:payload.text,project:payload.model ? payload.model : 'current',model:'nlu'})
 		  .then(response => {
-			console.log('nlu response');
-			console.log(typeof response.data);
-			console.log(response.data);
+			//console.log('nlu response');
+			//console.log(typeof response.data);
+			//console.log(response.data);
 			var matchingIntent = this.findMatchingIntent(payload,response.data);
 			var minConfidence = that.props.minConfidence ? that.props.minConfidence : 0.3;
-			console.log('confidence');
-			console.log(['nlu response',matchingIntent.confidence,minConfidence]);
+			//console.log('confidence');
+			//console.log(['nlu response',matchingIntent.confidence,minConfidence]);
 			
 			if (matchingIntent && matchingIntent.confidence > minConfidence) {
 				that.sendMqtt('hermod/'+siteId+'/nlu/intent',Object.assign(payload,response.data));

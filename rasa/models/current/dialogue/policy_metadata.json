@@ -6,13 +6,19 @@
   "python": "2.7.15", 
   "ensemble_name": "rasa_core.policies.ensemble.SimplePolicyEnsemble", 
   "rasa_core": "0.12.4", 
-  "trained_at": "20190131-210422", 
+  "trained_at": "20190205-112129", 
   "policy_names": [
     "rasa_core.policies.keras_policy.KerasPolicy", 
     "rasa_core.policies.memoization.MemoizationPolicy"
   ], 
   "action_fingerprints": {
+    "utter_thanks": {
+      "slots": []
+    }, 
     "utter_greet": {
+      "slots": []
+    }, 
+    "utter_name": {
       "slots": []
     }, 
     "action_listen": {
@@ -20,16 +26,7 @@
         "name"
       ]
     }, 
-    "utter_goodbye": {
-      "slots": []
-    }, 
-    "action_joke": {
-      "slots": []
-    }, 
-    "utter_name": {
-      "slots": []
-    }, 
-    "utter_thanks": {
+    "action_restart": {
       "slots": []
     }
   }
