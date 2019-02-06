@@ -51,11 +51,13 @@ var config={
 		//// service account credentials in console https://console.developers.google.com/apis/credentials?authuser=0&project=hermod-1548488627033
 		//// export GOOGLE_APPLICATION_CREDENTIALS=/home/stever/Downloads/hermod-d96c7d7c36f3.json
 		HermodGoogleAsrService: {
-			model: "google"
+			model: "google",
+			debug:true
 		}
 		,
 		HermodDeepSpeechAsrService: {
 			 model: "default",
+			 timeout: 5000,
 			 //These constants control the beam search decoder
 			 //These constants are tied to the shape of the graph used (changing them changes
 			 //the geometry of the first layer), so make sure you use the same constants that
@@ -80,7 +82,8 @@ var config={
 		}
 		,
 		HermodRasaCoreRouterService: {
-			coreServer:'http://localhost:5005'
+			coreServer:'http://localhost:5005',
+			debug: false
 			///conversations/{sender_id}/predict  https://rasa.com/docs/core/server/#operation/executeAction
 		}
 		,

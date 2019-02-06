@@ -4,7 +4,7 @@
   "description": "The package provides a Microphone Component to stream microphone pcm data to snips via mqtt. Implements audioserver, hotword and tts elements of the Hermod mqtt protocol over mqtt and websockets.",
   "author": "syntithenai",
   "license": "BSD-2-Clause",
-  "repository": "https://github.com/syntithenai/opensnips",
+  "repository": "https://github.com/syntithenai/hermod",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "jsnext:main": "dist/index.es.js",
@@ -21,8 +21,7 @@
     "predeploy": "cd example && npm install && npm run build",
     "disdeploy": "gh-pages -d example/build"
   },
-  "peerDependencies": {
-  },
+  "peerDependencies": {},
   "devDependencies": {
     "babel-core": "^6.26.3",
     "babel-eslint": "^8.2.5",

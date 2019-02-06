@@ -3,14 +3,12 @@ var HermodSubscriptionManager = require('./HermodSubscriptionManager')
 class HermodService {
     
     constructor(props) {
-		//console.log(['CONSTRUCTOR HERMOD SERVICE',props]);
-        this.props = props;
+		this.props = props;
         this.manager = null;
     };
     
     connectToManager(manager,eventFunctions) {
-		//console.log(['connect to manager',eventFunctions])
-        if (manager) {
+		if (manager) {
 			// don't bother capturing callback ids because this function is only called once when service is constructed and
 			// subscriptions added at construction are for the life of the service (so no need to remove by id later)
             setTimeout(function() {
@@ -19,8 +17,7 @@ class HermodService {
             this.manager = manager;
             return this.manager;
         } else {
-			//console.log(['create manager',eventFunctions])
-            this.manager =  new HermodSubscriptionManager(Object.assign({ eventCallbackFunctions :eventFunctions},this.props));
+		    this.manager =  new HermodSubscriptionManager(Object.assign({ eventCallbackFunctions :eventFunctions},this.props));
             return this.manager;
         }
     };

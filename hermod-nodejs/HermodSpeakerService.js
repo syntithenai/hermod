@@ -1,16 +1,15 @@
 var HermodService = require('./HermodService')
 var stream = require('stream') 
 var Readable = stream.Readable;
-var pcm = require('pcm-util')
-//var wav = require('node-wav');
 var Speaker = require("speaker");
-//var readChunk = require('read-chunk'); 
 var audioType = require('audio-type');
 var lame = require("lame");
 var fs = require("fs");
-var volume = require("pcm-volume");
-
 var wav = require('wav');
+
+//var pcm = require('pcm-util')
+//var volume = require("pcm-volume");
+
 			
 class HermodSpeakerService extends HermodService {
 
@@ -25,15 +24,11 @@ class HermodSpeakerService extends HermodService {
 		this.volume = new volume();
 		this.setVolume(props.volume ? props.volume : 1)	
         let eventFunctions = {
-        // SESSION
             'hermod/+/speaker/play' : function(destination,siteId,audio) {
-                //if (siteId && siteId.length > 0 && siteId === that.props.siteId) {
                     that.sendMqtt("hermod/"+siteId+"/speaker/started",{});
                     that.playSound(audio).then(function() {
-                            console.log('NOW');
-							  that.sendMqtt("hermod/"+siteId+"/speaker/finished",{}); 
+                    		  that.sendMqtt("hermod/"+siteId+"/speaker/finished",{}); 
 					}); 
-                //}
             },
             'hermod/+/speaker/stop' : function(topic,siteId,payload) {
 				that.stopPlaying()
@@ -47,7 +42,6 @@ class HermodSpeakerService extends HermodService {
    
     /* Set volume between 0 and 1 */
     setVolume(volume) {
-        //console.log('set volume '+volume)
         this.volume.setVolume(volume)
     };
     
@@ -57,15 +51,15 @@ class HermodSpeakerService extends HermodService {
 		let that = this;
 		return new Promise(function(resolve,reject) {
 			if (that.reader) {
-				//onsole.log([that.reader])
 				try {
 					that.reader.pause();
 					that.reader.emit('end')
+					that.reader.destroy()
+					that.reader = null;
 				} catch(e) {
 					console.log(e)
 				}
 				that.reader = null;
-			//	console.log('stopped');
 			}
 			resolve();		
 		});
@@ -102,10 +96,8 @@ class HermodSpeakerService extends HermodService {
 						
 					} else if (mediaType ==="wav") {
 						var reader = new wav.Reader();
-						// the "format" event gets emitted at the end of the WAVE header
 						var speaker = null
 						reader.on('format', function (format) {					 
-						  // the WAVE header is stripped from the output of the reader
 						  speaker = new Speaker(format);
 							speaker.on('close',function() {
 								resolve();
@@ -119,7 +111,6 @@ class HermodSpeakerService extends HermodService {
 						readable.push(null)
 						
 						readable.pipe(reader).pipe(that.volume)
-						// TODO readable end event then resolve
 					}
 				} catch (e) {
 					console.log(['PIPE ERROR',e])

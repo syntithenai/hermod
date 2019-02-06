@@ -1,6 +1,5 @@
 var HermodService = require('./HermodService')
 
-  
 const record = require('node-record-lpcm16');
 const Detector = require('snowboy').Detector;
 const Models = require('snowboy').Models;
@@ -16,7 +15,6 @@ class HermodDialogManagerService extends HermodService  {
         let that = this;
         this.callbackIds = [];
         this.dialogs = {};
-		//console.log(['CON DIALOG MANAGER',this.props]);
 		function startDialog(siteId,payload) {
 				//Start a dialog 
 				var dialogId = parseInt(Math.random()*100000000,10)
@@ -59,8 +57,6 @@ class HermodDialogManagerService extends HermodService  {
 		    }
 		    ,
 		    'hermod/+/dialog/continue' : function(topic,siteId,payload) {			
-				//console.log('continue');
-				//console.log(that.dialogs);
 				//Sent by an action to continue a dialog and seek user input.
 				//text - text to speak before waiting for more user input
 				//ASR Model - ASR model to request
@@ -96,7 +92,6 @@ class HermodDialogManagerService extends HermodService  {
 						that.dialogs[payload.id].text = payload.text
 						//that.sendMqtt('hermod/'+siteId+'/microphone/stop')
 						that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:payload.id,models:that.dialogs[payload.id].nluModels,text:payload.text,confidence:payload.confidence})
-					//=> hermod/<siteId>/nlu/query
 					} else {
 						console.error('empty asr text')
 					}
@@ -111,25 +106,11 @@ class HermodDialogManagerService extends HermodService  {
 					that.dialogs[payload.id].parse = payload
 				}
 				that.sendMqtt('hermod/'+siteId+'/intent',payload)
-				//=> hermod/<siteId>/intent
-				//Wait for voiceid if enabled.
-				//OR
-				//Sent when entity recognition fails because there are no results of sufficient confidence value.
-				//that.sendMqtt('hermod/'+siteId+'/nlu/fail',{})
-				//??? => hermod/<siteId>/dialog/end
-				// that.sendMqtt('hermod/'+siteId+'/dialog/end',{})
-		    }
+			}
 		    ,
 		    'hermod/+/nlu/fail' : function(topic,siteId,payload) {
 				that.sendMqtt('hermod/'+siteId+'/dialog/end',{id:payload.id})
-				//=> hermod/<siteId>/intent
-				//Wait for voiceid if enabled.
-				//OR
-				//Sent when entity recognition fails because there are no results of sufficient confidence value.
-				//that.sendMqtt('hermod/'+siteId+'/nlu/fail',{})
-				//??? => hermod/<siteId>/dialog/end
-				// that.sendMqtt('hermod/'+siteId+'/dialog/end',{})
-		    }
+			}
 		    ,
 		    'hermod/+/dialog/end' : function(topic,siteId,payload) {
 				//The application that is listening for the intent, should sent => hermod/<siteId>/dialog/end when it's action is complete so the dialog manager can
@@ -151,11 +132,9 @@ class HermodDialogManagerService extends HermodService  {
 		    }
         }
         
-		
-        
         this.manager = this.connectToManager(props.manager,eventFunctions);
 		
-		//console.log(['DIALOG MANAGER CONSTRUCTOR NOW SEND START MESSAGES',that.props.siteId]);
+		// initialise the dialog manager to start the hotword listener
 		setTimeout(function() {
 			that.sendMqtt('hermod/'+that.props.siteId+'/microphone/start',{})
 			that.sendMqtt('hermod/'+that.props.siteId+'/hotword/start',{})

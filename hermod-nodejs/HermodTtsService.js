@@ -9,11 +9,9 @@ class HermodTtsService extends HermodService  {
             throw "TTS must be configured with a siteId property";
         }
         let eventFunctions = {
-        // SESSION
             'hermod/+/tts/say' : function(topic,siteId,payload) {
 				if (payload.text && payload.text.length > 0 ) {
 					that.say(payload.text,props.siteId,payload).then(function() {
-						//that.sendMqtt('hermod/' + props.siteId + '/tts/finished',{id:payload.id});    
 					});
 				}
             }

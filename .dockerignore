@@ -1,5 +1,10 @@
 /deepspeech-model/models
 /old
 /node_modules
-/rasa/starter-pack-rasa-stack
 */node_modules
+duckling/build
+duckling/stack*
+out.log
+duckling/duckling
+duckling/duckling-*
+duckling/log

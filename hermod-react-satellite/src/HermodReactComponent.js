@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React,  Component  from 'react'
 import HermodMqttServer from './HermodMqttServer';
 import HermodLogger from './HermodLogger'
 

@@ -3,4 +3,10 @@ hermod-nodejs/*.wav
 deepspeech-model/models
 old
 node_modules
-rasa/starter-pack-rasa-stack
+duckling/build
+duckling/stack*
+duckling/duckling
+duckling/duckling-*
+duckling/log
+
+out.log

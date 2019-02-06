@@ -679,35 +679,35 @@ https://github.com/RasaHQ/conversational-ai-workshop-18
 ## TODO
 - hermod react
 
+- !!!! Authentication - login/signup/authorise site.
+
+- docker single image example
+
 - build all skills script
 - generate domain from config and skills folders  	
 
-- code tidy up
-	- remove unused libs/vars
-	- comments
-	- debug
-	- TODO ?
 	
 - rasa 2 stage fallback
 - rasa duckling
 - autostart - duckling, rasa app server, ...  pm2
 - timeouts - nlu, ......
 
+- Sample music player web application
 - music player model
-	- play some ...
+	- play some {tag}
+	- play something by {artist}
 	- stop
 	- volume
 	- start
 
-- return events from nodejs action callbacks (via mqtt)
+- rasa action server integration
 	- allow python and nodejs application servers to coexist by using python normally and then sending mqtt for nodejs.
 	- the Forms policy requires the python application server.
-
+	- mqtt Dispatcher - so actions taken by the python server still feed back
+	- return events from nodejs action callbacks (via mqtt)
+	
 - deepspeech asr component frequency filtering (as per deepspeech nodejs example)
 
-- !!!! Authentication - login/signup/authorise site.
-
-- Sample music player web application
 
 - tests
 	- mqtt based check each layer of service
@@ -716,9 +716,8 @@ https://github.com/RasaHQ/conversational-ai-workshop-18
 
 ## TODO MEDIUM TERM
 
-- mosca
+- mosca nodejs mqtt server
 
-- docker single image example
 
 - nlu/partial parse entity only - how does this work with rasa?
 

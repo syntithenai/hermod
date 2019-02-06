@@ -17,6 +17,7 @@
     "installmongodb": "npm i ./mongodb",
     "installmosquitto": "npm i ./mosquitto",
     "installrasa": "npm i ./rasa",
+    "installduckling": "cd duckling; ./install.sh",   
     "startrasa": "cd rasa && ./run.sh &"
   },
   "repository": {

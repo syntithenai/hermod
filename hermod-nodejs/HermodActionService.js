@@ -28,10 +28,8 @@ class HermodActionService extends HermodService  {
 		let action = payload.action;
 		if (action && action.length) {
 			if (action.indexOf('use_model_')>=0) {
-				// TODO
 				that.sendMqtt('hermod/'+siteId+'/action/finished',{id:payload.id,action:action,error:'use_model_ not implemented yet'})
 			} else if (action.indexOf('utter_')>=0) {
-				console.log('utter '+action);
 				if (this.domain && this.domain.templates && this.domain.templates.hasOwnProperty(action)) {
 					if (this.domain.templates[action].length > 0) {
 						// replace slot values in utterance template
@@ -42,7 +40,6 @@ class HermodActionService extends HermodService  {
 						for (var slot in payload.slots) {
 							utterance = utterance.replace('{'+slot+'}',payload.slots[slot]);
 						}
-						//console.log('COMPUTER SAYS '+utterance);
 						let callbacks = {}
 						callbacks['hermod/'+siteId+'/tts/finished'] = function() {
 							that.sendMqtt('hermod/'+siteId+'/action/finished',{id:payload.id,action:action})
