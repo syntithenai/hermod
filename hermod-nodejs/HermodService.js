@@ -7,17 +7,17 @@ class HermodService {
         this.manager = null;
     };
     
-    connectToManager(manager,eventFunctions) {
+    connectToManager(manager,eventFunctions,subscribeAll) {
 		if (manager) {
 			// don't bother capturing callback ids because this function is only called once when service is constructed and
 			// subscriptions added at construction are for the life of the service (so no need to remove by id later)
-            setTimeout(function() {
-				manager.addCallbacks(eventFunctions);
-            },300);
+            //setTimeout(function() {
+				manager.addCallbacks(eventFunctions,false,subscribeAll);
+            //},300);
             this.manager = manager;
             return this.manager;
         } else {
-		    this.manager =  new HermodSubscriptionManager(Object.assign({ eventCallbackFunctions :eventFunctions},this.props));
+		    this.manager =  new HermodSubscriptionManager(Object.assign({ eventCallbackFunctions :eventFunctions, subscribeAll:subscribeAll},this.props));
             return this.manager;
         }
     };

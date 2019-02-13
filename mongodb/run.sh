@@ -1,2 +1,2 @@
 #!/bin/bash
-/usr/bin/mongod --unixSocketPrefix=/run/mongodb --config /etc/mongodb.conf
+/usr/bin/mongod --config /etc/mongodb.conf

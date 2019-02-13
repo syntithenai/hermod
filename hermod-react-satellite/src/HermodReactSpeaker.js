@@ -1,4 +1,5 @@
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 import HermodReactComponent from './HermodReactComponent'
 
 export default class HermodReactSpeaker extends HermodReactComponent  {
@@ -16,15 +17,16 @@ export default class HermodReactSpeaker extends HermodReactComponent  {
         
         let eventFunctions = {
         // SESSION
-            'hermod/audioServer/#/playBytes' : function(destination,siteId,id,session,audio) {
-                if (siteId && siteId.length > 0 && siteId === that.props.siteId) {
+            'hermod/#/speaker/play' : function(destination,siteId,audio) {
+               console.log('speaker play');
+                if (siteId && siteId.length > 0) { // && siteId === that.props.siteId) {
                     that.playSound(audio).then(function() {
                           //// TODO wait for mqtt mesage    
-                          that.sendMqtt("hermod/audioServer/"+siteId+"/playFinished",{id:id,siteId:siteId,sessionId:session ? session.sessionId : null}); 
+                          that.sendMqtt("hermod/"+siteId+"/speaker/finished",{}); 
                     }); 
                 }
             },
-            'hermod/hotword/#/detected': function(payload) {
+            'hermod/#/hotword/detected': function(topic,siteId,payload) {
                 // quarter volume for 10 seconds
             }
         }
@@ -41,8 +43,9 @@ export default class HermodReactSpeaker extends HermodReactComponent  {
     
     playSound(bytes) {
         let that = this;
+        console.log('PLAY SOUND BYTES')
         return new Promise(function(resolve,reject) {
-            if (that.props.config.enableaudio !== "no") {
+            if (bytes && that.props.config.enableaudio !== "no") {
                 var buffer = new Uint8Array( bytes.length );
                 buffer.set( new Uint8Array(bytes), 0 );
                 let audioContext = window.AudioContext || window.webkitAudioContext;

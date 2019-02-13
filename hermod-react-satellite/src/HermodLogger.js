@@ -1,8 +1,8 @@
 /* global window */
-/* global Paho */
 
-import React, { Component } from 'react'
-import eventFunctions from './eventFunctions'
+import React from 'react'
+import {Component} from 'react'
+import eventFunctions from './loggingEventFunctions'
 import Crunker from 'crunker'
 import HermodMqttServer from './HermodMqttServer'
 
@@ -10,6 +10,8 @@ export default class HermodLogger  extends HermodMqttServer {
 
     constructor(props) {
         super(props);
+        console.log('consstr hermod logger');
+        console.log(props);
         this.eventFunctions = eventFunctions;
         this.eventCallbackFunctions = this.addCallbacks(this.props.eventCallbackFunctions);
         this.siteId = props.siteId ? props.siteId :  'site'+parseInt(Math.random()*100000000,10);
@@ -26,6 +28,7 @@ export default class HermodLogger  extends HermodMqttServer {
         this.onMessageArrived = this.onMessageArrived.bind(this);
         this.isConnected = this.isConnected.bind(this);
         this.reset = this.reset.bind(this);
+        console.log(['LOGGER CONNECT',this.siteId,this.props]);
         this.mqttConnect.bind(this)() ;
     }   
      
@@ -36,12 +39,14 @@ export default class HermodLogger  extends HermodMqttServer {
     };
     
     addCallbacks(eventCallbackFunctions,oneOff = false) {
+		console.log(['add callbacks',eventCallbackFunctions]);
         let that = this;
         this.eventCallbackFunctions = Array.isArray(this.eventCallbackFunctions) ? this.eventCallbackFunctions : [];
         if (eventCallbackFunctions) {
             Object.keys(eventCallbackFunctions).map(function(key,loopKey) {
                 let value = eventCallbackFunctions[key];
                 if (typeof value === "function") {
+					// console.log(['callback',key,value]);        
                     that.eventCallbackFunctions.push({subscription:key,callBack:value, oneOff: oneOff,id:parseInt(Math.random()*100000000,10)});
                 }
             });
@@ -53,7 +58,7 @@ export default class HermodLogger  extends HermodMqttServer {
         let that = this;
         let ret=[];
         this.eventCallbackFunctions.map(function(value,vkey) {
-            if (value.subscription === subscriptionKey) {
+            if (that.mqttWildcard(subscriptionKey,value.subscription)) {
                 ret.push(value);
                 return;
             }
@@ -61,7 +66,38 @@ export default class HermodLogger  extends HermodMqttServer {
         return ret;
     };
     
-      
+  					  
+    mqttWildcard(topic, wildcard) {
+        if (topic === wildcard) {
+            return [];
+        } else if (wildcard === '#') {
+            return [topic];
+        }
+
+        var res = [];
+
+        var t = String(topic).split('/');
+        var w = String(wildcard).split('/');
+
+        var i = 0;
+        for (var lt = t.length; i < lt; i++) {
+            if (w[i] === '+') {
+                res.push(t[i]);
+            } else if (w[i] === '#') {
+                res.push(t.slice(i).join('/'));
+                return res;
+            } else if (w[i] !== t[i]) {
+                return null;
+            }
+        }
+
+        if (w[i] === '#') {
+            i += 1;
+        }
+
+        return (i === w.length) ? res : null;
+    }
+    
     generateUuid() {
         //// return uuid of form xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
         var uuid = '', ii;
@@ -87,107 +123,78 @@ export default class HermodLogger  extends HermodMqttServer {
         return uuid;
     };
     
-    onMessageArrived(message) {
+    onMessageArrived(topic,message) {
+		//console.log(['ONMESSAGEARRIVED',topic,message]);
+		message.destinationName = topic;
+		message.payloadBytes = message;
+		message.payloadString = String(message)
         let that = this;
         let parts = message.destinationName ? message.destinationName.split("/") : [];
-        if (parts.length > 0 && parts[0] === "hermes") {
-            if (parts.length > 1 &&  parts[1] === "audioServer") {
-                var audio = message.payloadBytes;
-                if (parts.length > 3) {
-                    let siteId = parts[2];
-                    let action = parts[3];
-                    let id = parts.length > 4 ? parts[4] : ''; //this.generateUuid() ;
-                    if (action === "playBytes") {
-                    } else if (action === "playFinished") {
-                    } else if (action === "audioFrame") {
-                        this.appendAudioBuffer(siteId,audio);
-                    }   
-                    let functionKey ='hermod/audioServer/#/'+action;
-                    // hooks and callbacks
-                   // if (action !== "audioFrame") console.log(['LOGGER AUDIO CALLBACK',functionKey,that.eventFunctions[functionKey]]);
-                        
-                    if (this.eventFunctions.hasOwnProperty(functionKey)) {
-                        let p = that.eventFunctions[functionKey].bind(that)(audio);
-                        p.then(function(session) {
-                            //if (action !== "audioFrame")  console.log(['LOGGER AUDIO CALLBACK COMPLETE',functionKey,session]);
-                            let callbacks = that.findEventCallbackFunctions(functionKey);
-                            //if (action !== "audioFrame")  console.log(['LOGGER AUDIO CALLBACKS',callbacks]);
-                            if (callbacks) {
-                                callbacks.map(function(value,ckey) {
-                                    //if (action !== "audioFrame")  console.log(['LOGGER AUDIO CALLBACK ONE',value,ckey]);
-                                    let session = that.getSession(siteId,null);
-                                    value.callBack.bind(that)(message.destinationName,siteId,id,session,audio);
-                                });
-                            }
-                        }).catch(function(e) {
-                            console.log(e);
-                        });
-                    }
-                    let sessionId = this.lastSessionId[siteId];
-                     
-                    let messages = this.state.messages;
-                    if (action !== "audioFrame" && (!this.props.siteId || (this.props.siteId && this.props.siteId === siteId ))) {
-                        messages.push({sessionId:sessionId,payload: <div style={{backgroundColor:'lightgrey'}}><hr/></div>  ,text:message.destinationName});
-                        this.setState({messages:messages});                        
-                    }
-                } 
-            } else {
-                let payload = {};
+		if (parts.length > 1 && parts[0] === "hermod") {
+			let siteId = parts[1];
+			let payload = {};
+			// special handling where the payload is audio
+            if (parts.length > 3 && ((parts[2]==="speaker"&& parts[3]==="play"  ) || (parts[2]==="microphone" && parts[3]==="audio"  )) ) {
+				var audio = message.payloadBytes;
+				var session = null;
+				if (parts[2] === "microphone") {
+					this.appendAudioBuffer(siteId,audio);
+				}
+			//// Non Audio Messages parse JSON body
+			} else {
+			//	console.log(['amessage',message.destinationName,this.state]);
                 try {
                   payload = JSON.parse(message.payloadString);  
                 } catch (e) {
                 }
-                    // special case for hotword parameter in url
-                    let functionKey = message.destinationName;
-                    if (parts.length > 3 && parts[0] === "hermes" && parts[1] === "hotword" && parts[3] === "detected") {
-                        functionKey = 'hermod/hotword/#/detected'
-                    // special case for intent parameter in hermod/intent
-                    } else if (parts.length > 1 && parts[0] === "hermes" && parts[1] === "intent") {
-                        functionKey = 'hermod/intent/#';
-                    }
-                    
-                    if (this.eventFunctions.hasOwnProperty(functionKey)) {
-                        let p = that.eventFunctions[functionKey].bind(that)(payload);
-                        p.then(function(session) {
-                            let callbacks = that.findEventCallbackFunctions(functionKey);
-                            if (callbacks) {
-                                callbacks.map(function(value,ckey) {
-                                    value.callBack.bind(that)(payload,message);
-                                    if (value.oneOff) {
-                                        // remove this callback
-                                        let breakLoop = false;
-                                        that.eventCallbackFunctions.map(function(tvalue,vkey) {
-                                            if (value.id === tvalue.id && !breakLoop) {
-                                                that.eventCallbackFunctions.splice(vkey,1);
-                                                breakLoop = true;
-                                            }
-                                            return;
-                                        });
-                                    }
-                                });
-                            }
-                        }).catch(function(e) {
-                            console.log(e);
-                        });
-                    }
-                        
-                    let messages = this.state.messages;
-                   let thisState = {}
-                        if (payload.siteId) {
-                        if (payload.sessionId) {
-                            thisState = this.getSession(payload.siteId,payload.sessionId);
-                        }
-                    }
-                        messages.push({sessionId:thisState.sessionId,payload: <div style={{backgroundColor:'lightgrey'}}><hr/><div style={{backgroundColor:'lightblue'}}><pre>{JSON.stringify(payload,undefined,4)}</pre></div><hr/><div style={{backgroundColor:'lightgreen'}}><pre>{JSON.stringify(thisState,undefined,4)}</pre></div><hr/></div>  ,text:message.destinationName});
-                        this.setState({messages:messages});                        
-                    
-                   // console.log(['LOGGER MESSAGE',message.destinationName,message,JSON.parse(JSON.stringify(this.state.sites))]);
-               
-            } 
-        }
+                // log plain flat messages
+				let messages = this.state.messages;
+				let  thisState = this.getSession(siteId,payload.id);
+				if (!thisState) thisState= {};
+				if (payload.id) this.lastSessionId[siteId] = payload.id;
+				messages.push({id:thisState.id,payload: <div style={{backgroundColor:'lightgrey'}}><hr/><div style={{backgroundColor:'lightblue'}}><pre>{JSON.stringify(payload,undefined,4)}</pre></div><hr/><div style={{backgroundColor:'lightgreen'}}><pre>{JSON.stringify(thisState,undefined,4)}</pre></div><hr/></div>  ,text:message.destinationName});
+				this.setState({messages:messages});                        
+				console.log(['logged messages',messages]);
+			}
+			if (!payload) payload = {};
+			
+			let functionKey = message.destinationName;
+			//console.log(['payload ',payload,this.eventFunctions,functionKey]);
+			let session = that.getSession(siteId,payload ? payload.id : null);
+						
+			function runServiceCallbacks(functionKey) {
+				let callbacks = that.findEventCallbackFunctions(functionKey);
+				if (callbacks) {
+					callbacks.map(function(value,ckey) {
+						value.callBack.bind(that)(message.destinationName,siteId,payload);
+					});
+				}	
+			}
+			// logging callbacks
+			let matchingEventFunction = null
+			for (var i in this.eventFunctions) {
+				if (this.mqttWildcard(functionKey,i)) {
+					matchingEventFunction = this.eventFunctions[i];
+					break;
+				}
+			}
+			if (matchingEventFunction) {
+				let p = matchingEventFunction.bind(that)(message.destinationName,siteId,payload);
+				p.then(function(session) {
+					runServiceCallbacks(functionKey);
+				}).catch(function(e) {
+					console.log(e);
+				});
+			} else {
+				runServiceCallbacks(functionKey);	
+			}
+
+		   
+		}
+		   
     };
  
-    
+   
     cleanSlots(slots) { 
         let final={};
         if (slots) {
@@ -202,14 +209,17 @@ export default class HermodLogger  extends HermodMqttServer {
     /** 
      * Get a session for a given siteId and sessionId
      * 
-     */
+     */  
    //  that.lastSessionId[payload.siteId]
     getSession(siteIdIn,sessionIdIn) {
+       // console.log(['getSession(',siteIdIn,sessionIdIn])
         let siteId = null;
         let sessionId = null;
         let that = this;
         
         function findOrCreateSession(siteId,sessionId) {
+			sessionId = String(sessionId)
+           // console.log(['findOrCreateSession',siteId,sessionId])
             if (siteId && siteId.length > 0 && sessionId && sessionId.length > 0) {
                 if (that.state.sites && that.state.sites.hasOwnProperty(siteId) && that.state.sites[siteId].hasOwnProperty(sessionId) && that.state.sites[siteId][sessionId]) {
                     return that.state.sites[siteId][sessionId];
@@ -218,14 +228,15 @@ export default class HermodLogger  extends HermodMqttServer {
                     let sites = that.state.sites ? that.state.sites : {};
                     let sessions = that.state.sessions ? that.state.sessions : {};
                     if (!sites.hasOwnProperty(siteId)) sites[siteId] = {};
-                    let newSession={createtimestamp: new Date().getTime(),siteId:siteId,sessionId:sessionId};
+                    let newSession={createtimestamp: new Date().getTime(),siteId:siteId,id:sessionId};
                     if (!sites[siteId].hasOwnProperty(sessionId)) sites[siteId][sessionId]=newSession;
                     sessions[sessionId] = siteId;
                     that.setState({sites:sites,sessions:sessions});
                     return sites[siteId][sessionId];
                 }                
             } else {
-                console.log(['CANNOT FIND OR CREATE SESSION MISSING SITE OR SESSION ID',siteId,sessionId]);
+                console.log(['CANNOT FIND OR CREATE SESSION MISSING SITE ID',siteId,sessionId]);
+				return null;
             }
         };
         
@@ -234,23 +245,17 @@ export default class HermodLogger  extends HermodMqttServer {
                 // have site and session id
                 siteId = siteIdIn;
                 sessionId = sessionIdIn;
+				return findOrCreateSession(siteId,sessionId);
             } else {
                 // have siteId
                 siteId = siteIdIn;
                 sessionId = this.lastSessionId[siteId];
+				//console.log(['session id from lastSessionId',this.lastSessionId,siteId])
+				return findOrCreateSession(siteId,sessionId);
             }
         } else {
-            if (sessionIdIn && sessionIdIn.length>0) {
-                // have sessionId
-                sessionId = sessionIdIn;
-                siteId = this.state.sessions[sessionId];
-            } else {
-                // have no ids
-                console.log(['FAILED TO CAPTURE MESSAGE WITH NO SITE OR SESSION ID']);
-                return null;
-            }
-        }
-        return findOrCreateSession(siteId,sessionId);
+			console.log('MISSING SITE ID IN LOGGER')
+		}
         
     }; 
 
@@ -258,25 +263,24 @@ export default class HermodLogger  extends HermodMqttServer {
     /**
      *  Lookup session, use callback to make changes and restore session to state
      */
-    updateSession(payload,callback) {
-        let siteId = payload && payload.siteId && payload.siteId.length > 0 ? payload.siteId : null;
+    updateSession(siteId,payload,callback) {
         
-        let sessionId = payload && payload.sessionId && payload.sessionId.length > 0 ? payload.sessionId : null;
+        let sessionId = payload && payload.id && payload.id.length > 0 ? payload.id : null;
         let session = this.getSession(siteId,sessionId);
         if (session) {
             let result = callback(session)
-            this.saveSession(session.siteId,session.sessionId,result);                    
+            this.saveSession(session.siteId,session.id,result);                    
         }          
     };
    
     
-    saveSession(siteIdIn,sessionIdIn,session) {
+    saveSession(siteId,sessionIdIn,session) {
          let sessionId =  sessionIdIn && sessionIdIn.length > 0 ? sessionIdIn : 'unknownSession';
         // ensure siteId
-        let siteId=siteIdIn;
-        if (!siteIdIn ||siteIdIn.length === 0) {
-            siteId = this.state.sessions[sessionId];
-        }        
+        //let siteId=siteIdIn;
+        //if (!siteIdIn ||siteIdIn.length === 0) {
+            //siteId = this.state.sessions[sessionId];
+        //}        
         if (siteId && siteId.length>0) {
             let sites = this.state.sites;
             sites[siteId][sessionId] = session;
@@ -286,6 +290,7 @@ export default class HermodLogger  extends HermodMqttServer {
         
     };
 
+	// push log data up to parent component
     setLogData() {
         if (this.props.setLogData)  this.props.setLogData(this.state.sites,this.state.messages,this.state.sessionStatus,this.state.sessionStatusText,this.state.hotwordListening,this.state.audioListening);
     };   
@@ -364,9 +369,9 @@ export default class HermodLogger  extends HermodMqttServer {
               // if (audioBuffer.length> 350) return;
                 audioBuffer.map(function(bytes,key) {
                     let p = new Promise(function(resolve,reject) {
-                        var buffer = new Uint8Array( bytes.length );
-                        if (bytes.length > 0) {
-                            buffer.set( new Uint8Array(bytes), 0 );
+                        if (bytes && bytes.length > 0) {
+                            var buffer = new Uint8Array( bytes.length );
+							buffer.set( new Uint8Array(bytes), 0 );
                             try {
                                 context.decodeAudioData(buffer.buffer, function(audioBuffer) {
                                     resolve(audioBuffer);
@@ -388,7 +393,7 @@ export default class HermodLogger  extends HermodMqttServer {
                 let merger =  new Crunker();
                 try {
                     let output = merger.export(merger.concatAudio(allBuffers), "audio/wav");
-                    that.updateSession(payload,function(session) {
+                    that.updateSession(siteId,payload,function(session) {
                              if (!session.audio) session.audio=[];
                              that.blobToDataUrl(output.blob).then(function(dataUrl) {
                                 session.audio.push(dataUrl);               
@@ -415,20 +420,23 @@ export default class HermodLogger  extends HermodMqttServer {
     }
     
     sendMqtt(destination,payload) {
-        
+        console.log(['SEND MQTT',this.state.connected,destination,payload]);
        //if (!destination.startsWith('hermod/audioServer')) console.log(['SESSION SEND MQTT LOGGER',destination,payload])
         if (this.state.connected) {
-            let message = new Paho.MQTT.Message(JSON.stringify(payload));
-            message.destinationName = destination;
-            this.mqttClient.send(message);
+            //let message = new Paho.MQTT.Message(JSON.stringify(payload));
+            //message.destinationName = destination;
+            this.mqttClient.publish(destination,JSON.stringify(payload));
             
         }
     };
     sendAudioMqtt(destination,payload) {
-        if (this.state.connected) {
-            let message = new Paho.MQTT.Message(payload);
-            message.destinationName = destination;
-            this.mqttClient.send(message);
+        //console.log('SENDAUDIOMQTT '+destination);
+           if (this.state.connected) {
+           console.log('SENDAUDIOMQTT '+destination);
+            this.mqttClient.publish(destination,payload);//Buffer.from(
+            //let message = new Paho.MQTT.Message(payload);
+            //message.destinationName = destination;
+            //this.mqttClient.send(message);
             
         }
     };
@@ -438,13 +446,13 @@ export default class HermodLogger  extends HermodMqttServer {
      */ 
     say(siteId,text) {
         let that = this;
+        console.log(['SAY',this.state.connected,destination,payload]);
         if (that.state && that.state.connected) {
-            let currentSession = that.getSession(siteId,null);
-            let payload = {siteId:siteId,text:text};
-            if (currentSession) payload.sessionId = currentSession.sessionId;
-            let message = new Paho.MQTT.Message(JSON.stringify(payload));
-            message.destinationName = "hermod/tts/say";
-            that.mqttClient.send(message);
+            let payload = {text:text};
+            this.mqttClient.publish('hermod/'+siteId+'/tts/say',JSON.stringify(payload));
+            //let message = new Paho.MQTT.Message(JSON.stringify(payload));
+            //message.destinationName = "hermod/tts/say";
+            //that.mqttClient.send(message);
             
         }
     };

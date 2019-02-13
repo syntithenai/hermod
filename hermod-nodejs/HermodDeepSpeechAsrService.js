@@ -87,7 +87,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 			console.log(String(chunk));
 		})
 		process.stdout.on('data', chunk => {
-			//console.log('data',String(chunk));
+			console.log('data',String(chunk));
 			if (String(chunk).indexOf('transcription:') === 0) {
 				let transcription = String(chunk).slice(13);
 			//	console.log('transcription:'+transcription);

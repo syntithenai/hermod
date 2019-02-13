@@ -1,5 +1,6 @@
 /* global navigator */
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 // Polyfill: mediaDevices.
 // Not work on Desktop Safari, IE.
 // Not work on Mobile browsers.
@@ -35,15 +36,17 @@ export default class AudioMeter extends Component {
     constructor (props) {
         super(props);
         this.state = {
-            volume: 0,
+            volume: 10,
             debug: false
         };
+        this.canvas = React.createRef();
     }
 
     componentDidMount () {
 
         // Processing.
         var process = function (event) {
+            console.log(['AUDIO METER PROCESS',event]);
             var buf = event.inputBuffer.getChannelData(0);
             var sum = 0;
             var x;
@@ -57,7 +60,7 @@ export default class AudioMeter extends Component {
             this.setState({
                 volume: (Math.max(rms, this.state.volume * this.averaging) )
             });
-            //console.log('Volume: ' + this.state.volume);
+            console.log('Volume: ' + this.state.volume);
             if (this.state.volume > (this.props.volumeWarning > 0 ? this.props.volumeWarning : 0.25)) this.canvasCtx.fillStyle =  this.props.style.tooLoudColor ? this.props.style.tooLoudColor  : '#FF0000';
             else this.canvasCtx.fillStyle =  this.props.style.color ? this.props.style.color  : '#00FF48';
             this.canvasCtx.clearRect(0, 0, this.canvasCtx.canvas.width, this.canvasCtx.canvas.height);
@@ -71,6 +74,7 @@ export default class AudioMeter extends Component {
                 audio: true
             }
         ).then(function(stream) {
+			console.log(['GETY USER MEDIA',stream]);
                 var audioCtx = new AudioContext();
                 var source = audioCtx.createMediaStreamSource(stream);
                 var processor = audioCtx.createScriptProcessor(256);
@@ -78,7 +82,7 @@ export default class AudioMeter extends Component {
                 gainNode.gain.value = this.props.inputvolume > 0 ? this.props.inputvolume/100 : 0.5;
                 //console.log(['IV',this.props.inputvolume]);
                 this.averaging = 0.95;
-                this.canvasCtx = this.refs.canvas.getContext('2d');
+                this.canvasCtx = this.canvas.getContext('2d');
                 this.canvasCtx.fillStyle = this.props.style.color ? this.props.style.color  : '#00FF48';
 
                 processor.onaudioprocess = process;
@@ -94,12 +98,12 @@ export default class AudioMeter extends Component {
 
 
     render () {
-        
+       // return <b>meter</b>
         let canvasStyle = this.props.style ? Object.assign({},this.props.style) : {};
         canvasStyle.height = this.props.style.height > 0 ? this.props.style.height : 78;
         canvasStyle.width = this.props.style.width > 0 ? this.props.style.width : 30;
         return (
-                <canvas style={canvasStyle} ref="canvas" width={canvasStyle.width} height={canvasStyle.height}></canvas>
+                <canvas style={canvasStyle} ref={this.canvas} width={canvasStyle.width} height={canvasStyle.height}></canvas>
             
         );
     }

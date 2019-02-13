@@ -4,6 +4,7 @@ class HermodMqttServer {
 
     constructor(props) {
 		this.props = props;
+		//console.log(['h mqtt server constr',props])
         this.failCount = 0;
         this.mqttClient = null;
         this.sessionId = null;
@@ -36,16 +37,36 @@ class HermodMqttServer {
     */
     mqttConnect() {
 		let that= this;
+		//console.log(['hermod connect ',this.props])
         return new Promise(function(resolve,reject) {
 			let server = that.props.mqttServer && that.props.mqttServer.length > 0 ? that.props.mqttServer :  "mqtt://localhost" ;
-			that.mqttClient = mqtt.connect(server)
+			that.mqttClient = mqtt.connect(server,{username:that.props.username,password:that.props.password})
 			that.mqttClient.on('message', that.onMessageArrived);
 			that.mqttClient.on('connect',function() {
+				console.log(['connect']);
 				that.onConnect();
 				resolve();
 			});
 			that.mqttClient.on('error',function(e) { console.log(['ERROR',e]); reject() });
 			that.mqttClient.on('reconnect',function() { console.log(['RECONNECT']) });
+			
+			that.mqttClient.on('offline', function(text) {
+				console.log(['offline',text]);				
+			})
+			that.mqttClient.on('close', function(text) {
+				console.log(['close',text]);				
+			})
+			that.mqttClient.on('end', function(text) {
+				console.log(['end',text]);				
+			})
+			//that.mqttClient.on('packetsend', function(text) {
+				//console.log(['packetsend',text]);				
+			//})
+			//that.mqttClient.on('packetreceive', function(text) {
+				//console.log(['packetreceive',text]);				
+			//})
+			 
+			
 		})
     };
         
@@ -88,6 +109,7 @@ class HermodMqttServer {
     };
     
     sendAudioMqtt(destination,payload) {
+		//console.log('SEND AUDIO MQTT',destination)
         if (this.mqttClient) {
 			if (this.state.connected) {
 				this.mqttClient.publish(destination,payload)

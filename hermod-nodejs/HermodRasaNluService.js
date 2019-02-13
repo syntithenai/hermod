@@ -60,20 +60,26 @@ class HermodRasaNluService extends HermodService  {
    
     sendRequest(topic,siteId,payload) {
 		let that = this;
-		that.sendMqtt('hermod/'+siteId+'/nlu/started',{dialogId:payload.dialogId});				
-		axios.post(this.props.rasaServer+"/parse",{query:payload.text,project:payload.model ? payload.model : 'current',model:'nlu'})
-		  .then(response => {
-			var matchingIntent = this.findMatchingIntent(payload,response.data);
-			var minConfidence = that.props.minConfidence ? that.props.minConfidence : 0.3;
-			if (matchingIntent && matchingIntent.confidence > minConfidence) {
-				that.sendMqtt('hermod/'+siteId+'/nlu/intent',Object.assign(payload,response.data));
-		    } else {
-			    that.sendMqtt('hermod/'+siteId+'/nlu/fail',Object.assign(payload,response.data));	  
-			}
-		  })
-		  .catch(error => {
-			  console.log(error);
-		  });
+		that.sendMqtt('hermod/'+siteId+'/nlu/started',{dialogId:payload.dialogId});	
+		console.log(['SEND NLU REQ',payload.text]);	
+		if (payload.text && payload.text.length> 0) {		
+			axios.post(this.props.rasaServer+"/parse",{query:payload.text,project: payload.model ? payload.model : 'current',model:'nlu'}) // TODO project from payload
+			  .then(response => {
+				var matchingIntent = this.findMatchingIntent(payload,response.data);
+				var minConfidence = that.props.minConfidence ? that.props.minConfidence : 0.3;
+				if (matchingIntent && matchingIntent.confidence > minConfidence) {
+					that.sendMqtt('hermod/'+siteId+'/nlu/intent',Object.assign(payload,response.data));
+				} else {
+					that.sendMqtt('hermod/'+siteId+'/nlu/fail',Object.assign(payload,response.data));	  
+				}
+			  })
+			  .catch(error => {
+				  console.log(error);
+				  that.sendMqtt('hermod/'+siteId+'/nlu/fail',payload);
+			  });
+		} else {
+			that.sendMqtt('hermod/'+siteId+'/nlu/fail',payload);
+		}
 	}
     
 }     

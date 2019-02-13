@@ -1,9 +1,9 @@
 module.exports = {
   apps : [
   {
-    name: 'mosquitto',
-    script: 'run.sh',
-	cwd: './mosquitto'
+    name: 'mosca',
+    script: 'index.js',
+	cwd: './mosca'
   }
   ,
   {
@@ -13,9 +13,21 @@ module.exports = {
   }
   ,
   {
+    name: 'hermod-react-satellite',
+    script: 'npm start',
+	cwd: './hermod-react-satellite'
+  }
+  ,
+  {
+    name: 'browser-example',
+    script: 'npm start',
+	cwd: './browser-example'
+  }
+  ,
+  {
     name: 'duckling',
-    script: 'duckling.sh',
-	cwd: './rasa'
+    script: 'run.sh',
+	cwd: './duckling'
   }
   ,
   {
@@ -39,6 +51,7 @@ module.exports = {
   {
     name: 'hermod',
     script: 'index.js',
+    interpreter: 'nodemon',
 	cwd: './hermod-nodejs'
   }
   

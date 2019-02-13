@@ -3,7 +3,8 @@
 /* global Porcupine */
 /* global PicovoiceAudioManager */
 
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 import HermodReactComponent from './HermodReactComponent'
 import Resources from './resources'
 
@@ -17,7 +18,7 @@ export default class HermodReactHotwordServer extends HermodReactComponent {
             throw "HOTWORD Server must be configured with a siteId property";
         }
         let that = this;
-        
+        that.props = props;
         this.gainNode = null;
         this.hotwordId = this.props.hotwordId && this.props.hotwordId.length > 0 ? this.props.hotwordId : 'default';
         
@@ -29,13 +30,13 @@ export default class HermodReactHotwordServer extends HermodReactComponent {
         this.hotwordCallback = this.hotwordCallback.bind(this)
         let eventFunctions = {
         // SESSION
-            'hermod/hotword/toggleOn' : function(payload) {
-                if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.props.siteId) {
-                    that.startHotword(that.props.siteId);
+            'hermod/#/hotword/start' : function(topic,siteId,payload) {
+                if (siteId && siteId.length > 0) { // && payload.siteId === that.props.siteId) {
+                    that.startHotword(siteId);
                 }
             },
-            'hermod/hotword/toggleOff' : function(payload) {
-                if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.props.siteId) {
+            'hermod/#/hotword/stop' : function(topic,siteId,payload) {
+                if (siteId && siteId.length > 0) { // && payload.siteId === that.props.siteId) {
                     that.stopHotword();
                 }
             }
@@ -45,11 +46,12 @@ export default class HermodReactHotwordServer extends HermodReactComponent {
         
     componentDidMount() {
         let that = this;
-         if (this.props.config.hotword.startsWith("browser:")) {
-               setTimeout(function() {
-                    that.startHotword(that.props.siteId);
-               },1000)
-         }
+        // //if (this.props.config.hotword.startsWith("browser:")) {
+               //setTimeout(function() {
+				   //// start the hotword server for local audio (just this.props.siteId)
+                    //that.startHotword(that.props.siteId);
+               //},1000)
+         //}
     };
     
     componentDidUpdate(props,state) {

@@ -1,7 +1,8 @@
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 //import AudioMeter from './AudioMeter.react'
 import HermodReactComponent from './HermodReactComponent'
-//let hark = require('hark');
+let hark = require('hark');
 
 export default class HermodReactMicrophone extends HermodReactComponent  {
 
@@ -12,7 +13,7 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
         if (!props.siteId || props.siteId.length === 0) {
             throw "Hermod Microphone must be configured with a siteId property";
         }
-        this.state={recording:false,messages:[],lastIntent:'',lastTts:'',lastTranscript:'',showMessage:false,activated:false,speaking:false,showConfig:false,listening:false,sessionId : ""}
+        this.state={recording:false,messages:[],lastIntent:'',lastTts:'',lastTranscript:'',showMessage:false,activated:false,speaking:false,showConfig:false,listening:false,sessionId : "",enabled:false,sending:false}
         this.siteId = props.siteId ; //? props.siteId : 'browser'+parseInt(Math.random()*100000000,10);
         this.clientId = props.clientId ? props.clientId :  'client'+parseInt(Math.random()*100000000,10);
         this.hotwordId = props.hotwordId ? props.hotwordId :  'default';
@@ -41,42 +42,50 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
         
         let eventFunctions = {
         // SESSION
-            'hermod/asr/textCaptured' : function(payload) {
-                if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId && payload.text && payload.text.length > 0 ) {
+            'hermod/+/asr/text' : function(topic,siteId,payload) {
+				// && payload.siteId === that.siteId
+                if (siteId && siteId.length > 0 && payload.text && payload.text.length > 0 ) {
                     that.flashState('lastTranscript',payload.text);
                 }
             },
-            'hermod/tts/say' : function(payload) {
-                if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId && payload.text && payload.text.length > 0 ) {
+            'hermod/+/tts/say' : function(topic,siteId,payload) {
+                if (siteId && siteId.length > 0  && payload.text && payload.text.length > 0 ) {
                     that.flashState('lastTts',payload.text);
                 }
             },
-            'hermod/hotword/#/toggleOn' : function(payload) {
-                if (that.props.enableServerHotword) {
-                    if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId) {
-                        that.setState({sending : true});
-                    }
+            'hermod/+/microphone/start' : function(topic,siteId,payload) {
+                if (siteId && siteId.length > 0) {
+                    that.setState({enabled : true,sending:true});
                 }
             },
-            'hermod/hotword/#/toggleOff' : function(payload) {
-                if (that.props.enableServerHotword) {
-                    if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId) {
-                        that.setState({sending : false});
-                    }                    
-                }
-            },
-            'hermod/asr/startListening' : function(payload) {
-                if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId ) {
-                    that.setState({sending : true});
-                }
-            },
-            'hermod/asr/stopListening' : function(payload) {
-                if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId ) {
-                    that.setState({sending : false});
+            'hermod/+/microphone/stop' : function(topic,siteId,payload) {
+                if (siteId && siteId.length > 0) {
+                    that.setState({enabled : false,sending:false});
                 }
             }
+           //,
+           //'hermod/+/hotword/start' : function(topic,siteId,payload) {
+                //if (siteId && siteId.length > 0) {
+                    //that.setState({sending : true});
+                //}
+            //},
+            //'hermod/+/hotword/stop' : function(topic,siteId,payload) {
+                //if (siteId && siteId.length > 0) {
+                    //that.setState({sending : false});
+                //}
+            //}  ,
+             //'hermod/+/asr/start' : function(topic,siteId,payload) {
+                //if (siteId && siteId.length > 0) {
+                    //that.setState({sending : true});
+                //}
+            //},
+            //'hermod/+/asr/stop' : function(topic,siteId,payload) {
+                //if (siteId && siteId.length > 0) {
+                    //that.setState({sending : false});
+                //}
+            //}
         }
-        
+      //  console.log(['MIC CONNECT EVENTS',props.siteId]);
         this.logger = this.connectToLogger(props.logger,eventFunctions);
     }  
     
@@ -93,28 +102,28 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
         
         let that = this;
         // FORCE START ASR ON THIS SITE BY TOGGLE ON SESSION, WAIT, THEN END SESSION AND RESET LOGS
-            that.queueOneOffCallbacks({
-                'hermod/dialogueManager/sessionStarted' : function(payload) {
-                    if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId ) {
-                        // clear log
-                        //that.queueOneOffCallbacks({
-                            //'hermod/feedback/sound/toggleOn' : function(payload) {
-                                //if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId ) {
-                                    //that.logger.reset();
-                                //}
-                            //}
-                        //});
-                        setTimeout(function() {
-                            that.sendEndSession(payload.sessionId);
-                            that.sendFeedbackToggleOn(that.props.siteId);
-                        },500);
-                    }
-                }
-            });
-        setTimeout(function() {
-            that.sendFeedbackToggleOff(that.props.siteId);
-            that.sendStartSession(that.props.siteId);
-        },900);
+            //that.queueOneOffCallbacks({
+                //'hermod/+/dialog/started' : function(topic,siteId,payload) {
+                    //if (siteId && siteId.length > 0) { // && payload.siteId === that.siteId ) {
+                        //// clear log
+                        ////that.queueOneOffCallbacks({
+                            ////'hermod/feedback/sound/toggleOn' : function(payload) {
+                                ////if (payload.siteId && payload.siteId.length > 0 && payload.siteId === that.siteId ) {
+                                    ////that.logger.reset();
+                                ////}
+                            ////}
+                        ////});
+                        //setTimeout(function() {
+                            //that.sendEndSession(siteId,payload.id);
+                            ////that.sendFeedbackToggleOn(that.props.siteId);
+                        //},500);
+                    //}
+                //}
+            //});
+        //setTimeout(function() {
+            ////that.sendFeedbackToggleOff(that.props.siteId);
+         ////   that.sendStartSession(that.props.siteId);
+        //},900);
     }
 
     /** 
@@ -122,16 +131,18 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
      * by default using a debounce to implement click and hold to enable config
      **/
     showConfig(e) {
+		console.log('show config');
         let that = this;
          this.configTimeout = setTimeout(function() {
-            // console.log('show now');
-            //that.setState({showConfig:true}); 
+            console.log('show now');
+            that.setState({showConfig:true}); 
             if (that.props.showConfig) that.props.showConfig();
-            else that.deactivate();
+            //else that.deactivate();
         },1000);
     }; 
 
     showConfigNow(e) {
+        console.log('show config now');
         e.preventDefault();
         e.stopPropagation();
         //this.setState({showConfig:true});
@@ -141,6 +152,7 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
     
     clearConfigTimer() {
         if (this.configTimeout) clearTimeout(this.configTimeout);
+        delete this.configTimeout
     }; 
   
     
@@ -149,6 +161,7 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
      * Triggered by microphone click or hotword when the mic is deactivated
      */
     activate(start = true) {
+		console.log('activate')
         let that = this;
         localStorage.setItem(this.appendUserId('Hermodmicrophone_enabled',this.props.user),'true');
         if (start) {
@@ -164,6 +177,9 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
      * Enable streaming of the audio input stream
      */ 
     startRecording = function() {
+		//if (this.props.showConfig) return false;
+		//if (this.configTimeout) return false;
+        console.log('start recording')
         this.setState({lastIntent:'',lastTts:'',lastTranscript:'',showMessage:false});
         this.sendStartSession(this.siteId,{startedBy:'Hermodreactmicrophone',user:this.props.user ? this.props.user._id : ''});
     }
@@ -172,6 +188,7 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
      * Disable microphone and listeners
      */
     deactivate() {
+		console.log('deactivate')
         localStorage.setItem(this.appendUserId('Hermodmicrophone_enabled',this.props.user),'false');
         this.setState({activated:false,sending:false});
     };
@@ -197,22 +214,24 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
          }   catch (e) {
              console.log(e);
          }
-        
         function success(e) {
-               let audioContext = window.AudioContext || window.webkitAudioContext;
-               let context = new audioContext();
-                that.setState({'activated':true});
+			   
+			  console.log('got navigator')
+              let audioContext = window.AudioContext || window.webkitAudioContext;
+              let context = new audioContext();
+              that.bindSpeakingEvents(context,e)
+              that.setState({'activated':true});
               that.gainNode = context.createGain();
               // initial set volume
               that.gainNode.gain.value = that.props.config.inputvolume > 0 ? that.props.config.inputvolume/100 : 0.5;
               let audioInput = context.createMediaStreamSource(e);
-              var bufferSize = 256;
+              var bufferSize = 512;
               let recorder = context.createScriptProcessor(bufferSize, 1, 1);
               recorder.onaudioprocess = function(e){
                     //!that.logger.connected || 
-                    if(!that.state.sending) return;
-                    var left = e.inputBuffer.getChannelData(0);
-                    that.sendAudioBuffer(e.inputBuffer,context.sampleRate); 
+                    if(!that.state.sending || !that.state.enabled) return;
+                    //var left = e.inputBuffer.getChannelData(0);
+                    that.sendAudioBuffer(e.inputBuffer,context.sampleRate); //
                     //console.log('MIC send audio'); //,buffer,that.audioBuffer]);
               }
             if (that.props.addInputGainNode) that.props.addInputGainNode(that.gainNode) ;
@@ -223,8 +242,11 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
     };
 
     stopRecording = function() {
-        let session = this.logger.getSession(this.siteId,null);
-        if (session) this.sendEndSession(session.sessionId);
+		 this.setState({activated:false,sending:false});
+        console.log(['stop rec',this.logger])
+		let session = this.logger.getSession(this.props.siteId,null);
+		console.log(session ? session : 'no session');
+        if (session)  this.sendEndSession(session.siteId,session.id);
     }
         
     addInputGainNode(node) {
@@ -244,37 +266,37 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
     ///**
      //* Bind silence recognition events to set speaking state
      //*/ 
-    //bindSpeakingEvents(audioContext,e) {
-       //// console.log(['bindSpeakingEvents'])
-        //let that = this;
-        //var options = {audioContext:audioContext};
+    bindSpeakingEvents(audioContext,e) {
+        console.log(['bindSpeakingEvents'])
+        let that = this;
+        var options = {audioContext:audioContext};
         //options.threshhold = this.getThreshholdFromVolume(this.state.config.silencesensitivity);
-        //// bind speaking events care of hark
-            //this.speechEvents = hark(e, options);
-            //this.speechEvents.on('speaking', function() {
-              //if (that.state.config.silencedetection !== "no") {
-                  ////console.log('speaking');
-                  //if (that.speakingTimeout) clearTimeout(that.speakingTimeout);
-                  //that.setState({speaking:true});
-                //}
-            //});
+        // bind speaking events care of hark
+            this.speechEvents = hark(e, options);
+            this.speechEvents.on('speaking', function() {
+             // if (that.state.config.silencedetection !== "no") {
+                  console.log('speaking');
+                  if (that.speakingTimeout) clearTimeout(that.speakingTimeout);
+                  that.setState({speaking:true});
+             //   }
+            });
             
-            //this.speechEvents.on('stopped_speaking', function() {
+            this.speechEvents.on('stopped_speaking', function() {
                 //if (that.state.config.silencedetection !== "no") {
-                  //if (that.speakingTimeout) clearTimeout(that.speakingTimeout);
-                  //that.speakingTimeout = setTimeout(function() {
-                     //// console.log('stop speaking');
-                     //that.setState({speaking:false});
-                  //},1000);
-                //}
+                  if (that.speakingTimeout) clearTimeout(that.speakingTimeout);
+                  that.speakingTimeout = setTimeout(function() {
+                     console.log('stop speaking');
+                     that.setState({speaking:false});
+                  },1000);
+               // }
               
-            //});            
+            });            
         
-    //};
+    };
 
-    //getThreshholdFromVolume(volume) {
-        //return 10 * Math.log((101 - volume )/800);
-    //};
+    getThreshholdFromVolume(volume) {
+        return 10 * Math.log((101 - volume )/800);
+    };
 
    
     
@@ -300,14 +322,18 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
     
     /** WAV encoding functions */
     sendAudioBuffer(buffer,sampleRate) {
-         let that = this;
-        if (buffer) {
+        //console.log(['SEND AdUDIO',buffer ? buffer.length:'empty',sampleRate]);
+        let that = this;
+        if (buffer && this.state.speaking) {
+			//console.log(['really send buffer',buffer])
            this.reSample(buffer,16000,function(result) {
+               console.log(['resampled now send ',"hermod/"+that.siteId+"/microphone/audio"])
                let wav = that.audioBufferToWav(result) ;
-               that.logger.sendAudioMqtt("hermod/audioServer/"+that.siteId+"/audioFrame",wav);
+           	console.log(['got wav',wav])
+               that.logger.sendAudioMqtt("hermod/"+that.siteId+"/microphone/audio", wav); //Buffer.from(wav));
             },sampleRate);
-        }
-        
+			console.log(['sent audio'])
+            }      
     };
      
     convertFloat32ToInt16(buffer) {
@@ -334,16 +360,21 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
      
      
     reSample(audioBuffer, targetSampleRate, onComplete,sampleRateContext) {
+        console.log(['RESAMPLE',audioBuffer, targetSampleRate, onComplete,sampleRateContext])
         let sampleRate =  !isNaN(sampleRateContext) ? sampleRateContext : 44100;
         var channel = audioBuffer && audioBuffer.numberOfChannels ? audioBuffer.numberOfChannels : 1;
         var samples = audioBuffer.length * targetSampleRate / sampleRate;
         var offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
+        console.log(['RESAMPLE',offlineContext]);
         var bufferSource = offlineContext.createBufferSource();
+        console.log(['RESAMPLE',bufferSource]);
         bufferSource.buffer = audioBuffer;
-
+		
         bufferSource.connect(offlineContext.destination);
+        console.log(['RESAMPLE connected']);
         bufferSource.start(0);
         offlineContext.startRendering().then(function(renderedBuffer){
+            console.log(['RESAMPLE COMPLETE',renderedBuffer]);
             onComplete(renderedBuffer);
         }).catch(function(e) {
             console.log(e);
@@ -538,8 +569,11 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
     let config = this.props.config;
     return <div id="hermodreactmicrophone" style={{zIndex:'9999'}}>
         {(!this.state.activated) && <span  onClick={this.activate}>{micOnIcon}</span>} 
+        
         {(this.state.activated && this.state.sending) && <span onTouchStart={this.showConfig}  onTouchEnd={this.clearConfigTimer}   onMouseDown={this.showConfig} onMouseUp={this.clearConfigTimer} onContextMenu={this.showConfigNow} onClick={this.stopRecording}>{micOffIcon}</span>} 
-        {(this.state.activated && !this.state.sending) && <span onTouchStart={this.showConfig}  onTouchEnd={this.clearConfigTimer}   onMouseDown={this.showConfig} onMouseUp={this.clearConfigTimer} onContextMenu={this.showConfigNow} onClick={this.startRecording}>{micOnIcon}</span>} 
+        
+        {(this.state.activated  && !this.state.sending) && <span onTouchStart={this.showConfig}  onTouchEnd={this.clearConfigTimer}   onMouseDown={this.showConfig} onMouseUp={this.clearConfigTimer} onContextMenu={this.showConfigNow} onClick={this.startRecording}>{micOnIcon}</span>} 
+        
         {(this.state.showMessage ) && <div style={{padding:'1em', borderRadius:'20px',backgroundColor:'skyblue',margin:'5%',width:'90%',top:'1.7em',color:'black',border:'2px solid blue',zIndex:'9999'}} >
                 {this.state.lastTranscript && <div style={{fontStyle:'italic'}}>{this.state.lastTranscript}</div>}
                 {false && this.state.lastIntent && <div>{this.state.lastIntent}</div>}

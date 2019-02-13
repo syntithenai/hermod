@@ -1,4 +1,5 @@
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 import HermodReactComponent from './HermodReactComponent'
 
 export default class HermodReactTts extends HermodReactComponent  {
@@ -12,13 +13,13 @@ export default class HermodReactTts extends HermodReactComponent  {
         let that = this;
         let eventFunctions = {
         // SESSION
-            'hermod/tts/say' : function(payload) {
-                if (payload.siteId && payload.siteId.length > 0 && payload.siteId === props.siteId) {
+            'hermod/+/tts/say' : function(topic,siteId,payload) {
+				console.log('TTS SAY')
+                if (siteId && siteId.length > 0) { // && payload.siteId === props.siteId) {
                     if (payload.text && payload.text.length > 0 ) {
                         that.say(payload.text);
                     }
-                    that.sendMqtt('hermod/tts/sayFinished',{id:payload.id,sessionId:payload.sessionId});    
-            
+                   // that.sendMqtt('hermod/'+siteId+'/tts/sayFinished',{id:payload.id});    
                 }
             }
         }

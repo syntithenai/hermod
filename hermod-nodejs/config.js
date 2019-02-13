@@ -1,10 +1,17 @@
 var config={
 	siteId:'default',
+	username:'admin',
+	password:'admin',
+	allowedSites:['default','demo'],
 	skills: {'joke':'../rasa/joke/'},
 	services: {
-		HermodMicrophoneService: {
-		}
-		,
+		HermodAudioLoggingService: {
+			
+		},
+		//HermodMicrophoneService: {
+			
+		//}
+		//,
 		HermodSpeakerService: {
 		}
 		,
@@ -24,7 +31,7 @@ var config={
 			},
 			models: [{
 				file: './node_modules/snowboy/resources/models/snowboy.umdl',
-				sensitivity: '0.5',
+				sensitivity: '0.6',
 				hotwords : 'snowboy'
 			}
 			,

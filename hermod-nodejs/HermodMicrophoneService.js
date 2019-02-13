@@ -34,7 +34,7 @@ class HermodMicrophoneService extends HermodService  {
         }
         this.stream = null;
         this.vadStream = null;
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager(props.manager,eventFunctions,false);
     }  
     
     startRecording(siteId) {
@@ -58,7 +58,7 @@ class HermodMicrophoneService extends HermodService  {
 				vad.processAudio(data, 16000).then(res => {
 					switch (res) {
 						case VAD.Event.ERROR:
-							sendChunk()
+							//sendChunk()
 							break;
 						case VAD.Event.NOISE:
 							sendChunk()

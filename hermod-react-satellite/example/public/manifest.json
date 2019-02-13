@@ -1,6 +1,6 @@
 {
-  "short_name": "snips-webbrowser-audioserver",
-  "name": "snips-webbrowser-audioserver",
+  "short_name": "hermod-react-satellite",
+  "name": "hermod-react-satellite",
   "start_url": "./index.html",
   "display": "standalone",
   "theme_color": "#000000",

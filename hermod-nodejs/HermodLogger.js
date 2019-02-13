@@ -63,7 +63,7 @@ class HermodLogger  extends HermodMqttServer {
 		let that = this;
         let parts = topic ? topic.split("/") : [];
         if (parts.length > 0 && parts[0] === "hermod") {
-               // Audio 
+            // Audio 
             if (parts.length > 2 && (parts[2]==="microphone" || parts[2]==="speaker")) {
                 let siteId = parts[1];
                     
@@ -369,9 +369,9 @@ class HermodLogger  extends HermodMqttServer {
               // if (audioBuffer.length> 350) return;
                 audioBuffer.map(function(bytes,key) {
                     let p = new Promise(function(resolve,reject) {
-                        var buffer = new Uint8Array( bytes.length );
-                        if (bytes.length > 0) {
-                            buffer.set( new Uint8Array(bytes), 0 );
+                        if (bytes && bytes.length > 0) {
+                            var buffer = new Uint8Array( bytes.length );
+							buffer.set( new Uint8Array(bytes), 0 );
                             try {
                                 context.decodeAudioData(buffer.buffer, function(audioBuffer) {
                                     resolve(audioBuffer);

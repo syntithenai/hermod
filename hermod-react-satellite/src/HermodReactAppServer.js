@@ -1,7 +1,8 @@
 /* global window */
 /* global Paho */
 
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 import HermodReactComponent from './HermodReactComponent'
 
 export default class HermodAppServer extends HermodReactComponent {
@@ -16,7 +17,7 @@ export default class HermodAppServer extends HermodReactComponent {
                 let thatLogger = this;
                 //console.log(['INTENT',this,payload,message]);
                 let parts = message.destinationName ? message.destinationName.split("/") : [];
-                if (parts.length > 0 && parts[0] === "hermes") {
+                if (parts.length > 0 && parts[0] === "hermod") {
                     if (parts.length > 1 &&  parts[1] === "intent") {
                         let payload = {};
                         let intent = parts[2];

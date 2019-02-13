@@ -1,6 +1,7 @@
 /* global window */
 
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 
 export default class HermodReactLogger extends Component {
 
@@ -51,6 +52,7 @@ export default class HermodReactLogger extends Component {
    
     render() {
         let that = this;
+        return <b>logger</b>
         if (this.props.sites) {
             let sitesRendered = Object.keys(this.props.sites).map(function(siteKeyIn) {
                 let siteKey = siteKeyIn && siteKeyIn.length > 0 ? siteKeyIn : 'unknownSite';

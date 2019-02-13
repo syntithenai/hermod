@@ -8,120 +8,104 @@ var HermodMqttServer = require('./HermodMqttServer')
  */
 class HermodSubscriptionManager  extends HermodMqttServer {
     constructor(props) {
-        super(props ? props : {});
+        super(props);
+        this.subscriptions = {};
+        this.subscriptionIndex = {};
+       // console.log(['sub manager constr',props])
         let that = this;
         if (!this.props.siteId || this.props.siteId.length === 0) {
             throw "Subscription manager must be configured with a siteId property";
         }
     }   
     
+    
+    addSubscription(topic,callback,oneOff = false) {
+		if (topic && topic.length && typeof callback === "function") {
+			let subscriptionId = parseInt(Math.random()*100000000,10);
+			// lookup or create
+			let topicSubscription = {};
+			if (this.subscriptions.hasOwnProperty(topic)) {
+				topicSubscription = this.subscriptions[topic]
+			console.log('DO ADD SUB '+topic)
+				
+			} else {
+				// real subscription when first created
+				console.log('DO SUB '+topic)
+				this.mqttClient.subscribe(topic)
+			}
+			topicSubscription[subscriptionId] = {oneOff:oneOff,callBack:callback}
+			this.subscriptions[topic] = topicSubscription;
+			this.subscriptionIndex[subscriptionId] = topic;
+			return subscriptionId;
+		}
+	}
+	
+	getSubscription(id) {
+		if (this.subscriptionIndex.hasOwnProperty(id)) {
+			return this.subscriptions[this.subscriptionIndex[id]][id];
+		}
+	}
+	
+	removeSubscription(id) {
+		let topic = this.subscriptionIndex[id];
+		if (topic) {
+			delete this.subscriptions[topic][id];
+			delete this.subscriptionIndex[id];
+		}
+		// unsub and cleanup if no more subscriptions on  this topic
+		if (Object.keys(this.subscriptions[topic]).length == 0) {
+			this.mqttClient.unsubscribe(topic);
+			delete this.subscriptions[topic];
+		}
+	}
+	
+    
+    
     afterConnect() {
-		this.addCallbacks(this.props.eventCallbackFunctions);
 	}
      
     /** Take an object containing callback functions keyed to mqtt topics
 		- subscribe to relevant topics (allowing for siteId)
 		- save callbacks for onMessageArrived
      */
-    addCallbacks(eventCallbackFunctions,oneOff = false) {
+   addCallbacks(eventCallbackFunctions,oneOff = false,subscribeAll=true) {
+		console.log(['MANAGER ADDCALLBACKS',subscribeAll,eventCallbackFunctions])
         let that = this;
-        let callbackIds=[]
-        this.eventCallbackFunctions = Array.isArray(this.eventCallbackFunctions) ? this.eventCallbackFunctions : [];
+       	//console.log('=======================================')
+		let callbackIds=[]
         if (eventCallbackFunctions) {
             Object.keys(eventCallbackFunctions).map(function(key,loopKey) {
                 let value = eventCallbackFunctions[key];
                 if (typeof value === "function") {
-                    let siteTopic = key.replace("hermod/+/","hermod/"+that.props.siteId+"/");
-					// if not already subscribed, subscribe now
-                    if (that.findEventCallbackFunctions(siteTopic).length === 0) {
-						that.subscribe(siteTopic)
+		            let siteTopic = key;
+                    //console.log('SITETOPIC '+key);
+                    let topicParts = key.split('/') 
+                    
+                    // don't force dialog service to configured site
+                   // if (topicParts[2] !== "dialog") {
+					let tkey = siteTopic.replace("hermod/+/","hermod/"+that.props.siteId+"/");
+					callbackIds.push(that.addSubscription(tkey,value,oneOff));
+					// subscribeAll is used for site specific services - tts, speaker, microphone
+					if (!oneOff && subscribeAll && that.props.allowedSites && that.props.allowedSites.length > 0) {
+						that.props.allowedSites.map(function(siteId) {
+							console.log(['sub many ',siteId,that.props.siteId]);
+							if (that.props.siteId !== siteId) {
+								let thisKey = siteTopic.replace("hermod/+/","hermod/"+siteId+"/");
+								callbackIds.push(that.addSubscription(thisKey,value,false));
+							}
+						});
 					}
-					let genId = parseInt(Math.random()*100000000,10);
-					callbackIds.push(genId);
-					that.eventCallbackFunctions.push({subscription:siteTopic,callBack:value, oneOff: oneOff,id:genId});
-                }
+				}
             });
         }
         return callbackIds;
     };
-    
-    
-    mqttWildcard(topic, wildcard) {
-        if (topic === wildcard) {
-            return [];
-        } else if (wildcard === '#') {
-            return [topic];
-        }
-
-        var res = [];
-
-        var t = String(topic).split('/');
-        var w = String(wildcard).split('/');
-
-        var i = 0;
-        for (var lt = t.length; i < lt; i++) {
-            if (w[i] === '+') {
-                res.push(t[i]);
-            } else if (w[i] === '#') {
-                res.push(t.slice(i).join('/'));
-                return res;
-            } else if (w[i] !== t[i]) {
-                return null;
-            }
-        }
-
-        if (w[i] === '#') {
-            i += 1;
-        }
-
-        return (i === w.length) ? res : null;
-    }
-
    
-    
-    
-    /**
-     * Find all callback functions with matching subscription key 
-     */
-    findEventCallbackFunctions(subscriptionKey) {
-        let that = this;
-        let ret=[];
-        this.eventCallbackFunctions.map(function(value,vkey) {
-			if (that.mqttWildcard(subscriptionKey,value.subscription)) {
-                ret.push(value);
-                return;
-            }
-        });
-        return ret;
-    };
-
-    /**
-     * Find all callback functions with matching subscription key 
-     */
-    findEventCallbackFunctionById(callbackId) {
-        let that = this;
-        let ret=null;
-        this.eventCallbackFunctions.map(function(value,vkey) {
-            if (value.id === callbackId) {
-                ret = value;
-                return;
-            }
-        });
-        return ret;
-    };
+ 
 
 	removeCallbackById(callbackId) {
-		let that = this;
-		let callback = that.findEventCallbackFunctionById(callbackId);
-		if (callback) {
-			var callbackDef = that.eventCallbackFunctions[callback]
-			if (callbackDef) {
-				that.eventCallbackFunctions.splice(callback,1);
-				if (that.findEventCallbackFunctions(callbackDef.subscription).length === 0) {
-					that.unsubscribe(topic)
-				}
-			}
-		}
+		console.log(['REMOVE EVENTCALLBACKS',callbackId])
+       this.removeSubscription(callbackId);
 	}
 
        
@@ -130,49 +114,37 @@ class HermodSubscriptionManager  extends HermodMqttServer {
      */
     onMessageArrived(topic,message) {
 		let that = this;
-        let parts = topic ? topic.split("/") : [];
-        if (parts.length > 0 && parts[0] === "hermod") {
+		let parts = topic ? topic.split("/") : [];
+        if (topic === "hermod/default/tts/say") {
+			console.log('DUMPME')
+			console.log(this.eventCallbackFunctions);
+		} 
+		let payload = null
+		if (parts.length > 0 && parts[0] === "hermod") {
             // Audio Messages pass through message body direct
-            if (parts.length > 3 && ((parts[2]==="speaker"&& parts[3]==="play"  ) || (parts[2]==="microphone" && parts[3]==="audio"  )) ) {
-                let siteId = parts[1];
-				let action = parts[3];
-				let callbacks = that.findEventCallbackFunctions(topic);
-				if (callbacks) {
-					callbacks.map(function(value,ckey) {
-						value.callBack.bind(that)(topic,siteId,message);
-					});
-				}	
-            // Non Audio Messages parse JSON body
-            } else {
-				let payload = {};
-                try {
+            if (parts.length > 3 && ((parts[2]==="speaker"&& parts[3]==="play"  ) || (parts[2]==="microphone" && parts[3]==="audio")) ) {
+				payload = message;
+			} else {
+				// only log non audio
+				console.log('message '+topic);
+				try {
                   payload = JSON.parse(message);  
                 } catch (e) {
+					
                 }
-				// replace siteId in incoming topic
-				let parts = topic.split("/");
-				let siteId = parts[1];                
-				let callbacks = that.findEventCallbackFunctions(topic);
-				if (callbacks) {
-					callbacks.map(function(value,ckey) {
-						value.callBack.bind(that)(topic,siteId,payload);
-						if (value.oneOff) {
-							// remove this callback
-							let breakLoop = false;
-							that.eventCallbackFunctions.map(function(tvalue,vkey) {
-								if (value.id === tvalue.id && !breakLoop) {
-									that.eventCallbackFunctions.splice(vkey,1);
-									breakLoop = true;
-								}
-								if (that.findEventCallbackFunctions(topic).length === 0) {
-									that.unsubscribe(topic)
-								}
-								return;
-							});
-						}
-					});
-				}
-            } 
+			}
+			let siteId = parts[1];
+			let callbacks = this.subscriptions[topic];
+			if (callbacks) {
+				for (var subscriptionId in callbacks) {
+					let value = callbacks[subscriptionId]
+					value.callBack.bind(that)(topic,siteId,payload);
+					if (value.oneOff) {
+						this.removeCallbackById(subscriptionId)
+					}
+				};
+			}	
+	
         }
     };
 }

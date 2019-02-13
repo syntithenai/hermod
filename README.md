@@ -2,6 +2,18 @@
 
 This project is a work in progress. Ideally the example works but no guarantees yet :)
 
+The main story described in [Hermod Protocol Proposal](https://docs.google.com/document/d/1EU3uZWF6ivpNVYWagF2iZFMIzPYy4urbJ-llSqrOE5k/edit#heading=h.sn64gkum70pi) from audio capture to RASA core routing has been implemented. 
+
+You can talk to RASA !!
+
+install scripts (debian based) for dependancies including duckling, mosquitto, rasa ,...
+
+uses pm2 to manage service processes
+
+The single docker image including all services required for the protocol and is the quickest and easiest way to get started.
+
+Authentication,training and additional services and UI pending.
+ 
 
 ## Overview
 
@@ -26,13 +38,15 @@ Some potential applications include
 - A web site with a microphone button.
 - A web based AI service offering authenticated access to MQTT and providing specialised vocabulary and actions to satellite devices.
 
-The stack relies on many open source projects including 
+The stack relies on many open source projects including  (but certainly not limited to)
 
 - Snowboy Hotword Detector
-- Mozilla Deepspeech to implement ASR (Online Google and Kaldi implementations also available)
+- Picovoice Hotword Detector (for the browser)
+- Mozilla Deepspeech to implement ASR (Online Google and Offline Kaldi implementations also available)
 - RASA NLU
 - RASA Core Routing
 - pico2wave
+- Snips for the light weight versions of ASR , Hotword and NLU services supporting low power ARM devices.
 
 
 The main services involved in implementing a voice interaction include
@@ -67,7 +81,14 @@ The deepspeech model is over 1G to download and the rasa install takes a long ti
 This package comes with an example model but to do something useful you will want to build your own nlu vocabulary and core routing stories and actions.
 See [The RASA website](http://rasa.com)
 
-When the suite is started say the hotword "Smart Mirror" followed by "Tell me a joke".
+When the suite is started say the hotword "Smart Mirror" followed by "my name is david", then after the response say "Tell me a joke".
+
+To track the conversation progress
+
+```
+mqtt_sub -h localhost -v -t 'hermod/+/asr/+' -t 'hermod/+/nlu/+' -t 'hermod/+/dialog/+' -t 'hermod/+/hotword/+' -t 'hermod/+/intent' -t 'hermod/+/action' -t 'hermod/+/action/#' -t 'hermod/+/core/#' -t 'hermod/+/tts/#' -t 'hermod/+/speaker/started' -t 'hermod/+/speaker/finished'
+```
+
 
 ## Docker Quickstart
 
@@ -203,7 +224,7 @@ This means that the ASR and Hotword services do not work unless the microphone s
 
 To minimise traffic on the network, the dialog manager enables and disables media streaming in response to lifecycle events in the protocol. In particular, the dialog manager ensures audio recording is enabled or disabled in sync with the ASR or Hotword services. However when the suite is configured to keep the hotword enabled at all times, the microphone is left enabled as well.
 
-(TODO) The microphone service also implements silence detection and pauses sending packets when there is no voice detected.
+The microphone service also implements silence detection and pauses sending packets when there is no voice detected.
 
 
 #### Message Reference

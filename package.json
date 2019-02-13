@@ -7,17 +7,21 @@
     "babel-eslint": "^10.0.1",
     "eslint": "^5.12.1",
     "hermod-nodejs": "file:hermod-nodejs",
-    "hermod-react-satellite": "file:hermod-react-satellite"
+    "hermod-react-satellite": "file:hermod-react-satellite",
+    "mosca": "^2.8.3"
   },
   "devDependencies": {},
   "scripts": {
-	"start": "cd hermod-nodejs; node index.js",
+    "start": "cd hermod-nodejs; node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "installreactdemo": "npm i ./hermod-react-satellite && npm i ./hermod-react-satellite/example",
+    "installnodejs": "npm i ./hermod-nodejs",
     "installdeepspeechmodel": "npm i ./deepspeech-model",
     "installmongodb": "npm i ./mongodb",
     "installmosquitto": "npm i ./mosquitto",
     "installrasa": "npm i ./rasa",
-    "installduckling": "cd duckling; ./install.sh",   
+    "installduckling": "cd duckling; ./install.sh",
+    "install": "npm run-script installreactdemo && npm run-script installnodejs && npm run-script installdeepspeechmodel && npm run-script installmongodb && npm run-script installmosquitto && npm run-script installrasa && npm run-script installduckling ",
     "startrasa": "cd rasa && ./run.sh &"
   },
   "repository": {

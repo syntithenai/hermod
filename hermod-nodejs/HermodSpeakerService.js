@@ -8,7 +8,7 @@ var fs = require("fs");
 var wav = require('wav');
 
 //var pcm = require('pcm-util')
-//var volume = require("pcm-volume");
+var volume = require("pcm-volume");
 
 			
 class HermodSpeakerService extends HermodService {
@@ -37,7 +37,7 @@ class HermodSpeakerService extends HermodService {
 				that.setVolume(payload.volume)
 			}
         } 
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager(props.manager,eventFunctions,false);
     }  
    
     /* Set volume between 0 and 1 */
@@ -53,8 +53,6 @@ class HermodSpeakerService extends HermodService {
 			if (that.reader) {
 				try {
 					that.reader.pause();
-					that.reader.emit('end')
-					that.reader.destroy()
 					that.reader = null;
 				} catch(e) {
 					console.log(e)

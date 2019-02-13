@@ -5,18 +5,15 @@ class HermodTtsService extends HermodService  {
     constructor(props) {
         super(props);
         let that = this;
-        if (!this.props.siteId || this.props.siteId.length === 0) {
-            throw "TTS must be configured with a siteId property";
-        }
         let eventFunctions = {
             'hermod/+/tts/say' : function(topic,siteId,payload) {
 				if (payload.text && payload.text.length > 0 ) {
-					that.say(payload.text,props.siteId,payload).then(function() {
+					that.say(payload.text,siteId,payload).then(function() {
 					});
 				}
             }
         }
-        this.ttsBinary = props.ttsBinary ? props.ttsBinary : 'pico2wave' 
+        this.ttsBinary = props.ttsBinary ? props.ttsBinary : '/usr/bin/pico2wave' 
         this.ttsOutputDirectory = props.ttsOutputDirectory ? props.ttsOutputDirectory : '/tmp'
         this.manager = this.connectToManager(props.manager,eventFunctions);
     }  
@@ -28,6 +25,8 @@ class HermodTtsService extends HermodService  {
      */ 
     say(text,siteId,payload) {
 		let that = this;
+		console.log('say ');
+				
 		return new Promise(function(resolve,reject) {
 			const randomFileName=that.ttsOutputDirectory + "/" + String(parseInt(Math.random() * 10000,10) ) + '.wav'
 			const command = that.ttsBinary + " -w " + randomFileName + " " + "'" + text + "'";
@@ -35,9 +34,11 @@ class HermodTtsService extends HermodService  {
 						
 			const exec = require("child_process").exec
 			exec(command, (error, stdout, stderr) => {
+				console.log('say execed');
 				// stream the file
 				var fs = require('fs');
 				fs.readFile(randomFileName	, function(err, wav) {
+					console.log('read file ');
 					let callbacks = {}
 					callbacks['hermod/'+siteId+'/speaker/finished'] = function() {
 						that.sendMqtt('hermod/'+siteId+'/tts/finished',{id:payload.id})
@@ -45,8 +46,8 @@ class HermodTtsService extends HermodService  {
 					}
 					// automatic cleanup after single message with true parameter
 					that.manager.addCallbacks(callbacks,true)
-					
-					that.manager.sendAudioMqtt("hermod/"+that.props.siteId+"/speaker/play",wav);
+					console.log('say added callback');
+					that.manager.sendAudioMqtt("hermod/"+siteId+"/speaker/play",wav);
 				});
 			})
 			resolve()

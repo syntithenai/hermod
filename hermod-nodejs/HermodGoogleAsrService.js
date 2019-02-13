@@ -46,7 +46,7 @@ class HermodGoogleAsrService extends HermodService  {
 		// subscribe to audio packets
 		// use siteId from start message
 		let callbacks = {}
-		callbacks['hermod/'+siteId+'/microphone/audio/#'] = this.onAudioMessage.bind(this)
+		callbacks['hermod/'+siteId+'/microphone/audio'] = this.onAudioMessage.bind(this)
 		this.callbackIds[siteId] = this.manager.addCallbacks(callbacks)
 
 		// Creates a client

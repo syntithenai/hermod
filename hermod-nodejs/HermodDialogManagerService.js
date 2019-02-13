@@ -17,22 +17,22 @@ class HermodDialogManagerService extends HermodService  {
         this.dialogs = {};
 		function startDialog(siteId,payload) {
 				//Start a dialog 
-				var dialogId = parseInt(Math.random()*100000000,10)
+				var dialogId = String(parseInt(Math.random()*100000000,10))
 				that.dialogs[dialogId] = {asrModels:payload.asrModels ? payload.asrModels : 'default', nluModels:payload.nluModels ? payload.nluModels : 'default'};
+				that.sendMqtt('hermod/'+siteId+'/dialog/started',{id:dialogId})
 				//that.sendMqtt('hermod/'+siteId+'/hotword/stop',{})
 				that.sendMqtt('hermod/'+siteId+'/microphone/start',{})
 				that.sendMqtt('hermod/'+siteId+'/asr/start',{id:dialogId,models:that.dialogs[dialogId].asrModels})
-				that.sendMqtt('hermod/'+siteId+'/dialog/started',{id:dialogId})
 		}
 		function startNlu(siteId,payload) {
 				//Start a dialog 
-				var dialogId = parseInt(Math.random()*100000000,10)
+				var dialogId = String(parseInt(Math.random()*100000000,10))
 				that.dialogs[dialogId] = {asrModels:payload.asrModels ? payload.asrModels : 'default', nluModels:payload.nluModels ? payload.nluModels : 'default'};
 				//that.sendMqtt('hermod/'+siteId+'/hotword/stop',{})
 				//that.sendMqtt('hermod/'+siteId+'/microphone/stop',{})
+				that.sendMqtt('hermod/'+siteId+'/dialog/sstarted',{id:dialogId})
 				that.sendMqtt('hermod/'+siteId+'/asr/stop',{id:dialogId,models:that.dialogs[dialogId].asrModels})
 				that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:dialogId,models:that.dialogs[dialogId].nluModels,text:payload.text,confidence:payload.confidence})
-				that.sendMqtt('hermod/'+siteId+'/dialog/started',{id:dialogId})
 						
 		}
         let eventFunctions = {
@@ -87,17 +87,17 @@ class HermodDialogManagerService extends HermodService  {
 		    ,
 		    'hermod/+/asr/text' : function(topic,siteId,payload) {
 				//Sent by asr service
-				if (that.dialogs.hasOwnProperty(payload.id)) {
-					if (payload.text && payload.text.length > 0) {
-						that.dialogs[payload.id].text = payload.text
-						//that.sendMqtt('hermod/'+siteId+'/microphone/stop')
-						that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:payload.id,models:that.dialogs[payload.id].nluModels,text:payload.text,confidence:payload.confidence})
-					} else {
-						console.error('empty asr text')
-					}
-				} else {
-					console.error('missing id in asr text')
-				}
+			//	if (that.dialogs.hasOwnProperty(payload.id)) {
+					//if (payload.text && payload.text.length > 0) {
+						//that.dialogs[payload.id].text = payload.text
+						that.sendMqtt('hermod/'+siteId+'/microphone/stop')
+						that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:payload.id,text:payload.text,confidence:payload.confidence})
+					//} else {
+						//console.error('empty asr text')
+					//}
+				//} else {
+					//console.error('missing id in asr text')
+				//}
 		    }
 		    ,
 		    'hermod/+/nlu/intent' : function(topic,siteId,payload) {

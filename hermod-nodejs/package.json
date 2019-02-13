@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/syntithenai/opensnips.git"
+    "url": "git+https://github.com/syntithenai/hermod.git"
   },
   "author": "Steve Ryan",
-  "license": "MIT",
+  "license": "BSD-2-Clause",
   "bugs": {
-    "url": "https://github.com/syntithenai/opensnips/issues"
+    "url": "https://github.com/syntithenai/hermod/issues"
   },
-  "homepage": "https://github.com/syntithenai/opensnips#readme",
+  "homepage": "https://github.com/syntithenai/hermod#readme",
   "dependencies": {
     "@google-cloud/speech": "^2.2.0",
     "audio-speaker": "^1.5.0",

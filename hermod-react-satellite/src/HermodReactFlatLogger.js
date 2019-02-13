@@ -1,6 +1,7 @@
 /* global window */
 
-import React, { Component } from 'react'
+import React from 'react'
+import {Component} from 'react'
 
 export default class HermodReactFlatLogger extends Component {
 

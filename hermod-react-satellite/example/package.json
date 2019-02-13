@@ -1,6 +1,6 @@
 {
-  "name": "snips-webbrowser-audioserver-example",
-  "homepage": "https://syntithenai.github.io/opensnips",
+  "name": "hermod-react-satellite-example",
+  "homepage": "https://syntithenai.github.io/hermod-react-satellite",
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
@@ -8,7 +8,8 @@
     "prop-types": "^15.6.2",
     "react": "^16.4.1",
     "react-dom": "^16.4.1",
-    "react-scripts": "^1.1.4"
+    "react-scripts": "^1.1.4",
+    "hermod-react-satellite": "file:.."
   },
   "scripts": {
     "start": "react-scripts start",

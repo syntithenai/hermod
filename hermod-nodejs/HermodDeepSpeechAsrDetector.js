@@ -1,3 +1,4 @@
+/* global window */
 
 
 var HermodService = require('./HermodService')
@@ -30,6 +31,8 @@ let audioDump = {};
 var speaker = require('speaker')
 var WaveFile = require('wavefile')
 
+var siteId='standalone'
+
 class HermodDeepSpeechAsrDetector extends HermodService  {
 
     constructor(props) {
@@ -39,18 +42,33 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		this.listening = {};
 		this.silent = {};
 		this.asrTimeouts={}
+		this.startTimeouts={}
 		this.sctx = {}
 		this.models = {}
 		this.isStarted = false;
 		let eventFunctions = {
 		
         }
-		
-        this.manager = new HermodSubscriptionManager({siteId:props.siteId});
+        
+		console.log('HermodDeepSpeechAsrDetector',props.siteId);
+			
+        this.manager = new HermodSubscriptionManager({siteId:props.siteId,username:config.username,password:config.password,allowedSites:config.allowedSites});
 		
 		this.manager.mqttConnect().then(function() {
+			console.log('STANDALONE CONNECTION');
+			// timeout if never starts
+			if (!that.startTimeout) {
+				console.log(['start TIMEOUT ADD',config.services.HermodDeepSpeechAsrService.timeout])
+				//if (that.startTimeout) clearTimeout(that.startTimeouts[siteId]);		
+				that.startTimeout = setTimeout(function() {
+					console.log('start TIMEOUT FORCE END')
+					that.finishStream(props.siteId)
+				},config.services.HermodDeepSpeechAsrService.timeout);
+			}
 			eventFunctions['hermod/+/microphone/audio'] = that.onAudioMessage.bind(that)
-			that.connectToManager(that.manager,eventFunctions);
+			that.manager.addCallbacks(eventFunctions,false,false)
+			//that.connectToManager(that.manager,eventFunctions);
+			console.log('STANDALONE CONNECTION CONNECTED');
 			that.startMqttListener(props.siteId);
 		})
 	}
@@ -76,10 +94,13 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 	
 	onAudioMessage(topic,siteId,buffer) {
 		let that = this;
+		console.log('audio message ',topic,buffer)
 		if (mqttStreams.hasOwnProperty(siteId)) {
+		//console.log('audio message2 ',siteId)
 			// wait for first voice before starting to push audio packets to detector
 			if (!this.isStarted) {
 				const vad = new VAD(VAD.Mode.NORMAL);
+				console.log('start listening ',buffer)
 				
 				// push into stream buffers for the first time (and start timeout)
 				function pushBuffers(sitHermodDeepSpeechAsrServiceeId,buffer) {
@@ -87,26 +108,33 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 					if (that.isStarted) audioDump[siteId].push(buffer)	
 				}
 				
-					vad.processAudio(buffer, 16000).then(res => {
-						switch (res) {
-							case VAD.Event.ERROR:
-								break;
-							case VAD.Event.SILENCE:
-								pushBuffers(siteId,buffer)
-								break;
-							case VAD.Event.NOISE:
-								pushBuffers(siteId,buffer)
-								break;
-							case VAD.Event.VOICE:
-								that.isStarted = true;     
-								pushBuffers(siteId,buffer)
-								that.asrTimeouts[siteId] = setTimeout(function() {
-									that.finishStream(siteId)
-								},config.services.HermodDeepSpeechAsrService.timeout);
-								
-								break;
-						}
-					})
+				vad.processAudio(buffer, 16000).then(res => {
+					switch (res) {
+						case VAD.Event.ERROR:
+							break;
+						case VAD.Event.SILENCE:
+						console.log('silence')
+							pushBuffers(siteId,buffer)
+							break;
+						case VAD.Event.NOISE:
+							console.log('noise')
+							pushBuffers(siteId,buffer)
+							break;
+						case VAD.Event.VOICE:
+							console.log('voice')
+							that.isStarted = true;     
+							pushBuffers(siteId,buffer)
+							// timeout once voice starts
+							console.log(['TIMEOUT ADD',config.services.HermodDeepSpeechAsrService.timeout])
+							clearTimeout(that.startTimeouts[siteId] )
+							that.asrTimeouts[siteId] = setTimeout(function() {
+								console.log('TIMEOUT FORCE END')
+								that.finishStream(siteId)
+							},config.services.HermodDeepSpeechAsrService.timeout);
+							
+							break;
+					}
+				})
 				
 			} else {
 				if (that.isStarted) mqttStreams[siteId].push(buffer)
@@ -162,7 +190,8 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 	}
 	
 	getDetector(siteId) {
-		if (!this.models[siteId]) this.models[siteId] = this.getAsrModel();
+		//if (!this.models[siteId]) 
+		this.models[siteId] = this.getAsrModel();
 		const vad = new VAD(VAD.Mode.NORMAL);
 		let that = this;
 		const voice = {START: true, STOP: false};
