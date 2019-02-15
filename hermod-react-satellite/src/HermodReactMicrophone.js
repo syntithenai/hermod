@@ -273,6 +273,8 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
 				
               let recorder = context.createScriptProcessor(bufferSize, 1, 1);
               recorder.onaudioprocess = function(e){
+                    console.log(['onaudio'])
+		    		
                   //  var left = e.inputBuffer.getChannelData(0);
                   // && that.state.speaking && that.state.started
                   if (that.state.activated  && that.state.sending ) {
@@ -285,6 +287,8 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
               
             audioInput.connect(recorder);
             recorder.connect(context.destination); 
+              console.log(['REC started'])
+		    		
         }
 	
 	}

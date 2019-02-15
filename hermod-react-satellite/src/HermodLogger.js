@@ -186,7 +186,7 @@ export default class HermodLogger  extends HermodMqttServer {
     };
     
     onMessageArrived(topic,message) {
-		console.log(['ONMESSAGEARRIVED',topic,message]);
+		//console.log(['ONMESSAGEARRIVED',topic,message]);
 		message.destinationName = topic;
 		message.payloadBytes = message;
 		message.payloadString = String(message)
@@ -221,7 +221,7 @@ export default class HermodLogger  extends HermodMqttServer {
 			if (!payload) payload = {};
 			
 			let functionKey = message.destinationName;
-			console.log(['payload ',payload,this.subscriptions,this.subscriptionIndex]);
+			//console.log(['payload ',payload,this.subscriptions,this.subscriptionIndex]);
 			let session = that.getSession(siteId,payload ? payload.id : null);
 						
 			function runServiceCallbacks(functionKey) {
@@ -229,7 +229,7 @@ export default class HermodLogger  extends HermodMqttServer {
 				if (callbacks) {
 					for (var ckey in callbacks) {
 						let value = callbacks[ckey];
-						console.log(['RUN SERVICE CALLBACK',value,ckey,message.destinationName,siteId,payload])
+					//	console.log(['RUN SERVICE CALLBACK',value,ckey,message.destinationName,siteId,payload])
 						value.callBack.bind(that)(message.destinationName,siteId,payload);
 					}
 				}	
@@ -251,9 +251,9 @@ export default class HermodLogger  extends HermodMqttServer {
 					//console.log(e);
 				//});
 			//} else {
-				console.log('runServiceCallbacks',functionKey)	
+				//console.log('runServiceCallbacks',functionKey)	
 				runServiceCallbacks(functionKey);
-				console.log('ranServiceCallbacks',functionKey)	
+				//console.log('ranServiceCallbacks',functionKey)	
 
 			//}
 

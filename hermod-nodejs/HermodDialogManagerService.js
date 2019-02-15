@@ -90,6 +90,8 @@ class HermodDialogManagerService extends HermodService  {
 			//	if (that.dialogs.hasOwnProperty(payload.id)) {
 					//if (payload.text && payload.text.length > 0) {
 						//that.dialogs[payload.id].text = payload.text
+						that.sendMqtt('hermod/'+siteId+'/hotword/stop')
+						that.sendMqtt('hermod/'+siteId+'/asr/stop')
 						that.sendMqtt('hermod/'+siteId+'/microphone/stop')
 						that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:payload.id,text:payload.text,confidence:payload.confidence})
 					//} else {
