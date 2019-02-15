@@ -76,7 +76,7 @@ class HermodLogger  extends HermodMqttServer {
                     } else if (action === "audioFrame") {
                         this.appendAudioBuffer(siteId,audio);
                     }   
-                    let functionKey ='hermod/#/'+parts[2]+'/'+action;
+                    let functionKey ='hermod/+/'+parts[2]+'/'+action;
                     function runServiceCallbacks(functionKey) {
 						let callbacks = that.findEventCallbackFunctions(functionKey);
 						if (callbacks) {
@@ -115,7 +115,7 @@ class HermodLogger  extends HermodMqttServer {
                 }
                     // replace siteId in incoming topic
                     let parts = topic.split("/");
-                    parts[1] = "#"
+                    parts[1] = "+"
                     let functionKey = parts.join("/")
 					// event functions update log data structures
                     function runServiceCallbacks() {
@@ -357,14 +357,16 @@ class HermodLogger  extends HermodMqttServer {
     logAudioBuffer(payload) {
         let that = this;
         let promises = [];
-        let siteId = payload.siteId;
                 
-        if (this.props.logAudio === true) {
+        if (payload && this.props.logAudio === true) {
+            let siteId = payload.siteId;
+        
             try {
                 // save to sites/sessions
                 let audioContext = window.AudioContext || window.webkitAudioContext;
                 let context = new audioContext();
                 let audioBuffer = this.getAudioBuffer(siteId);
+                if (!audioBuffer) audioBuffer = [];
                 // memory overload protection
               // if (audioBuffer.length> 350) return;
                 audioBuffer.map(function(bytes,key) {

@@ -34,7 +34,7 @@ class HermodMicrophoneService extends HermodService  {
         }
         this.stream = null;
         this.vadStream = null;
-        this.manager = this.connectToManager(props.manager,eventFunctions,false);
+        this.manager = this.connectToManager('MICROPHONE',props.manager,eventFunctions,false);
     }  
     
     startRecording(siteId) {

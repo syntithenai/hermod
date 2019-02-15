@@ -7,6 +7,7 @@ class HermodTtsService extends HermodService  {
         let that = this;
         let eventFunctions = {
             'hermod/+/tts/say' : function(topic,siteId,payload) {
+				//console.log(['TTSSAY',topic,siteId,payload])
 				if (payload.text && payload.text.length > 0 ) {
 					that.say(payload.text,siteId,payload).then(function() {
 					});
@@ -15,7 +16,7 @@ class HermodTtsService extends HermodService  {
         }
         this.ttsBinary = props.ttsBinary ? props.ttsBinary : '/usr/bin/pico2wave' 
         this.ttsOutputDirectory = props.ttsOutputDirectory ? props.ttsOutputDirectory : '/tmp'
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager('TTS',props.manager,eventFunctions);
     }  
         
   
@@ -45,8 +46,8 @@ class HermodTtsService extends HermodService  {
 						fs.unlink(randomFileName,function() {})
 					}
 					// automatic cleanup after single message with true parameter
-					that.manager.addCallbacks(callbacks,true)
-					console.log('say added callback');
+					that.manager.addCallbacks('TTS',callbacks,true)
+					console.log('say added callbavvck');
 					that.manager.sendAudioMqtt("hermod/"+siteId+"/speaker/play",wav);
 				});
 			})

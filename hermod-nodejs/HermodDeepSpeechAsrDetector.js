@@ -59,15 +59,14 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 			// timeout if never starts
 			if (!that.startTimeout) {
 				console.log(['start TIMEOUT ADD',config.services.HermodDeepSpeechAsrService.timeout])
-				//if (that.startTimeout) clearTimeout(that.startTimeouts[siteId]);		
+				if (that.startTimeout) clearTimeout(that.startTimeout);		
 				that.startTimeout = setTimeout(function() {
 					console.log('start TIMEOUT FORCE END')
 					that.finishStream(props.siteId)
 				},config.services.HermodDeepSpeechAsrService.timeout);
 			}
 			eventFunctions['hermod/+/microphone/audio'] = that.onAudioMessage.bind(that)
-			that.manager.addCallbacks(eventFunctions,false,false)
-			//that.connectToManager(that.manager,eventFunctions);
+			that.manager.addCallbacks('ASR',eventFunctions,false,false,props.siteId)
 			console.log('STANDALONE CONNECTION CONNECTED');
 			that.startMqttListener(props.siteId);
 		})
@@ -177,6 +176,7 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		let that = this;
 		let model = this.models[siteId]
 		let sctx = this.sctx[siteId]
+		if (that.startTimeout) clearTimeout(that.startTimeout);
 		try {
 			const model_load_start = process.hrtime();
 			let transcription = model.finishStream(sctx);
@@ -187,6 +187,7 @@ class HermodDeepSpeechAsrDetector extends HermodService  {
 		} catch (e) {
 			console.log(['FINISH STREAM ERROR',e])
 		}
+		process.exit();
 	}
 	
 	getDetector(siteId) {

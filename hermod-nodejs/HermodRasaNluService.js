@@ -13,7 +13,7 @@ class HermodRasaNluService extends HermodService  {
         let eventFunctions = {
             'hermod/+/nlu/parse' : this.sendRequest.bind(this)
         }		
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager('NLU',props.manager,eventFunctions);
     }
     
     findMatchingIntent(payload,data) {

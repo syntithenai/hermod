@@ -112,7 +112,8 @@ class HermodMqttServer {
 		//console.log('SEND AUDIO MQTT',destination)
         if (this.mqttClient) {
 			if (this.state.connected) {
-				this.mqttClient.publish(destination,payload)
+		//console.log('SEND really AUDIO MQTT',destination,payload)
+        		this.mqttClient.publish(destination,payload)
 			}
 		}
     };

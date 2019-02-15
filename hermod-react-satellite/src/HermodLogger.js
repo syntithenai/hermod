@@ -12,8 +12,11 @@ export default class HermodLogger  extends HermodMqttServer {
         super(props);
         console.log('consstr hermod logger');
         console.log(props);
+        this.subscriptions = {};
+        this.subscriptionIndex = {};
+    
         this.eventFunctions = eventFunctions;
-        this.eventCallbackFunctions = this.addCallbacks(this.props.eventCallbackFunctions);
+        //this.eventCallbackFunctions = this.addCallbacks(this.props.eventCallbackFunctions);
         this.siteId = props.siteId ? props.siteId :  'site'+parseInt(Math.random()*100000000,10);
         this.state={sites:{},messages:[],session:{},audioListening:{},hotwordListening:{},showLogMessages:{},sessionStatus:{},sessionStatusText:{}};
         this.audioBuffers={};
@@ -24,13 +27,70 @@ export default class HermodLogger  extends HermodMqttServer {
         this.logAudioBuffer = this.logAudioBuffer.bind(this);
         this.updateSessionStatus = this.updateSessionStatus.bind(this);
         this.addCallbacks = this.addCallbacks.bind(this);
-        this.findEventCallbackFunctions = this.findEventCallbackFunctions.bind(this);
+        this.addSubscription = this.addSubscription.bind(this);
+        this.removeSubscription = this.removeSubscription.bind(this);
+        this.getSubscription = this.getSubscription.bind(this);
+        //this.findEventCallbackFunctions = this.findEventCallbackFunctions.bind(this);
         this.onMessageArrived = this.onMessageArrived.bind(this);
         this.isConnected = this.isConnected.bind(this);
         this.reset = this.reset.bind(this);
         console.log(['LOGGER CONNECT',this.siteId,this.props]);
         this.mqttConnect.bind(this)() ;
     }   
+     
+     
+     
+     
+    addSubscription(topic,callback,oneOff = false) {
+		if (topic && topic.length && typeof callback === "function") {
+			let subscriptionId = parseInt(Math.random()*100000000,10);
+			// lookup or create
+			let topicSubscription = {};
+			if (this.subscriptions.hasOwnProperty(topic)) {
+				topicSubscription = this.subscriptions[topic]
+			console.log('DO ADD SUB '+topic)
+				
+			} else {
+				// real subscription when first created
+				console.log('DO SUB '+topic)
+				// allow for universal subscription rather than managed per function
+				if (!this.props.subscription || this.props.subscription.length === 0) {
+					 this.mqttClient.subscribe(topic)
+				}
+			}
+			topicSubscription[subscriptionId] = {oneOff:oneOff,callBack:callback}
+			this.subscriptions[topic] = topicSubscription;
+			this.subscriptionIndex[subscriptionId] = topic;
+			return subscriptionId;
+		}
+	}
+	
+	getSubscription(id) {
+		if (this.subscriptionIndex.hasOwnProperty(id)) {
+			return this.subscriptions[this.subscriptionIndex[id]][id];
+		}
+	}
+	
+	removeSubscription(id) {
+		let topic = this.subscriptionIndex[id];
+		if (topic) {
+			delete this.subscriptions[topic][id];
+			delete this.subscriptionIndex[id];
+		}
+		// unsub and cleanup if no more subscriptions on  this topic
+		if (Object.keys(this.subscriptions[topic]).length == 0) {
+			
+			// allow for universal subscription rather than managed per function
+			if (!this.props.subscription || this.props.subscription.length === 0) {
+				this.mqttClient.unsubscribe(topic);
+			}
+			delete this.subscriptions[topic];
+		}
+	}
+	
+     
+     
+     
      
     reset() {
         this.setState({sites:{},messages:[],session:{},audioListening:{},hotwordListening:{},showLogMessages:{},sessionStatus:{},sessionStatusText:{} });
@@ -39,32 +99,34 @@ export default class HermodLogger  extends HermodMqttServer {
     };
     
     addCallbacks(eventCallbackFunctions,oneOff = false) {
-		console.log(['add callbacks',eventCallbackFunctions]);
+		//console.log(['add callbacks',eventCallbackFunctions]);
         let that = this;
         this.eventCallbackFunctions = Array.isArray(this.eventCallbackFunctions) ? this.eventCallbackFunctions : [];
         if (eventCallbackFunctions) {
             Object.keys(eventCallbackFunctions).map(function(key,loopKey) {
                 let value = eventCallbackFunctions[key];
                 if (typeof value === "function") {
-					// console.log(['callback',key,value]);        
-                    that.eventCallbackFunctions.push({subscription:key,callBack:value, oneOff: oneOff,id:parseInt(Math.random()*100000000,10)});
+					// console.log(['callback',key,value]);  
+					let ikey = key.replace('hermod/+/','hermod/'+that.props.siteId+'/');      
+                    that.addSubscription(ikey,value,oneOff)
+                    //that.eventCallbackFunctions.push({subscription:key,callBack:value, oneOff: oneOff,id:parseInt(Math.random()*100000000,10)});
                 }
             });
         }
-        return this.eventCallbackFunctions;
+       // return this.eventCallbackFunctions;
     };
     
-    findEventCallbackFunctions(subscriptionKey) {
-        let that = this;
-        let ret=[];
-        this.eventCallbackFunctions.map(function(value,vkey) {
-            if (that.mqttWildcard(subscriptionKey,value.subscription)) {
-                ret.push(value);
-                return;
-            }
-        });
-        return ret;
-    };
+    //findEventCallbackFunctions(subscriptionKey) {
+        //let that = this;
+        //let ret=[];
+        //this.eventCallbackFunctions.map(function(value,vkey) {
+            //if (that.mqttWildcard(subscriptionKey,value.subscription)) {
+                //ret.push(value);
+                //return;
+            //}
+        //});
+        //return ret;
+    //};
     
   					  
     mqttWildcard(topic, wildcard) {
@@ -124,7 +186,7 @@ export default class HermodLogger  extends HermodMqttServer {
     };
     
     onMessageArrived(topic,message) {
-		//console.log(['ONMESSAGEARRIVED',topic,message]);
+		console.log(['ONMESSAGEARRIVED',topic,message]);
 		message.destinationName = topic;
 		message.payloadBytes = message;
 		message.payloadString = String(message)
@@ -135,10 +197,10 @@ export default class HermodLogger  extends HermodMqttServer {
 			let payload = {};
 			// special handling where the payload is audio
             if (parts.length > 3 && ((parts[2]==="speaker"&& parts[3]==="play"  ) || (parts[2]==="microphone" && parts[3]==="audio"  )) ) {
-				var audio = message.payloadBytes;
 				var session = null;
+				payload = message;
 				if (parts[2] === "microphone") {
-					this.appendAudioBuffer(siteId,audio);
+					//this.appendAudioBuffer(siteId,payload);
 				}
 			//// Non Audio Messages parse JSON body
 			} else {
@@ -154,40 +216,46 @@ export default class HermodLogger  extends HermodMqttServer {
 				if (payload.id) this.lastSessionId[siteId] = payload.id;
 				messages.push({id:thisState.id,payload: <div style={{backgroundColor:'lightgrey'}}><hr/><div style={{backgroundColor:'lightblue'}}><pre>{JSON.stringify(payload,undefined,4)}</pre></div><hr/><div style={{backgroundColor:'lightgreen'}}><pre>{JSON.stringify(thisState,undefined,4)}</pre></div><hr/></div>  ,text:message.destinationName});
 				this.setState({messages:messages});                        
-				console.log(['logged messages',messages]);
+				//console.log(['logged messages',messages]);
 			}
 			if (!payload) payload = {};
 			
 			let functionKey = message.destinationName;
-			//console.log(['payload ',payload,this.eventFunctions,functionKey]);
+			console.log(['payload ',payload,this.subscriptions,this.subscriptionIndex]);
 			let session = that.getSession(siteId,payload ? payload.id : null);
 						
 			function runServiceCallbacks(functionKey) {
-				let callbacks = that.findEventCallbackFunctions(functionKey);
+				let callbacks = that.subscriptions[functionKey]
 				if (callbacks) {
-					callbacks.map(function(value,ckey) {
+					for (var ckey in callbacks) {
+						let value = callbacks[ckey];
+						console.log(['RUN SERVICE CALLBACK',value,ckey,message.destinationName,siteId,payload])
 						value.callBack.bind(that)(message.destinationName,siteId,payload);
-					});
+					}
 				}	
 			}
-			// logging callbacks
-			let matchingEventFunction = null
-			for (var i in this.eventFunctions) {
-				if (this.mqttWildcard(functionKey,i)) {
-					matchingEventFunction = this.eventFunctions[i];
-					break;
-				}
-			}
-			if (matchingEventFunction) {
-				let p = matchingEventFunction.bind(that)(message.destinationName,siteId,payload);
-				p.then(function(session) {
-					runServiceCallbacks(functionKey);
-				}).catch(function(e) {
-					console.log(e);
-				});
-			} else {
-				runServiceCallbacks(functionKey);	
-			}
+			//// logging callbacks
+			//let matchingEventFunction = null
+			//for (var i in this.eventFunctions) {
+				//if (this.mqttWildcard(functionKey,i)) {
+					//matchingEventFunction = this.eventFunctions[i];
+					//break;
+				//}
+			//}
+			
+			//if (matchingEventFunction) {
+				//let p = matchingEventFunction.bind(that)(message.destinationName,siteId,payload);
+				//p.then(function(session) {
+					//runServiceCallbacks(functionKey);
+				//}).catch(function(e) {
+					//console.log(e);
+				//});
+			//} else {
+				console.log('runServiceCallbacks',functionKey)	
+				runServiceCallbacks(functionKey);
+				console.log('ranServiceCallbacks',functionKey)	
+
+			//}
 
 		   
 		}
@@ -420,7 +488,7 @@ export default class HermodLogger  extends HermodMqttServer {
     }
     
     sendMqtt(destination,payload) {
-        console.log(['SEND MQTT',this.state.connected,destination,payload]);
+       // console.log(['SEND MQTT',this.state.connected,destination,payload]);
        //if (!destination.startsWith('hermod/audioServer')) console.log(['SESSION SEND MQTT LOGGER',destination,payload])
         if (this.state.connected) {
             //let message = new Paho.MQTT.Message(JSON.stringify(payload));
@@ -432,7 +500,7 @@ export default class HermodLogger  extends HermodMqttServer {
     sendAudioMqtt(destination,payload) {
         //console.log('SENDAUDIOMQTT '+destination);
            if (this.state.connected) {
-           console.log('SENDAUDIOMQTT '+destination);
+        //   console.log('SENDAUDIOMQTT '+destination);
             this.mqttClient.publish(destination,payload);//Buffer.from(
             //let message = new Paho.MQTT.Message(payload);
             //message.destinationName = destination;
@@ -446,7 +514,7 @@ export default class HermodLogger  extends HermodMqttServer {
      */ 
     say(siteId,text) {
         let that = this;
-        console.log(['SAY',this.state.connected,destination,payload]);
+        //console.log(['SAY',this.state.connected,destination,payload]);
         if (that.state && that.state.connected) {
             let payload = {text:text};
             this.mqttClient.publish('hermod/'+siteId+'/tts/say',JSON.stringify(payload));

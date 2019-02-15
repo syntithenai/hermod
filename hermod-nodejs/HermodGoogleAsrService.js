@@ -38,7 +38,7 @@ class HermodGoogleAsrService extends HermodService  {
 				}
 		    }
         }
-	    this.manager = this.connectToManager(props.manager,eventFunctions);
+	    this.manager = this.connectToManager('GOOGLEASR',props.manager,eventFunctions);
     }
     
     startMqttListener(siteId) {
@@ -47,7 +47,7 @@ class HermodGoogleAsrService extends HermodService  {
 		// use siteId from start message
 		let callbacks = {}
 		callbacks['hermod/'+siteId+'/microphone/audio'] = this.onAudioMessage.bind(this)
-		this.callbackIds[siteId] = this.manager.addCallbacks(callbacks)
+		this.callbackIds[siteId] = this.manager.addCallbacks('GOOGLEASR',callbacks)
 
 		// Creates a client
 		const client = new speech.SpeechClient();

@@ -5,13 +5,13 @@ var config={
 	allowedSites:['default','demo'],
 	skills: {'joke':'../rasa/joke/'},
 	services: {
-		HermodAudioLoggingService: {
+		HermodAudioLoggingServiceDirect: {
 			
 		},
-		//HermodMicrophoneService: {
+		HermodMicrophoneService: {
 			
-		//}
-		//,
+		}
+		,
 		HermodSpeakerService: {
 		}
 		,
@@ -57,11 +57,11 @@ var config={
 		//// ensure export environment variable GOOGLE_APPLICATION_CREDENTIALS associated with billing account and Speech API enabled.
 		//// service account credentials in console https://console.developers.google.com/apis/credentials?authuser=0&project=hermod-1548488627033
 		//// export GOOGLE_APPLICATION_CREDENTIALS=/home/stever/Downloads/hermod-d96c7d7c36f3.json
-		HermodGoogleAsrService: {
-			model: "google",
-			debug:true
-		}
-		,
+		//HermodGoogleAsrService: {
+			//model: "google",
+			//debug:true
+		//}
+		//,
 		HermodDeepSpeechAsrService: {
 			 model: "default",
 			 timeout: 5000,

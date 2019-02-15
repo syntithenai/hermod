@@ -17,7 +17,6 @@ class HermodAudioLoggingService extends HermodMqttServer  {
 		this.listening = {};
 		this.silent = {};
 		this.messageCount = {};
-		
 		this.mqttStreams = {};
 		this.audioBuffers = {};
 		this.audioDump = {}
@@ -29,20 +28,7 @@ class HermodAudioLoggingService extends HermodMqttServer  {
 		this.mqttConnect().then(function() {
 			that.startMqttListener('demo')
 		});
-					//that.isStarted[siteId]= true;					
-				//}
-			//}
-		    //,
-		    //'hermod/+/microphone/stop' : function(topic,siteId,payload) {
-				//if (that.isStarted[siteId]) {
-					//that.stopMqttListener(siteId)
-					//that.isStarted[siteId] = false;
-				//}
-		    //}
-        //}
-		
-        //this.manager = this.connectToManager(props.manager,eventFunctions);
-
+	
     }
     
 	onMessageArrived(topic,message) {
@@ -54,10 +40,7 @@ class HermodAudioLoggingService extends HermodMqttServer  {
 		let that = this;
 		// subscribe to audio packets
 		// use siteId from start message
-		//let callbacks = {}
-		//callbacks['hermod/'+siteId+'/microphone/audio'] = this.onAudioMessage.bind(this)
-		//this.callbackIds[siteId] = this.manager.addCallbacks(callbacks)
-		this.mqttClient.subscribe('hermod/default/microphone/audio')
+		this.mqttClient.subscribe('hermod/'+siteId+'/microphone/audio')
 		
 		// LOGGING
 		var FileWriter = require('wav').FileWriter;	
@@ -85,7 +68,7 @@ class HermodAudioLoggingService extends HermodMqttServer  {
 	}
 	
 	onAudioMessage(topic,siteId,buffer) {
-		console.log(['onAudioMessage',topic,siteId,buffer])
+	//	console.log(['LOGGER onAudioMessage',topic,siteId,buffer])
 		if (this.audioDump.hasOwnProperty(siteId)) {
 			this.audioDump[siteId].push(buffer)
 			this.messageCount[siteId]++;

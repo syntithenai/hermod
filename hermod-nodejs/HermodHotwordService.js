@@ -40,7 +40,7 @@ class HermodHotwordService extends HermodService  {
 		    }
         }
 		
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager('HOTWORD',props.manager,eventFunctions);
 
     }
     
@@ -50,7 +50,7 @@ class HermodHotwordService extends HermodService  {
 		// use siteId from start message
 		let callbacks = {}
 		callbacks['hermod/'+siteId+'/microphone/audio'] = this.onAudioMessage.bind(this)
-		this.callbackIds[siteId] = this.manager.addCallbacks(callbacks)
+		this.callbackIds[siteId] = this.manager.addCallbacks('HOTWORD',callbacks)
 		
 		// LOGGING
 		var FileWriter = require('wav').FileWriter;	

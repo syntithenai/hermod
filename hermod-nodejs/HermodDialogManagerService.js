@@ -30,7 +30,7 @@ class HermodDialogManagerService extends HermodService  {
 				that.dialogs[dialogId] = {asrModels:payload.asrModels ? payload.asrModels : 'default', nluModels:payload.nluModels ? payload.nluModels : 'default'};
 				//that.sendMqtt('hermod/'+siteId+'/hotword/stop',{})
 				//that.sendMqtt('hermod/'+siteId+'/microphone/stop',{})
-				that.sendMqtt('hermod/'+siteId+'/dialog/sstarted',{id:dialogId})
+				that.sendMqtt('hermod/'+siteId+'/dialog/started',{id:dialogId})
 				that.sendMqtt('hermod/'+siteId+'/asr/stop',{id:dialogId,models:that.dialogs[dialogId].asrModels})
 				that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:dialogId,models:that.dialogs[dialogId].nluModels,text:payload.text,confidence:payload.confidence})
 						
@@ -44,7 +44,7 @@ class HermodDialogManagerService extends HermodService  {
 					startDialog(siteId,payload)
 				}
 				// automatic cleanup after single message with true parameter
-				that.callbackIds[siteId] = that.manager.addCallbacks(callbacks,true)
+				that.callbackIds[siteId] = that.manager.addCallbacks('DM ENDED',callbacks,true)
 			}
 		    ,
 		    'hermod/+/dialog/start' : function(topic,siteId,payload) {
@@ -75,7 +75,7 @@ class HermodDialogManagerService extends HermodService  {
 							that.sendMqtt('hermod/'+siteId+'/asr/start',{id:payload.id,models: that.dialogs[payload.id].asrModels})
 						}
 						// automatic cleanup after single message with true parameter
-						that.callbackIds[siteId] = that.manager.addCallbacks(callbacks,true)						
+						that.callbackIds[siteId] = that.manager.addCallbacks('DM CLEANUP',callbacks,true)						
 					} else {
 						that.sendMqtt('hermod/'+siteId+'/microphone/start',{})
 						that.sendMqtt('hermod/'+siteId+'/asr/start',{id:payload.id,models: that.dialogs[payload.id].asrModels})
@@ -132,7 +132,7 @@ class HermodDialogManagerService extends HermodService  {
 		    }
         }
         
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager('DM',props.manager,eventFunctions);
 		
 		// initialise the dialog manager to start the hotword listener
 		setTimeout(function() {

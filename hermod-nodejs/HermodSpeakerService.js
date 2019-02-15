@@ -25,6 +25,7 @@ class HermodSpeakerService extends HermodService {
 		this.setVolume(props.volume ? props.volume : 1)	
         let eventFunctions = {
             'hermod/+/speaker/play' : function(destination,siteId,audio) {
+			//	console.log(['SPEAKER SERVICE play',destination,siteId,audio]);
                     that.sendMqtt("hermod/"+siteId+"/speaker/started",{});
                     that.playSound(audio).then(function() {
                     		  that.sendMqtt("hermod/"+siteId+"/speaker/finished",{}); 
@@ -37,7 +38,7 @@ class HermodSpeakerService extends HermodService {
 				that.setVolume(payload.volume)
 			}
         } 
-        this.manager = this.connectToManager(props.manager,eventFunctions,false);
+        this.manager = this.connectToManager('SPEAKER',props.manager,eventFunctions,false);
     }  
    
     /* Set volume between 0 and 1 */

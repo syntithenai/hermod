@@ -34,7 +34,7 @@ class App extends Component {
         super(props);
         this.state={}
         this.setLogData = this.setLogData.bind(this);
-        this.siteId = 'browser_'+parseInt(Math.random()*100000000,10);
+        //this.siteId = 'browser_'+parseInt(Math.random()*100000000,10);
         this.siteId = 'demo';
 
         this.logger = new HermodLogger(Object.assign({subscribe:'hermod/demo/#',siteId:this.siteId,username:'admin',password:'admin',logAudio:true,setLogData:this.setLogData},props));

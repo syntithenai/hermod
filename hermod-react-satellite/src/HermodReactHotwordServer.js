@@ -30,12 +30,12 @@ export default class HermodReactHotwordServer extends HermodReactComponent {
         this.hotwordCallback = this.hotwordCallback.bind(this)
         let eventFunctions = {
         // SESSION
-            'hermod/#/hotword/start' : function(topic,siteId,payload) {
+            'hermod/+/hotword/start' : function(topic,siteId,payload) {
                 if (siteId && siteId.length > 0) { // && payload.siteId === that.props.siteId) {
                     that.startHotword(siteId);
                 }
             },
-            'hermod/#/hotword/stop' : function(topic,siteId,payload) {
+            'hermod/+/hotword/stop' : function(topic,siteId,payload) {
                 if (siteId && siteId.length > 0) { // && payload.siteId === that.props.siteId) {
                     that.stopHotword();
                 }

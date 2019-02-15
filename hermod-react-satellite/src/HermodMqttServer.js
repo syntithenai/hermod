@@ -75,13 +75,13 @@ export default class HermodMqttServer {
       console.log([' SERVER CONNECTED',this.props]);
       this.setState({'connected':true});
       this.failCount = 0;
-      let subscribe = this.props.subscribe && this.props.subscribe.length  > 0 ? this.props.subscribe : '#';
-      console.log(['init sub to ',subscribe])
-      that.mqttClient.subscribe(subscribe,function(err) {
+      if (this.props.subscribe && this.props.subscribe.length  > 0) { 
+		that.mqttClient.subscribe(this.props.subscribe,function(err) {
 		   if (err) console.log(['SUBSCRIBE ERROR',err])
-		   console.log(['init sub oDk '])
+		   console.log(['init subscribed to '+that.props.subscribe])
 		   that.afterConnect(that);  
-	  });
+		});
+	  }
     } 
     
     afterConnect() {

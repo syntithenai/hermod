@@ -21,7 +21,7 @@ class HermodTrainingService extends HermodService {
 				}); 
             }
         } 
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager('TRAINING',props.manager,eventFunctions);
     }  
    
     startTraining(topic,siteId,payload) {

@@ -22,14 +22,14 @@ class HermodAudioLoggingServiceDirect extends HermodService  {
 		this.audioDump = {}
 		this.isStarted = {};
         let eventFunctions = {
-            'hermod/+/microphone/start' : function(topic,siteId,payload) {
+            'hermod/+/asr/start' : function(topic,siteId,payload) {
 				if (!that.isStarted[siteId]) {
 					that.messageCount[siteId]=0;
 					that.isStarted[siteId]= true;					
 				}	that.startMqttListener(siteId)
 			}
 		    ,
-		    'hermod/+/microphone/stop' : function(topic,siteId,payload) {
+		    'hermod/+/asr/text' : function(topic,siteId,payload) {
 				if (that.isStarted[siteId]) {
 					that.isStarted[siteId] = false;
 					that.stopMqttListener(siteId)
@@ -37,7 +37,7 @@ class HermodAudioLoggingServiceDirect extends HermodService  {
 		    }
         }
 		
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager('LOGGER',props.manager,eventFunctions);
 		
     }
     
@@ -47,7 +47,7 @@ class HermodAudioLoggingServiceDirect extends HermodService  {
 		// use siteId from start message
 		let callbacks = {}
 		callbacks['hermod/+/microphone/audio'] = this.onAudioMessage.bind(this)
-		this.callbackIds[siteId] = this.manager.addCallbacks(callbacks,false,true)
+		this.callbackIds[siteId] = this.manager.addCallbacks('LOGGER',callbacks,false,false,siteId)
 		
 		// LOGGING
 		var FileWriter = require('wav').FileWriter;	

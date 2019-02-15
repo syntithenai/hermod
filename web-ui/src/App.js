@@ -11,7 +11,7 @@ export default class App extends Component {
         this.siteId = 'browser_demo'; //+parseInt(Math.random()*100000000,10);
         
          //
-        this.logger = new HermodLogger(Object.assign({subscribe:'#',siteId:this.siteId,username:'admin',password:'admin',logAudio:true,setLogData:this.setLogData},props));
+        this.logger = new HermodLogger(Object.assign({siteId:this.siteId,username:'admdin',password:'admin',logAudio:true,setLogData:this.setLogData},props));
   
         /**
          *  INTENT examples from meeka@home 

@@ -68,8 +68,9 @@ class HermodSubscriptionManager  extends HermodMqttServer {
 		- subscribe to relevant topics (allowing for siteId)
 		- save callbacks for onMessageArrived
      */
-   addCallbacks(eventCallbackFunctions,oneOff = false,subscribeAll=true) {
-		console.log(['MANAGER ADDCALLBACKS',subscribeAll,eventCallbackFunctions])
+   addCallbacks(service,eventCallbackFunctions,oneOff = false,subscribeAll=true,siteId) {
+	   if (!siteId) siteId = this.props.siteId;
+		console.log(['MANAGER ADDCALLBACKS',service,subscribeAll,eventCallbackFunctions])
         let that = this;
        	//console.log('=======================================')
 		let callbackIds=[]
@@ -83,14 +84,14 @@ class HermodSubscriptionManager  extends HermodMqttServer {
                     
                     // don't force dialog service to configured site
                    // if (topicParts[2] !== "dialog") {
-					let tkey = siteTopic.replace("hermod/+/","hermod/"+that.props.siteId+"/");
+					let tkey = siteTopic.replace("hermod/+/","hermod/"+siteId+"/");
 					callbackIds.push(that.addSubscription(tkey,value,oneOff));
 					// subscribeAll is used for site specific services - tts, speaker, microphone
 					if (!oneOff && subscribeAll && that.props.allowedSites && that.props.allowedSites.length > 0) {
-						that.props.allowedSites.map(function(siteId) {
-							console.log(['sub many ',siteId,that.props.siteId]);
-							if (that.props.siteId !== siteId) {
-								let thisKey = siteTopic.replace("hermod/+/","hermod/"+siteId+"/");
+						that.props.allowedSites.map(function(siteIdI) {
+							//console.log(['sub many ',siteId,that.props.siteId]);
+							if (siteId !== siteIdI) {
+								let thisKey = siteTopic.replace("hermod/+/","hermod/"+siteIdI+"/");
 								callbackIds.push(that.addSubscription(thisKey,value,false));
 							}
 						});
@@ -122,17 +123,24 @@ class HermodSubscriptionManager  extends HermodMqttServer {
 		let payload = null
 		if (parts.length > 0 && parts[0] === "hermod") {
             // Audio Messages pass through message body direct
-            if (parts.length > 3 && ((parts[2]==="speaker"&& parts[3]==="play"  ) || (parts[2]==="microphone" && parts[3]==="audio")) ) {
+            if (parts.length > 3 && (parts[2]==="speaker"&& parts[3]==="play"  )) {
+				payload = message;
+				console.log('speaker play')
+            } else if (parts.length > 3 && (parts[2]==="microphone" && parts[3]==="audio"))  {
 				payload = message;
 			} else {
 				// only log non audio
-				console.log('message '+topic);
+				//console.log(['message '+topic,message.toString()]);
 				try {
-                  payload = JSON.parse(message);  
+                  payload = JSON.parse(message.toString());  
                 } catch (e) {
-					
+				    console.log(['JSON PARSE ERROR',message.toString()]);
+				  payload = {}
                 }
+                console.log(['message payload '+topic,payload]);
 			}
+			
+			
 			let siteId = parts[1];
 			let callbacks = this.subscriptions[topic];
 			if (callbacks) {

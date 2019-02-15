@@ -20,7 +20,7 @@ class HermodActionService extends HermodService  {
 		} catch (e) {
 		  console.log(e);
 		}
-		this.manager = this.connectToManager(props.manager,eventFunctions);
+		this.manager = this.connectToManager('ACTION',props.manager,eventFunctions);
     }
     
     runAction(topic,siteId,payload) {
@@ -45,7 +45,7 @@ class HermodActionService extends HermodService  {
 							that.sendMqtt('hermod/'+siteId+'/action/finished',{id:payload.id,action:action})
 						}
 						// automatic cleanup after single message with true parameter
-						this.manager.addCallbacks(callbacks,true)
+						this.manager.addCallbacks('ACTION',callbacks,true)
 						
 						that.sendMqtt('hermod/'+siteId+'/action/started',{})
 						that.sendMqtt('hermod/'+siteId+'/tts/say',{text:utterance});

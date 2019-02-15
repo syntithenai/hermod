@@ -13,6 +13,8 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
         if (!props.siteId || props.siteId.length === 0) {
             throw "Hermod Microphone must be configured with a siteId property";
         }
+        // state.sending is updated by hark voice detection
+        // state.enabled when mic loaded and mic/start
         this.state={recording:false,messages:[],lastIntent:'',lastTts:'',lastTranscript:'',showMessage:false,activated:false,speaking:false,showConfig:false,listening:false,sessionId : "",enabled:false,sending:false}
         this.siteId = props.siteId ; //? props.siteId : 'browser'+parseInt(Math.random()*100000000,10);
         this.clientId = props.clientId ? props.clientId :  'client'+parseInt(Math.random()*100000000,10);
@@ -22,14 +24,11 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
         this.messageTimeout = null;
         this.speakingTimeout = null;
         this.speechEvents =  null;
+        //this.startDialog = this.startDialog.bind(this);
+        
         this.startRecording = this.startRecording.bind(this);
         this.stopRecording = this.stopRecording.bind(this);
-        this.startRecorder = this.startRecorder.bind(this);
-        this.sendAudioBuffer = this.sendAudioBuffer.bind(this);
-        this.audioBufferToWav = this.audioBufferToWav.bind(this);
-        this.reSample = this.reSample.bind(this);
-        this.encodeWAV = this.encodeWAV.bind(this);
-        this.interleave = this.interleave.bind(this);
+        //this.startRecorder = this.startRecorder.bind(this);
         this.flashState = this.flashState.bind(this);
         this.activate = this.activate.bind(this);
         this.deactivate = this.deactivate.bind(this);
@@ -53,14 +52,14 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
                     that.flashState('lastTts',payload.text);
                 }
             },
-            'hermod/+/microphone/start' : function(topic,siteId,payload) {
+            'hermod/+/asr/start' : function(topic,siteId,payload) {
                 if (siteId && siteId.length > 0) {
-                    that.setState({enabled : true,sending:true});
+                    that.setState({sending:true});
                 }
             },
-            'hermod/+/microphone/stop' : function(topic,siteId,payload) {
+            'hermod/+/asr/stop' : function(topic,siteId,payload) {
                 if (siteId && siteId.length > 0) {
-                    that.setState({enabled : false,sending:false});
+                    that.setState({sending:false});
                 }
             }
            //,
@@ -98,9 +97,14 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
      * Activate on mount if user has previously enabled.
      */ 
     componentDidMount() {
-        this.startRecorder();
-        
         let that = this;
+        //
+        if (localStorage.getItem(this.appendUserId('Hermodmicrophone_enabled',this.props.user)) === 'true') {
+			setTimeout(function() {
+				that.activate(false);
+			},500);
+		}
+        
         // FORCE START ASR ON THIS SITE BY TOGGLE ON SESSION, WAIT, THEN END SESSION AND RESET LOGS
             //that.queueOneOffCallbacks({
                 //'hermod/+/dialog/started' : function(topic,siteId,payload) {
@@ -155,51 +159,62 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
         delete this.configTimeout
     }; 
   
+  
     
     /**
      * Connect to mqtt, start the recorder and optionally start listening
      * Triggered by microphone click or hotword when the mic is deactivated
      */
-    activate(start = true) {
+    activate(startSending = true) {
 		console.log('activate')
         let that = this;
+        //that.setState({started:true});
         localStorage.setItem(this.appendUserId('Hermodmicrophone_enabled',this.props.user),'true');
-        if (start) {
-            setTimeout(function() {
-                that.startRecording();
-            },500);  
-        }
-        that.setState({activated:true,sending:false});
-    };
+		//setTimeout(function() {
+			that.startRecording();
+			that.setState({activated:true});
+			if (startSending) {
+				that.setState({sending:true});
+				that.logger.sendMqtt('hermod/'+this.props.siteId+'/dialog/start',{});
+			}
+		//},500);  
+	};
     
     
-    /**
-     * Enable streaming of the audio input stream
-     */ 
-    startRecording = function() {
-		//if (this.props.showConfig) return false;
-		//if (this.configTimeout) return false;
-        console.log('start recording')
-        this.setState({lastIntent:'',lastTts:'',lastTranscript:'',showMessage:false});
-        this.sendStartSession(this.siteId,{startedBy:'Hermodreactmicrophone',user:this.props.user ? this.props.user._id : ''});
-    }
+    ///**
+     //* Enable streaming of the audio input stream
+     //*/ 
+    //startRecorder = function() {
+		////if (this.props.showConfig) return false;
+		////if (this.configTimeout) return false;
+       //// console.log('start recording')
+        //this.setState({lastIntent:'',lastTts:'',lastTranscript:'',showMessage:false});
+        //this.sendStartSession(this.siteId,{startedBy:'Hermodreactmicrophone',user:this.props.user ? this.props.user._id : ''});
+    //}
     
     /**
      * Disable microphone and listeners
      */
     deactivate() {
-		console.log('deactivate')
-        localStorage.setItem(this.appendUserId('Hermodmicrophone_enabled',this.props.user),'false');
-        this.setState({activated:false,sending:false});
+		//console.log('deactivate')
+        //localStorage.setItem(this.appendUserId('Hermodmicrophone_enabled',this.props.user),'false');
+        this.setState({sending:false});
     };
 
    
-     /**
-     * Access the microphone and start streaming mqtt packets
-     */ 
-    startRecorder() {
-        let that = this;
-        if (!navigator.getUserMedia) {
+   
+   
+      //https://subvisual.co/blog/posts/39-tutorial-html-audio-capture-streaming-to-node-js-no-browser-extensions/
+    startRecording() {
+		let that = this;
+		console.log('start rec')
+		//this.setState({sending:true});
+		if (this.state.isRecording) return;
+		this.setState({isRecording:true});
+		
+		this.setState({lastIntent:'',lastTts:'',lastTranscript:'',showMessage:false});
+        
+		if (!navigator.getUserMedia) {
             navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
         navigator.mozGetUserMedia || navigator.msGetUserMedia;
         }
@@ -215,34 +230,68 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
              console.log(e);
          }
         function success(e) {
-			   
-			  console.log('got navigator')
+			  //console.log('got navigator')
               let audioContext = window.AudioContext || window.webkitAudioContext;
               let context = new audioContext();
-              that.bindSpeakingEvents(context,e)
-              that.setState({'activated':true});
-              that.gainNode = context.createGain();
-              // initial set volume
-              that.gainNode.gain.value = that.props.config.inputvolume > 0 ? that.props.config.inputvolume/100 : 0.5;
               let audioInput = context.createMediaStreamSource(e);
-              var bufferSize = 512;
+              var bufferSize = 2048;
+              
+				function convertFloat32ToInt16(buffer) {
+				  if (buffer) {
+					  let l = buffer.length;
+					  let buf = new Int16Array(l);
+					  while (l--) {
+						buf[l] = Math.min(1, buffer[l])*0x7FFF;
+					  }
+					  return buf.buffer;
+				  }
+				}
+				
+				function resample(sourceAudioBuffer,TARGET_SAMPLE_RATE,onComplete) {
+					  var offlineCtx = new OfflineAudioContext(sourceAudioBuffer.numberOfChannels, sourceAudioBuffer.duration * sourceAudioBuffer.numberOfChannels * TARGET_SAMPLE_RATE, TARGET_SAMPLE_RATE);
+					  var buffer = offlineCtx.createBuffer(sourceAudioBuffer.numberOfChannels, sourceAudioBuffer.length, sourceAudioBuffer.sampleRate);
+					  // Copy the source data into the offline AudioBuffer
+					  for (var channel = 0; channel < sourceAudioBuffer.numberOfChannels; channel++) {
+						  buffer.copyToChannel(sourceAudioBuffer.getChannelData(channel), channel);
+					  }
+					  // Play it from the beginning.
+					  var source = offlineCtx.createBufferSource();
+					  source.buffer = sourceAudioBuffer;
+					  source.connect(offlineCtx.destination);
+					  source.start(0);
+					  offlineCtx.oncomplete = function(e) {
+						// `resampled` contains an AudioBuffer resampled at 16000Hz.
+						// use resampled.getChannelData(x) to get an Float32Array for channel x.
+						var resampled = e.renderedBuffer;
+						var leftFloat32Array = resampled.getChannelData(0);
+						// use this float32array to send the samples to the server or whatever
+						onComplete(leftFloat32Array);
+					  }
+					  offlineCtx.startRendering();
+				}
+     
+				
               let recorder = context.createScriptProcessor(bufferSize, 1, 1);
               recorder.onaudioprocess = function(e){
-                    //!that.logger.connected || 
-                    if(!that.state.sending || !that.state.enabled) return;
-                    //var left = e.inputBuffer.getChannelData(0);
-                    that.sendAudioBuffer(e.inputBuffer,context.sampleRate); //
-                    //console.log('MIC send audio'); //,buffer,that.audioBuffer]);
-              }
-            if (that.props.addInputGainNode) that.props.addInputGainNode(that.gainNode) ;
-            audioInput.connect(that.gainNode)
-            that.gainNode.connect(recorder);
+                  //  var left = e.inputBuffer.getChannelData(0);
+                  // && that.state.speaking && that.state.started
+                  if (that.state.activated  && that.state.sending ) {
+		    		  console.log(['REC'])
+		    		  resample(e.inputBuffer,16000,function(res) {
+						that.logger.sendAudioMqtt('hermod/demo/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
+            		  });
+            	  }
+	    	  }
+              
+            audioInput.connect(recorder);
             recorder.connect(context.destination); 
         }
-    };
+	
+	}
+   
 
     stopRecording = function() {
-		 this.setState({activated:false,sending:false});
+		 this.setState({sending:false});
         console.log(['stop rec',this.logger])
 		let session = this.logger.getSession(this.props.siteId,null);
 		console.log(session ? session : 'no session');
@@ -318,165 +367,7 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
            }           
        }
    };
-    
-    
-    /** WAV encoding functions */
-    sendAudioBuffer(buffer,sampleRate) {
-        //console.log(['SEND AdUDIO',buffer ? buffer.length:'empty',sampleRate]);
-        let that = this;
-        if (buffer && this.state.speaking) {
-			//console.log(['really send buffer',buffer])
-           this.reSample(buffer,16000,function(result) {
-               console.log(['resampled now send ',"hermod/"+that.siteId+"/microphone/audio"])
-               let wav = that.audioBufferToWav(result) ;
-           	console.log(['got wav',wav])
-               that.logger.sendAudioMqtt("hermod/"+that.siteId+"/microphone/audio", wav); //Buffer.from(wav));
-            },sampleRate);
-			console.log(['sent audio'])
-            }      
-    };
-     
-    convertFloat32ToInt16(buffer) {
-      let l = buffer.length;
-      let buf = new Int16Array(l);
-      while (l--) {
-        buf[l] = Math.min(1, buffer[l])*0x7FFF;
-      }
-      return buf.buffer;
-    } 
-     
-    flattenArray(inChannelBuffer, recordingLength) {
-        let channelBuffer = this.convertFloat32ToInt16(inChannelBuffer);
-        
-        var result = new Float32Array(recordingLength);
-        var offset = 0;
-        for (var i = 0; i < channelBuffer.length; i++) {
-            var buffer = channelBuffer[i];
-            result.set(buffer, offset);
-            offset += buffer.length;
-        }
-        return result;
-    } 
-     
-     
-    reSample(audioBuffer, targetSampleRate, onComplete,sampleRateContext) {
-        console.log(['RESAMPLE',audioBuffer, targetSampleRate, onComplete,sampleRateContext])
-        let sampleRate =  !isNaN(sampleRateContext) ? sampleRateContext : 44100;
-        var channel = audioBuffer && audioBuffer.numberOfChannels ? audioBuffer.numberOfChannels : 1;
-        var samples = audioBuffer.length * targetSampleRate / sampleRate;
-        var offlineContext = new OfflineAudioContext(channel, samples, targetSampleRate);
-        console.log(['RESAMPLE',offlineContext]);
-        var bufferSource = offlineContext.createBufferSource();
-        console.log(['RESAMPLE',bufferSource]);
-        bufferSource.buffer = audioBuffer;
-		
-        bufferSource.connect(offlineContext.destination);
-        console.log(['RESAMPLE connected']);
-        bufferSource.start(0);
-        offlineContext.startRendering().then(function(renderedBuffer){
-            console.log(['RESAMPLE COMPLETE',renderedBuffer]);
-            onComplete(renderedBuffer);
-        }).catch(function(e) {
-            console.log(e);
-        })
-    }
-    
-    
-    audioBufferToWav (buffer, opt) {
-      opt = opt || {}
-
-      var numChannels = buffer.numberOfChannels
-      var sampleRate = buffer.sampleRate
-      var format = opt.float32 ? 3 : 1
-      var bitDepth = format === 3 ? 32 : 16
-
-      var result
-      if (numChannels === 2) {
-        result = this.interleave(buffer.getChannelData(0), buffer.getChannelData(1))
-      } else {
-        result = buffer.getChannelData(0)
-      }
-
-      return this.encodeWAV(result, format, sampleRate, numChannels, bitDepth)
-    }
-
-    encodeWAV (samples, format, sampleRate, numChannels, bitDepth) {
-      var bytesPerSample = bitDepth / 8
-      var blockAlign = numChannels * bytesPerSample
-
-      var buffer = new ArrayBuffer(44 + samples.length * bytesPerSample)
-      var view = new DataView(buffer)
-
-      /* RIFF identifier */
-      this.writeString(view, 0, 'RIFF')
-      /* RIFF chunk length */
-      view.setUint32(4, 36 + samples.length * bytesPerSample, true)
-      /* RIFF type */
-      this.writeString(view, 8, 'WAVE')
-      /* format chunk identifier */
-      this.writeString(view, 12, 'fmt ')
-      /* format chunk length */
-      view.setUint32(16, 16, true)
-      /* sample format (raw) */
-      view.setUint16(20, format, true)
-      /* channel count */
-      view.setUint16(22, numChannels, true)
-      /* sample rate */
-      view.setUint32(24, sampleRate, true)
-      /* byte rate (sample rate * block align) */
-      view.setUint32(28, sampleRate * blockAlign, true)
-      /* block align (channel count * bytes per sample) */
-      view.setUint16(32, blockAlign, true)
-      /* bits per sample */
-      view.setUint16(34, bitDepth, true)
-      /* data chunk identifier */
-      this.writeString(view, 36, 'data')
-      /* data chunk length */
-      view.setUint32(40, samples.length * bytesPerSample, true)
-      if (format === 1) { // Raw PCM
-        this.floatTo16BitPCM(view, 44, samples)
-      } else {
-        this.writeFloat32(view, 44, samples)
-      }
-
-      return buffer
-    }
-
-    interleave (inputL, inputR) {
-      var length = inputL.length + inputR.length
-      var result = new Float32Array(length)
-
-      var index = 0
-      var inputIndex = 0
-
-      while (index < length) {
-        result[index++] = inputL[inputIndex]
-        result[index++] = inputR[inputIndex]
-        inputIndex++
-      }
-      return result
-    }
-
-    writeFloat32 (output, offset, input) {
-      for (var i = 0; i < input.length; i++, offset += 4) {
-        output.setFloat32(offset, input[i], true)
-      }
-    }
-
-    floatTo16BitPCM (output, offset, input) {
-      for (var i = 0; i < input.length; i++, offset += 2) {
-        var s = Math.max(-1, Math.min(1, input[i]))
-        output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true)
-      }
-    }
-
-    writeString (view, offset, string) {
-      for (var i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i))
-      }
-    }
-
-
+ 
 
     
     
@@ -572,7 +463,7 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
         
         {(this.state.activated && this.state.sending) && <span onTouchStart={this.showConfig}  onTouchEnd={this.clearConfigTimer}   onMouseDown={this.showConfig} onMouseUp={this.clearConfigTimer} onContextMenu={this.showConfigNow} onClick={this.stopRecording}>{micOffIcon}</span>} 
         
-        {(this.state.activated  && !this.state.sending) && <span onTouchStart={this.showConfig}  onTouchEnd={this.clearConfigTimer}   onMouseDown={this.showConfig} onMouseUp={this.clearConfigTimer} onContextMenu={this.showConfigNow} onClick={this.startRecording}>{micOnIcon}</span>} 
+        {(this.state.activated  && !this.state.sending) && <span onTouchStart={this.showConfig}  onTouchEnd={this.clearConfigTimer}   onMouseDown={this.showConfig} onMouseUp={this.clearConfigTimer} onContextMenu={this.showConfigNow} onClick={this.activate}>{micOnIcon}</span>} 
         
         {(this.state.showMessage ) && <div style={{padding:'1em', borderRadius:'20px',backgroundColor:'skyblue',margin:'5%',width:'90%',top:'1.7em',color:'black',border:'2px solid blue',zIndex:'9999'}} >
                 {this.state.lastTranscript && <div style={{fontStyle:'italic'}}>{this.state.lastTranscript}</div>}

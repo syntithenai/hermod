@@ -73,7 +73,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 				}
 		    }
         }
-		this.manager = this.connectToManager(props.manager,eventFunctions);
+		this.manager = this.connectToManager('ASR',props.manager,eventFunctions);
     }
     
     startProcess(siteId) {

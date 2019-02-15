@@ -15,7 +15,7 @@ class HermodRasaCoreRouterService extends HermodService  {
             'hermod/+/intent' : this.sendRequest.bind(this),
             'hermod/+/dialog/started' : this.resetTracker.bind(this)
         }
-        this.manager = this.connectToManager(props.manager,eventFunctions);
+        this.manager = this.connectToManager('CORE',props.manager,eventFunctions);
     }
  
 	resetTracker(topic,siteId,payload) {
@@ -92,7 +92,7 @@ class HermodRasaCoreRouterService extends HermodService  {
 								
 						}
 					// automatic cleanup after single message with true parameter
-					that.manager.addCallbacks(callbacks,true)
+					that.manager.addCallbacks('CORE',callbacks,true)
 					// trigger action server
 					that.sendMqtt('hermod/'+siteId+'/action',{id:payload.id,action:action,slots:tracker.data.slots});
 	
@@ -113,7 +113,7 @@ class HermodRasaCoreRouterService extends HermodService  {
     sendRequest(topic,siteId,payload) {
 		let that = this;
 		this.recursionDepth[siteId] = 0;
-		that.sendMqtt('hermod/'+siteId+'/conversations/core/started',{dialogId:payload.dialogId});				
+		that.sendMqtt('hermod/'+siteId+'/core/started',{dialogId:payload.dialogId});				
 		axios.post(this.props.coreServer+"/conversations/"+siteId+"/messages",{text:payload.text,sender:"user",parse_data:payload})
 		  .then(function(response) {
 			  that.predictAndRun(siteId,payload).then(function(action) {
