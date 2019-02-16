@@ -6,9 +6,8 @@ The main story described in [Hermod Protocol Proposal](https://docs.google.com/d
 
 You can talk to RASA !!
 
-install scripts (debian based) for dependancies including duckling, mosquitto, rasa ,...
 
-uses pm2 to manage service processes
+
 
 The single docker image including all services required for the protocol and is the quickest and easiest way to get started.
 
@@ -19,9 +18,9 @@ Authentication,training and additional services and UI pending.
 
 The Hermod (Norse messenger of the gods)  voice protocol describes a series of contracts between services that communicate over MQTT messaging bus and HTTPS to implement the steps in a voice interaction from capturing hardware audio through ASR (Automated Speech Recognition), NLU (Natural Language Understanding), ML (Machine Learning) based routing and finally executing commands.
 
-This package provide a reference implementation of the Hermod protocol using nodejs.
+This package provides a reference implementation of the Hermod protocol using nodejs.
 
-The differentiating feature of the service suite is that it will run offline. The suite does not require Internet access to run making it suitable for standalone applications where network connectivity is patchy.
+The suite does not require Internet access to run making it suitable for standalone applications where network connectivity is patchy.
 This feature significantly improves the privacy of voice automation devices because no information needs to leave your computer.
 
 *``[As at 1/1/2019, Snips is the only company that offers a Privacy focused 'free to hackers' voice stack that runs offline and is optimised for low power hardware. Because Snips is closed source, the Hermod suite has developed to extend ideas from the Snips Hermes protocol to be suitable for building voice based web applications.]``*
@@ -70,7 +69,7 @@ Other services include
 
 ## Quickstart
 
-Dependancies including deepspeech model and rasa can be installed (on Linux) by included npm packages so quickstart is 
+Dependancies including deepspeech model and rasa can be installed (on Linux Ubuntu 18.10) by included npm packages so quickstart is 
 
 `npm install`
 
@@ -88,6 +87,9 @@ To track the conversation progress
 ```
 mqtt_sub -h localhost -v -t 'hermod/+/asr/+' -t 'hermod/+/nlu/+' -t 'hermod/+/dialog/+' -t 'hermod/+/hotword/+' -t 'hermod/+/intent' -t 'hermod/+/action' -t 'hermod/+/action/#' -t 'hermod/+/core/#' -t 'hermod/+/tts/#' -t 'hermod/+/speaker/started' -t 'hermod/+/speaker/finished'
 ```
+
+You can also open [http://localhost:3000](http://localhost:3000) and click the microphone to talk.
+(No remote network access with SSL because audio recording requires SSL)
 
 
 ## Docker Quickstart
@@ -681,6 +683,8 @@ Cross platform audio us implemented by streaming using per system binaries sox, 
 The protocol is designed to scale to many concurrent users of a service suite. Subscriptions and publishing are segmented by siteId so messages are only sent to the correct site or sites.ASR
 
 Topic segmentation also allows flexible implementation of access control. For example a user may be required to register with a website or be identified by voice, before being able to subscribe to their assigned topic. Every message in the protocol starts with `hermod/<siteId>` where siteId is a unique identifier for the device that initiated the dialog.
+
+
 
 
 ## Links
