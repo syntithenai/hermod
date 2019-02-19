@@ -65,6 +65,7 @@ Other services include
 ## Quickstart
 
 ```
+git clone https://github.com/syntithenai/hermod.git
 docker-compose up 
 ```
 
@@ -74,7 +75,8 @@ There are a number of dependancies with complex installations. See the Dockerfil
 
 Using docker-compose adds SSL and pulse audio support but requires customisation of the docker-compose.yml to set your pulse host ip address. 
 
-Pulseaudio is required to be able to use local recogntition and the browser component at the same time to avoid locks on the audio hardware.
+Pulseaudio is required to be able to use local recognition and the browser component at the same time to avoid locks on the audio hardware.
+
 SSL is required by browsers for access to microphone hardware by sites other than localhost.
 
 
@@ -108,6 +110,8 @@ After the service replies "hi david nice to meet you", it will restart the micro
 Then ...
 Try say "tell me a joke" and the service replies "this is a joke" and stops the microphone.
 
+A [full list of intents](https://github.com/syntithenai/hermod/blob/master/rasa/joke/data/nlu_data.md) and [Sample story training data](https://github.com/syntithenai/hermod/blob/master/rasa/joke/data/stories.md) is available in the source code.
+
 
 To track the conversation progress
 
@@ -115,10 +119,13 @@ To track the conversation progress
 mqtt_sub -h localhost -v -t 'hermod/+/asr/+' -t 'hermod/+/nlu/+' -t 'hermod/+/dialog/+' -t 'hermod/+/hotword/+' -t 'hermod/+/intent' -t 'hermod/+/action' -t 'hermod/+/action/#' -t 'hermod/+/core/#' -t 'hermod/+/tts/#' -t 'hermod/+/speaker/started' -t 'hermod/+/speaker/finished'
 ```
 
+If the hermod process is the first to gain access and lock the microphone it is possible to trigger standalone mode where audio is captured directly from the sound card. Try the hotword "Smart Mirror" or "Snowboy".
+
 
 ## Docker Quickstart
 
-As mentioned above, docker-compose is the easiest way to get started.
+As mentioned above, docker-compose is the easiest way to get started. It provides an example of using pulse audio to allow both the local audio and browser audio to work at the same time. It also provides example of nginx-proxy and nginx-proxy-sslgen for virtual hosting of containers against domain names and automatic generation of ssl certificates.
+
 
 A Dockerfile build file is included that incorporates the deepspeech model and installed dependancies. The official build is available on Docker hub. Running the image requires parameters to allow access to sound hardware and expose network mqtt and web.
 
@@ -134,6 +141,7 @@ https://www.freedesktop.org/wiki/Software/PulseAudio/Ports/Windows/Support/
 
 OSX seems to support pulseaudio
 http://macappstore.org/pulseaudio/
+
 
 
 ## Dialog Manager Overview

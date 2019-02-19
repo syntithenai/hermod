@@ -1,5 +1,6 @@
 #!/bin/bash
-apt-get install -y mongodb
+apt-get update && apt-get install -qq -y  mongodb  && rm -rf /var/lib/apt/lists/*
+
 # stop system startup in favor of pm2
 # ubuntu 14+
 systemctl stop mongodb

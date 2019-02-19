@@ -32,14 +32,14 @@ services:
   
   hermod:
         #build: ./
-        image: hermod
+        image: syntithenai/hermod
         restart: always
         #privileged: true
         entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
         environment:
-          VIRTUAL_HOST: hermod.local
+          VIRTUAL_HOST: hermod.syntithenai.com
           VIRTUAL_PORT: 3000
-          LETSENCRYPT_HOST: hermod.local
+          LETSENCRYPT_HOST: hermod.syntithenai.com
           LETSENCRYPT_EMAIL: stever@syntithenai.com
           
         ports:

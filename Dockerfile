@@ -1,11 +1,11 @@
 FROM debian:stable
 USER root
 WORKDIR /usr/src/app
-RUN apt-get update; 
-RUN apt-get install -y curl software-properties-common gnupg 
-RUN curl -sL https://deb.nodesource.com/setup_11.x |  bash -
+COPY ./sources.list /etc/apt/sources.list
 # Create app directory
-RUN apt-get update && apt-get install -y libpcre++-dev python3 python3-pip  nodejs wget python-pip
+RUN apt-get update && apt-get install -y libttspico-utils curl software-properties-common gnupg libpcre++-dev python3 python3-pip  nodejs wget python-pip alsa-utils libasound2-dev nano libatlas-base-dev libmagic-dev  python-pyaudio python3-pyaudio sox  libpcre3 libpcre3-dev pulseaudio wget git python-pip && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sL https://deb.nodesource.com/setup_11.x |  bash -
 
 COPY ./deepspeech-model ./deepspeech-model
 RUN chmod 777 deepspeech-model/install.sh
@@ -23,12 +23,10 @@ RUN cd duckling && ./install.sh
 
 COPY ./rasa/install.sh ./rasa/install.sh
 COPY ./rasa/build.sh ./rasa/build.sh
-COPY ./rasa/joke ./rasa/joke
 
 RUN chmod 777 rasa/install.sh
 RUN chmod 777 rasa/build.sh
 RUN cd rasa && ./install.sh
-RUN cd rasa && ./build.sh
 
 # now copy the rest
 COPY ./package.json ./
@@ -36,11 +34,8 @@ COPY ./ecosystem.config.js ./
 COPY ./mosca ./mosca
 
 # SNOWBOY build deps
-RUN apt-get install -y alsa-utils libasound2-dev nano libatlas-base-dev libmagic-dev  python-pyaudio python3-pyaudio sox  libpcre3 libpcre3-dev
 RUN pip install pyaudio
 
-COPY ./sources.list /etc/apt/sources.list
-RUN apt-get update; apt-get install -y libttspico-utils
 
 
 RUN npm install
@@ -59,8 +54,9 @@ RUN wget http://downloads.sourceforge.net/swig/swig-3.0.10.tar.gz && tar xzf swi
 
 RUN cd /tmp; git clone https://github.com/Kitt-AI/snowboy.git; cd snowboy/ ; npm install && ./node_modules/node-pre-gyp/bin/node-pre-gyp clean configure build
 
-RUN apt-get install -y pulseaudio
-
+# train the models
+COPY ./rasa/joke ./rasa/joke
+RUN cd rasa && ./build.sh
 
 COPY ./hermod-react-satellite ./hermod-react-satellite
 RUN cd hermod-react-satellite; rm -rf node_modules; rm package-lock.json;  npm i
