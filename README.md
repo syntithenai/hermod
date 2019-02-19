@@ -61,7 +61,7 @@ Other services include
 - LED lights animations
 
 
-<img src='hermod.svg' style="background-color:white" />
+<img src='hermod.svg.png' style="background-color:white" />
 
 
 
