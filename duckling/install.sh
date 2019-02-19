@@ -1,4 +1,6 @@
 #!/bin/bash
+apt-get update
+
 wget -qO- https://get.haskellstack.org/ | sh
 
 #apt-get update && \
@@ -20,7 +22,9 @@ wget -qO- https://get.haskellstack.org/ | sh
     
 #export PATH=/root/.cabal/bin:/root/.local/bin:/opt/cabal/2.4/bin:/opt/ghc/8.6.3/bin:$PATH
 
-apt-get update && apt-get install -qq -y libpcre3 libpcre3-dev build-essential --fix-missing --no-install-recommends  && rm -rf /var/lib/apt/lists/*
+apt-get install -qq -y libpcre3 libpcre3-dev build-essential --fix-missing --no-install-recommends  
+
+rm -rf /var/lib/apt/lists/*
 
 mkdir /log
 git clone https://github.com/RasaHQ/duckling.git

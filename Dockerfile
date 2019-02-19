@@ -36,7 +36,7 @@ COPY ./mosca ./mosca
 # SNOWBOY build deps
 RUN pip install pyaudio
 
-
+RUN apt-get install -y nodejs
 
 RUN npm install
 
