@@ -61,9 +61,6 @@ Other services include
 - LED lights animations
 
 
-<img src='hermod.svg.png' style="background-color:white" />
-
-
 
 ## Quickstart
 
@@ -151,6 +148,12 @@ In general, a service should send message to let the dialog manager know when it
 
 
 ### Typical Dialog Flow
+
+
+
+<img src='hermod.svg.png' style="background-color:white" />
+
+
 
 
 When the dialog manager starts, it sends
