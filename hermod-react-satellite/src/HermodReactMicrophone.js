@@ -273,12 +273,12 @@ export default class HermodReactMicrophone extends HermodReactComponent  {
 				
               let recorder = context.createScriptProcessor(bufferSize, 1, 1);
               recorder.onaudioprocess = function(e){
-                    console.log(['onaudio'])
+                  //  console.log(['onaudio'])
 		    		
                   //  var left = e.inputBuffer.getChannelData(0);
                   // && that.state.speaking && that.state.started
                   if (that.state.activated  && that.state.sending ) {
-		    		  console.log(['REC'])
+		    		//  console.log(['REC'])
 		    		  resample(e.inputBuffer,16000,function(res) {
 						that.logger.sendAudioMqtt('hermod/demo/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
             		  });

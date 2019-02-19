@@ -2,28 +2,22 @@
 
 This project is a work in progress. Ideally the example works but no guarantees yet :)
 
-The main story described in [Hermod Protocol Proposal](https://docs.google.com/document/d/1EU3uZWF6ivpNVYWagF2iZFMIzPYy4urbJ-llSqrOE5k/edit#heading=h.sn64gkum70pi) from audio capture to RASA core routing has been implemented. 
+The main story described in [Hermod Protocol Proposal](https://docs.google.com/document/d/1EU3uZWF6ivpNVYWagF2iZFMIzPYy4urbJ-llSqrOE5k/edit#heading=h.sn64gkum70pi) from audio capture to RASA core routing and action server has been implemented. 
 
 You can talk to RASA !!
 
 
 
-
-The single docker image including all services required for the protocol and is the quickest and easiest way to get started.
-
-Authentication,training and additional services and UI pending.
- 
-
 ## Overview
 
 The Hermod (Norse messenger of the gods)  voice protocol describes a series of contracts between services that communicate over MQTT messaging bus and HTTPS to implement the steps in a voice interaction from capturing hardware audio through ASR (Automated Speech Recognition), NLU (Natural Language Understanding), ML (Machine Learning) based routing and finally executing commands.
 
-This package provides a reference implementation of the Hermod protocol using nodejs.
+As at 1/1/2019, Snips is the only company that offers a Privacy focused 'free to hackers' voice stack that runs offline and is optimised for low power hardware. Because Snips is closed source and isn't suitable for multi user, the Hermod suite has developed to extend ideas from the Snips Hermes protocol to be suitable for building voice based web applications.
+
+This package provides a reference implementation of the Hermod protocol using nodejs as well as example applications.
 
 The suite does not require Internet access to run making it suitable for standalone applications where network connectivity is patchy.
 This feature significantly improves the privacy of voice automation devices because no information needs to leave your computer.
-
-*``[As at 1/1/2019, Snips is the only company that offers a Privacy focused 'free to hackers' voice stack that runs offline and is optimised for low power hardware. Because Snips is closed source, the Hermod suite has developed to extend ideas from the Snips Hermes protocol to be suitable for building voice based web applications.]``*
 
 That said, a key feature of the Hermod protocol is the MQTT bus so that services in the stack can be seamlessly distributed across many computers in a network.
 
@@ -67,20 +61,56 @@ Other services include
 - LED lights animations
 
 
+<img src='hermod.svg' style="background-color:white" />
+
+
+
 ## Quickstart
 
-Dependancies including deepspeech model and rasa can be installed (on Linux Ubuntu 18.10) by included npm packages so quickstart is 
+```
+docker-compose up 
+```
 
-`npm install`
+Using the docker image containing all dependancies installed is the easiest way to get started. 
 
-`npm start`
+There are a number of dependancies with complex installations. See the Dockerfile for an example of installation on debian:stable.
 
-The deepspeech model is over 1G to download and the rasa install takes a long time.
+Using docker-compose adds SSL and pulse audio support but requires customisation of the docker-compose.yml to set your pulse host ip address. 
+
+Pulseaudio is required to be able to use local recogntition and the browser component at the same time to avoid locks on the audio hardware.
+SSL is required by browsers for access to microphone hardware by sites other than localhost.
+
+
+
+Once installed, the [pm2 process manager](http://pm2.keymetrics.io/) can be used to manage processes in the service suite.
+```
+docker exec -it hermod_hermod_1
+```
+
+```
+pm2 start
+pm2 logs
+pm2 restart all
+```
+
 
 This package comes with an example model but to do something useful you will want to build your own nlu vocabulary and core routing stories and actions.
 See [The RASA website](http://rasa.com)
 
-When the suite is started say the hotword "Smart Mirror" followed by "my name is david", then after the response say "Tell me a joke".
+
+### Testing
+
+
+Be sure to give the suite sufficient time to allow all services to start (watch the logs)
+
+Open [http://localhost:3000](http://localhost:3000) and click the microphone to talk.
+
+Try say "my name is david"
+
+After the service replies "hi david nice to meet you", it will restart the microphone to listen for you next command
+Then ...
+Try say "tell me a joke" and the service replies "this is a joke" and stops the microphone.
+
 
 To track the conversation progress
 
@@ -88,21 +118,26 @@ To track the conversation progress
 mqtt_sub -h localhost -v -t 'hermod/+/asr/+' -t 'hermod/+/nlu/+' -t 'hermod/+/dialog/+' -t 'hermod/+/hotword/+' -t 'hermod/+/intent' -t 'hermod/+/action' -t 'hermod/+/action/#' -t 'hermod/+/core/#' -t 'hermod/+/tts/#' -t 'hermod/+/speaker/started' -t 'hermod/+/speaker/finished'
 ```
 
-You can also open [http://localhost:3000](http://localhost:3000) and click the microphone to talk.
-(No remote network access with SSL because audio recording requires SSL)
-
 
 ## Docker Quickstart
 
-A Dockerfile build file is included that incorporates the deepspeech model and installed dependancies. The official build is available on Docker hub. Running the image requires parameters to allow access to sound hardware.
+As mentioned above, docker-compose is the easiest way to get started.
 
-```docker run -v /dev/snd:/dev/snd   --privileged -it syntithenai/hermod bash```
+A Dockerfile build file is included that incorporates the deepspeech model and installed dependancies. The official build is available on Docker hub. Running the image requires parameters to allow access to sound hardware and expose network mqtt and web.
 
-[To my knowledge] Docker on windows does not support access to audio hardware. I can only think to use pulse audio on the windows host and share sound through to the Linux container via the network.
+```docker run -v /dev/snd:/dev/snd -p 1883:1883 -p 3000:3000 -p 9001:9001  --privileged -it syntithenai/hermod bash```
 
-## Web Suite
+Including volume  mounts so changes in hermod-* can be reflected in app. [!! CHANGE PATHS FOR YOUR SITE]
+```
+docker run -v /projects/hermod/browser-example:/usr/src/app/browser-example -v /projects/hermod/hermod-nodejs:/usr/src/app/hermod-nodejs -v /projects/hermod/hermod-react-satellite:/usr/src/app/hermod-react-satellite -v /dev/snd:/dev/snd -p 1883:1883 -p 3000:3000  -p 9001:9001 --privileged -it syntithenai/hermod bash
+```
 
-The React based sample web application featuring a microphone and logging components has not yet been ported from hermes.
+[To my knowledge] Docker on windows does not support access to audio hardware.
+https://www.freedesktop.org/wiki/Software/PulseAudio/Ports/Windows/Support/
+
+OSX seems to support pulseaudio
+http://macappstore.org/pulseaudio/
+
 
 ## Dialog Manager Overview
 

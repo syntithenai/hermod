@@ -63,7 +63,6 @@
     "hark": "^1.2.3",
     "merge": "^1.2.1",
     "mqtt": "^2.18.8",
-    "mqtt-match": "^2.0.2",
     "rollup-plugin-multi-entry": "^2.1.0"
   }
 }

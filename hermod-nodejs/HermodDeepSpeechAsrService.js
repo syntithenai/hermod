@@ -91,8 +91,11 @@ class HermodDeepSpeechAsrService extends HermodService  {
 			if (String(chunk).indexOf('transcription:') === 0) {
 				let transcription = String(chunk).slice(13);
 			//	console.log('transcription:'+transcription);
-				that.sendMqtt('hermod/'+siteId+'/asr/text',{id:that.dialogIds[siteId],text:transcription});
-				
+				if (transcription && transcription.trim().length > 0) {
+					that.sendMqtt('hermod/'+siteId+'/asr/text',{id:that.dialogIds[siteId],text:transcription});
+				} else {
+					that.sendMqtt('hermod/'+siteId+'/nlu/fail',{id:that.dialogIds[siteId],reason:'empty transcription'});
+				}
 			}
 			
 		});

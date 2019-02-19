@@ -6,8 +6,6 @@
   "dependencies": {
     "babel-eslint": "^10.0.1",
     "eslint": "^5.12.1",
-    "hermod-nodejs": "file:hermod-nodejs",
-    "hermod-react-satellite": "file:hermod-react-satellite",
     "mosca": "^2.8.3"
   },
   "devDependencies": {},

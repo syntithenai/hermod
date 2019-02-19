@@ -1,381 +1,68 @@
 version: '2'
-
-#volumes: 
-    #pulsevolume:
 services:
-        
+  nginxproxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /etc/nginxcerts:/etc/nginx/certs
+      - /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
+      - /var/www:/usr/share/nginx/html
+      - ./nginx.tmpl:/app/nginx.tmpl
+      - /var/docker/htpasswd:/etc/nginx/htpasswd
+  nginxproxysslgen:
+    #image: alastaircoote/docker-letsencrypt-nginx-proxy-companion
+    image: jrcs/letsencrypt-nginx-proxy-companion:latest
+    container_name: nginxproxysslgen
+    restart: always
+    volumes_from:
+      - nginxproxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/nginxcerts:/etc/nginx/certs
+      - /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
+      - /var/www:/usr/share/nginx/html      
     ## ===========================================================================================   
-    ## AUDIO SERVER EXAMPLE WEBSITE
+    ## HERMOD VOICE SERVICES SUITE
     ## ===========================================================================================   
-    webaudioserver:
-        build: ./docker-images/nodejs
-        image: syntithenai/nodejs
-        #depends_on: ['mongo']
+  
+  hermod:
+        #build: ./
+        image: hermod
         restart: always
-        volumes:
-          - "./snips-react-satellite:/usr/src/app/"
-        #environment:
-          #VIRTUAL_HOST: meeka.syntithenai.com
-          #VIRTUAL_PORT: 7000
-          #LETSENCRYPT_HOST: meeka.syntithenai.com
-          #LETSENCRYPT_EMAIL: stever@syntithenai.com
+        #privileged: true
+        entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
+        environment:
+          VIRTUAL_HOST: hermod.local
+          VIRTUAL_PORT: 3000
+          LETSENCRYPT_HOST: hermod.local
+          LETSENCRYPT_EMAIL: stever@syntithenai.com
           
         ports:
+           # web
           - "3000:3000"
-        
-   
-    ## ===========================================================================================   
-    ## SNIPS ALL IN ONE
-    ## ===========================================================================================   
-    snips:
-        depends_on: ['mosquitto']
-        restart: always
-        image: syntithenai/snips
-        build: ./docker-images/snips
-        # use paprefs to enable network server
-        environment: ['PULSE_SERVER=192.168.1.100','PULSE_COOKIE=/tmp/pulse-cookie']
+            # mqtt (debug) - disable for production
+          - "1883:1883"
+            # mqtt web sockets 
+          - "9001:9001"
+        # on your linux desktop install paprefs and enable network access to local sound devices 
+        # update IP below to your machine
+        environment: 
+            - PULSE_SERVER=192.168.1.200
+            - PULSE_COOKIE=/tmp/cookie
         volumes:
-            - ./assistants/meekahome/assistant:/usr/share/snips/assistant
-            - /home/stever/.config/pulse/cookie:/tmp/pulse-cookie
- 
-                
-    # ==========================================================================================
-    # MQTT MESSAGING QUEUE -  WITH WEBSOCKETS
-    # ===========================================================================================
-    mosquitto:
-        # see docker-images/manifest*.yml for multi arch config
-        image: syntithenai/mosquitto
-        restart: always
-        ports:
-            - 1883:1883
-            # websockets enabled (for browser clients)
-            - 9001:9001 
-        volumes:
-          # enable websockets
-          - ./mosquitto-websockets.conf:/etc/mosquitto/conf.d/websockets.conf
-          
-   
-    # ==========================================================================================
-    # OPEN SNIPS
-    # ===========================================================================================
+            #- /dev/snd:/dev/snd
+            # HOST MOUNTS FOR DEVELOPMENT
+            - ./hermod-nodejs:/usr/src/app/hermod-nodejs
+            - ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
+            - ./browser-example:/usr/src/app/browser-example
+            # Use PULSE
+            - ./pulseaudio/asound-pulse.conf:/etc/asound.conf
+            - ./pulseaudio/client.conf:/etc/pulse/client.conf
+            # PULSE COOKIE FROM HOST
+            - /home/stever/.config/pulse/cookie:/tmp/cookie
     
-   
-   
-    # ===========================================================================================
-    # AUDIOSERVER
-    # ===========================================================================================
-    # OPENSNIPS AUDIOSERVER
-    #audioserver:
-        #depends_on: ['mosquitto']
-        #devices: ['/dev/snd']
-        #image: syntithenai/rasa
-        #restart: always
-        #build: ./docker-images/rasa
-        #working_dir: /opt/snips_services
-        ##entrypoint : ["/opt/snips_services/audio_server.py"]
-        #entrypoint: ['/bin/sleep','360000']
-        #volumes:
-            ## HOST MOUNT FOR DEVELOPMENT
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            ## Use ALSA for conversion to 16 16000 mono
-            #- ./docker-images/rasa/asound.conf:/etc/asound.conf
-    
-    ## OPENSNIPS AUDIOSERVER VIA PULSEAUDIO ON HOST
-    #audioserver:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/rasa
-        #restart: always
-        #build: ./docker-images/rasa
-        #working_dir: /opt/snips_services
-        #entrypoint : ["/opt/snips_services/audio_server.py"]
-        ##entrypoint: ['/bin/sleep','360000']
-        #environment: 
-            #- PULSE_SERVER=192.168.1.100
-        #volumes:
-            ## HOST MOUNT FOR DEVELOPMENT
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            ## Use PULSE
-            #- ./docker-images/rasa/asound-pulse.conf:/etc/asound.conf
-            #- ./docker-images/rasa/client.conf:/etc/pulse/client.conf
-            ## PULSE COOKIE FROM HOST
-            #- /home/stever/.config/pulse/cookie:/tmp/cookie
-    
-                     
-    # SNIPS AUDIOSERVER
-    #audioserver:
-        #depends_on: ['mosquitto']
-        #devices: ['/dev/snd']
-        #image: syntithenai/snips
-        #restart: always
-        #build: ./docker-images/snips
-        ##entrypoint: ['/bin/sleep','360000']
-        #command:  --exclude-components snips-dialogue --exclude-components snips-asr   --exclude-components snips-analytics --exclude-components snips-tts  --exclude-components snips-hotword --exclude-components  snips-queries  -mqqt mosquitto:1883
-        #volumes:
-            ## asound as per snips documentation
-            #- ./docker-images/rasa/asound.conf:/etc/asound.conf
-        
-
-    ### SNIPS AUDIOSERVER via PULSEAUDIO ON HOST
-    #audioserver:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/snips
-        #restart: always
-        #build: ./docker-images/snips
-        #environment: 
-            #- PULSE_SERVER=192.168.1.100
-        ##entrypoint: ['/bin/sleep','360000']
-        #command:  --exclude-components snips-dialogue --exclude-components snips-asr   --exclude-components snips-analytics --exclude-components snips-tts  --exclude-components snips-hotword --exclude-components  snips-queries  -mqqt mosquitto:1883
-        #volumes:
-            ## Use PULSE
-            #- ./docker-images/rasa/asound-pulse.conf:/etc/asound.conf
-            #- ./docker-images/rasa/client.conf:/etc/pulse/client.conf
-            ## PULSE COOKIE FROM HOST
-            #- /home/stever/.config/pulse/cookie:/tmp/cookie
-    
-        
-    
-    ### ===========================================================================================
-    ### HOTWORD SERVER   
-    ### ===========================================================================================   
-    ## OPENSNIPS HOTWORD SERVER
-    #hotword:
-        #depends_on: ['mosquitto','audioserver']
-        ##    devices: ['/dev/snd']
-        #build: ./docker-images/rasa
-        #image: syntithenai/rasa
-        #restart: always
-        #working_dir: /opt/snips_services
-        ##entrypoint: ['/bin/sleep','36000']
-        #entrypoint: ['/opt/snips_services/startsnowboy.sh']
-        #volumes:
-            ## dev mode
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            ##- ./docker-images/snowboy/snips_hotword_snowboy:/opt/snips_hotword_snowboy/
-        #environment:
-            #- PYTHONUNBUFFERED=true
-            #- mqtt_host=mosquitto
-            #- mqtt_port=1883
-            #- hotword_model=/opt/snips_services/resources/snowboy.umdl
-            #- hotword=snowboy
-            #- hotword_sensitivity=0.8
-            #- hotword_listen_to=default
-                
-
-    ## SNIPS HOTWORD SERVER
-    #hotword:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/snips
-        #restart: always
-        #build: ./docker-images/snips
-        #command:   --exclude-components snips-dialogue --exclude-components snips-asr  --exclude-components snips-audio-server --exclude-components snips-analytics --exclude-components snips-tts   --exclude-components  snips-queries  -mqqt mosquitto:1883
-    
-
-
-    ## ===========================================================================================   
-    ## TEXT TO SPEECH (TTS) SERVER   
-    ## ===========================================================================================   
-    ## OPENSNIPS TTS SERVER            
-    #tts:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/rasa
-        #restart: always
-        #build: ./docker-images/rasa
-        #working_dir: /opt/snips_services
-        #entrypoint: ['/opt/snips_services/tts_server.py']
-        ##entrypoint: ['/bin/sleep','360000']
-        #environment:
-            #- PYTHONUNBUFFERED=true
-        #volumes:
-            ## dev mode
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            
-    ## SNIPS TTS SERVER
-    ##tts:
-        ##depends_on: ['mosquitto']
-        ##image: syntithenai/snips
-        ##restart: always
-        ##build: ./docker-images/snips
-        ##command:   --exclude-components snips-dialogue --exclude-components snips-asr  --exclude-components snips-audio-server --exclude-components snips-analytics  --exclude-components snips-hotword --exclude-components  snips-queries  -mqqt mosquitto:1883
-        
-   
-    ### ===========================================================================================   
-    ### ASR SERVER   
-    ### ===========================================================================================   
-    ## OPENSNIPS ASR SERVER - requires two services, kaldi raw and an mqqt proxy for ASR
-    #kaldi:
-        #image: syntithenai/kaldi
-        #restart: always
-        #build: ./docker-images/kaldi/
-        #ports:
-            #- 8080:80
-        #entrypoint: ['/opt/delayedstart.sh']
-        #working_dir: /opt
-        ##entrypoint: ['/bin/sleep','360000']
-        #volumes:
-            #- ./docker-images/kaldi/asound-pulse.conf:/etc/asound.conf
-            ##- /home/stever/projects/kaldi-models/models/test:/opt/models
-            ##- /home/stever/projects/kaldi-models/models/test:/opt/test/models
-    
-    ## sample web application talking to kaldi server
-    #dictate:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/rasa
-        #restart: always
-        #build: ./docker-images/rasa
-        #working_dir: /opt/snips_services/dictate.js
-        #entrypoint: ['python','-m','SimpleHTTPServer']
-        #ports:
-            #- 8000:8000
-        ##entrypoint: ['/bin/sleep','360000']
-        #volumes:
-            ## dev mode
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-        
-    #asr:
-        #depends_on: ['kaldi']
-        #image: syntithenai/rasa2
-        #restart: always
-        #build: ./docker-images/rasa2
-        #working_dir: /opt/snips_services
-        #entrypoint : ["/opt/snips_services/kaldi_server.py"]
-        ##entrypoint: ['/bin/sleep','360000']
-        #environment:
-            #- PYTHONUNBUFFERED=true
-        #volumes:
-            ## HOST MOUNT FOR DEVELOPMENT
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-
-    ## SNIPS ASR SERVER
-    ##asr:
-        ##depends_on: ['mosquitto']
-        ##image: syntithenai/snips
-        ##restart: always
-        ##build: ./docker-images/snips
-        ##command:  --exclude-components snips-dialogue --exclude-components snips-audio-server --exclude-components snips-analytics --exclude-components snips-tts  --exclude-components snips-hotword --exclude-components  snips-queries  -mqqt mosquitto:1883
-        
-   
-   
-    ### ===========================================================================================   
-    ### NATURAL LANGUAGE UNDERSTANDING (NLU) SERVER   
-    ### ===========================================================================================   
-    ### OPENSNIPS NLU SERVER            
-    #nlu:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/rasa2
-        #restart: always
-        #build: ./docker-images/rasa2
-        #working_dir: /opt/snips_services
-        #environment:
-            #- PYTHONUNBUFFERED=true
-            ## this is removed from queries and added to intent names to support snips interoperability
-            #- rasa_nlu_snips_user_id=user_Kr5A7b4OD
-            #- rasa_nlu_model_path=models/nlu
-            #- rasa_nlu_training_path=training_data/nlu
-            #- rasa_nlu_models=default,meekamusic
-            ##- rasa_nlu_default_config_file=training_data/nlu/config.json
-            ##- rasa_nlu_default_config_file_slots=training_data/nlu/config-slots.json
-            ###- training_mqtt_hostname=mosquitto
-            ##- training_mqtt_port=1883
-        #entrypoint : ["/opt/snips_services/rasa_nlu_server.py"]
-        ##entrypoint: ['/bin/sleep','360000']
-        #volumes:
-            ## HOST MOUNT FOR DEVELOPMENT
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            ## HOST MOUNT MODELS TO PERSIST BETWEEN UP/DOWN RESTARTS
-            #- /opt/rasa_models:/opt/snips_services/models
-            
-    ## SNIPS NLU SERVER            
-    ##nlu:
-        ##depends_on: ['mosquitto']
-        ##image: syntithenai/snips
-        ##restart: always
-        ##build: ./docker-images/snips
-        ##environment:
-            ##- PYTHONUNBUFFERED=true
-        ##command:   --exclude-components snips-dialogue --exclude-components snips-asr  --exclude-components snips-audio-server --exclude-components snips-analytics --exclude-components snips-tts  --exclude-components snips-hotword  -mqqt mosquitto:1883
-            
-
-
-    #### ===========================================================================================   
-    #### DIALOGUE SERVER   
-    #### ===========================================================================================   
-    ##### OPENSNIPS DIALOGUE SERVER            
-    #dialogue:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/rasa
-        #restart: always
-        #build: ./docker-images/rasa
-        #working_dir: /opt/snips_services
-        #entrypoint : ["/opt/snips_services/dialog_server.py"]
-        #environment:
-            #- PYTHONUNBUFFERED=true
-        ##entrypoint: ['/bin/sleep','360000']
-        #volumes:
-            ## HOST MOUNT FOR DEVELOPMENT
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            ### HOST MOUNT MODELS TO PERSIST BETWEEN UP/DOWN RESTARTS
-            
-    ### SNIPS DIALOGUE SERVER            
-    ##dialog:
-        ##depends_on: ['mosquitto']
-        ##image: syntithenai/snips
-        ##restart: always
-        ##build: ./docker-images/snips
-        ##environment:
-            ##- PYTHONUNBUFFERED=true
-        ##command:   --exclude-components snips-queries --exclude-components snips-asr  --exclude-components snips-audio-server --exclude-components snips-analytics --exclude-components snips-tts  --exclude-components snips-hotword  -mqqt mosquitto:1883
-        
-
-    ### ===========================================================================================   
-    ### ACTION CONTROLLER SERVER   - USING  RASA CORE
-    ### ===========================================================================================   
-    #actionhandler:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/rasa2
-        ##restart: always
-        #build: ./docker-images/rasa2
-        #working_dir: /opt/snips_services
-        #environment:
-            ## for intents coming from snips
-            #- rasa_core_snips_user_id=user_Kr5A7b4OD
-            ## optionally provide training/config
-            #- rasa_core_domain_file=training_data/dialogue/domain.yml
-            #- rasa_core_training_file=training_data/dialogue/stories.md
-            #- PYTHONUNBUFFERED=true
-            ##- training_mqtt_hostname=mosquitto
-            ##- training_mqtt_port=1883
-        ##entrypoint : ["/opt/snips_services/rasa_core_server.py"]    
-        #entrypoint: ['/bin/sleep','360000']
-        #volumes:
-            ## HOST MOUNT FOR DEVELOPMENT
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            ## HOST MOUNT MODELS TO PERSIST BETWEEN UP/DOWN RESTARTS
-            #- /opt/rasa_models:/opt/snips_services/models
-            #- /home/stever/projects/rasa_core:/app/rasa_core
-            #- /home/stever/projects/rasa_nlu:/rasa_nlu
-    
-   
-
-    ### ===========================================================================================   
-    ### TRAINING SERVER
-    ### listens for messages on hermes/training/start and sends hermes/training/queued and hermes/training/started and hermes/training/complete
-    ### ===========================================================================================   
-    #trainer:
-        #depends_on: ['mosquitto']
-        #image: syntithenai/rasa2
-        #restart: always
-        #build: ./docker-images/rasa2
-        #working_dir: /opt/snips_services
-        #entrypoint : ["/opt/snips_services/training_server.py"]    
-        ##entrypoint: ['/bin/sleep','360000']
-        #environment:
-            #- PYTHONUNBUFFERED=true
-        #volumes:
-            ## HOST MOUNT FOR DEVELOPMENT
-            #- ./docker-images/rasa/snips_services:/opt/snips_services
-            ## HOST MOUNT MODELS TO PERSIST BETWEEN UP/DOWN RESTARTS
-            #- /opt/rasa_models:/opt/snips_services/models
-            #- /home/stever/projects/rasa_core:/app/rasa_core
-            #- /home/stever/projects/rasa_nlu:/rasa_nlu
-    
-     

@@ -45,7 +45,7 @@ class HermodActionService extends HermodService  {
 							that.sendMqtt('hermod/'+siteId+'/action/finished',{id:payload.id,action:action})
 						}
 						// automatic cleanup after single message with true parameter
-						this.manager.addCallbacks('ACTION',callbacks,true)
+						this.manager.addCallbacks('ACTION',callbacks,true,false,siteId)
 						
 						that.sendMqtt('hermod/'+siteId+'/action/started',{})
 						that.sendMqtt('hermod/'+siteId+'/tts/say',{text:utterance});

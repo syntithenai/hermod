@@ -1,3 +1,5 @@
+%YAML 1.1
+---
 actions:
 - action_end
 - utter_name
@@ -11,15 +13,15 @@ entities:
 - name
 forms: []
 intents:
-- deny:
-    use_entities: true
-- thanks:
+- greet:
     use_entities: true
 - goodbye:
     use_entities: true
-- joke:
+- thanks:
     use_entities: true
-- greet:
+- deny:
+    use_entities: true
+- joke:
     use_entities: true
 - name:
     use_entities: true

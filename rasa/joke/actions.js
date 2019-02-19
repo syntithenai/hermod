@@ -6,10 +6,13 @@ var functions = {
 				that.sendMqtt('hermod/'+siteId+'/tts/say',{text:'this is a joke'});
 				let callbacks = {}
 				callbacks['hermod/'+siteId+'/tts/finished'] = function() {
+					console.log('GOT TTS FINSIH NOW RESOLVE ACTION');
 					resolve();
 				}
+				console.log('BIND ACTION CALLBACKS');
+					
 				// automatic cleanup after single message with true parameter
-				that.manager.addCallbacks(callbacks,true)
+				that.manager.addCallbacks('jokeaction',callbacks,true,false,siteId)
 				
 			});
 		}	

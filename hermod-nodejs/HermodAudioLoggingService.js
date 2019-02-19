@@ -2,8 +2,6 @@ var HermodService = require('./HermodService')
 var HermodMqttServer = require('./HermodMqttServer')
 
 const record = require('node-record-lpcm16');
-const Detector = require('snowboy').Detector;
-const Models = require('snowboy').Models;
 var stream = require('stream') 
 var Readable = stream.Readable;
 var Wav = require('wav')

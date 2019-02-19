@@ -7,7 +7,7 @@ var lame = require("lame");
 var fs = require("fs");
 var wav = require('wav');
 
-//var pcm = require('pcm-util')
+var pcm = require('pcm-util')
 var volume = require("pcm-volume");
 
 			
@@ -68,7 +68,12 @@ class HermodSpeakerService extends HermodService {
 		let that = this;
 		this.volume = new volume();
 		this.setVolume(this.props.volume ? this.props.volume : 1)	
+        //let playTimout = null
         return new Promise(function(resolve,reject) {
+			//playTimout = setTimeout(function() {
+				//resolve();
+			//},10000);
+			
 			that.stopPlaying().then(function() {
 				try {
 					let mediaType = audioType(buffer);
@@ -110,6 +115,8 @@ class HermodSpeakerService extends HermodService {
 						readable.push(null)
 						
 						readable.pipe(reader).pipe(that.volume)
+					} else {
+						resolve();
 					}
 				} catch (e) {
 					console.log(['PIPE ERROR',e])

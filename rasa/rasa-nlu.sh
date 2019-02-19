@@ -1,3 +1,3 @@
 #!/bin/bash
-python -m rasa_nlu.server --path ./models 
+python3 -m rasa_nlu.server --path ./models 
 	
