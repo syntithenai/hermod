@@ -1,11 +1,11 @@
 module.exports = {
   apps : [
-  {
-    name: 'mosca',
-    script: 'index.js',
-	cwd: './mosca'
-  }
-  ,
+  //{
+    //name: 'mosca',
+    //script: 'index.js',
+	//cwd: './mosca'
+  //}
+  //,
   {
     name: 'mongodb',
     script: 'run.sh',
@@ -27,6 +27,7 @@ module.exports = {
   {
     name: 'duckling',
     script: 'run.sh',
+    interpreter: '/bin/bash',
 	cwd: './duckling'
   }
   ,

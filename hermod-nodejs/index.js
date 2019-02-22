@@ -3,7 +3,7 @@ var config = require('./config')
 config.siteId = config.siteId ? config.siteId :  'site'+parseInt(Math.random()*100000000,10);
         
 var HermodSubscriptionManager = require('./HermodSubscriptionManager')
-var manager = new HermodSubscriptionManager({siteId:config.siteId,username:config.username,password:config.password,allowedSites:config.allowedSites});
+var manager = new HermodSubscriptionManager({siteId:config.siteId,username:config.username,password:config.password,allowedSites:config.allowedSites,mqttServer:config.mqttServer});
 manager.mqttConnect().then(function() {
 
 	// Require then instantiate each service key passing contained properties to constructor
@@ -15,11 +15,11 @@ manager.mqttConnect().then(function() {
 		} else {
 			classRef = require('./' + serviceKey);
 		}
-		var imanager = new HermodSubscriptionManager({siteId:config.siteId,username:config.username,password:config.password,allowedSites:config.allowedSites});
+		var imanager = new HermodSubscriptionManager({siteId:config.siteId,username:config.username,password:config.password,allowedSites:config.allowedSites,mqttServer:config.mqttServer});
 		imanager.mqttConnect().then(function() {
 
 			var h = new classRef(Object.assign(config.services[serviceKey],{manager:imanager,siteId:config.siteId}));	// override siteId,logger
 		});
 	})	
 })
-	 
+

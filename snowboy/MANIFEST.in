@@ -1,0 +1,12 @@
+recursive-include include *
+recursive-include lib *
+recursive-include swig/Python *
+recursive-include resources *
+include README.md
+
+exclude *.txt
+exclude *.pyc
+global-exclude .DS_Store _snowboydetect.so
+prune resources/alexa
+prune lib/ios
+prune lib/android

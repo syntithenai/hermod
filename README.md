@@ -1,6 +1,6 @@
 # Hermod Voice Protocol
 
-This project is a work in progress. Ideally the example works but no guarantees yet :)
+This project is a work in progress. 
 
 The main story described in [Hermod Protocol Proposal](https://docs.google.com/document/d/1EU3uZWF6ivpNVYWagF2iZFMIzPYy4urbJ-llSqrOE5k/edit#heading=h.sn64gkum70pi) from audio capture to RASA core routing and action server has been implemented. 
 
@@ -66,6 +66,12 @@ Other services include
 
 ```
 git clone https://github.com/syntithenai/hermod.git
+```
+
+Edit docker-compose.yml and update the pulseaudio host and path to cookie.
+Install and run paprefs and enable network access to local audio hardware.
+
+```
 docker-compose up 
 ```
 
@@ -73,19 +79,15 @@ Using the docker image containing all dependancies installed is the easiest way 
 
 There are a number of dependancies with complex installations. See the Dockerfile for an example of installation on debian:stable.
 
-Using docker-compose adds SSL and pulse audio support but requires customisation of the docker-compose.yml to set your pulse host ip address. 
 
-Pulseaudio is required to be able to use local recognition and the browser component at the same time to avoid locks on the audio hardware.
+Once installed and running, the [pm2 process manager](http://pm2.keymetrics.io/) can be used to manage processes in the service suite.
 
-SSL is required by browsers for access to microphone hardware by sites other than localhost.
-
-
-
-Once installed, the [pm2 process manager](http://pm2.keymetrics.io/) can be used to manage processes in the service suite.
+To gain shell access to the container
 ```
-docker exec -it hermod_hermod_1
+docker exec -it hermod_hermod_1 bash
 ```
 
+Use pm2
 ```
 pm2 start
 pm2 logs
@@ -102,13 +104,16 @@ See [The RASA website](http://rasa.com)
 
 Be sure to give the suite sufficient time to allow all services to start (watch the logs)
 
-Open [http://localhost:3000](http://localhost:3000) and click the microphone to talk.
+Open [https://localhost](https://localhost) and click the microphone to talk.
 
 Try say "my name is david"
 
 After the service replies "hi david nice to meet you", it will restart the microphone to listen for you next command
 Then ...
 Try say "tell me a joke" and the service replies "this is a joke" and stops the microphone.
+
+The first attempt may be problematic as the service starts and the NLU model loads on first request. Subsequent conversations work fine.
+
 
 A [full list of intents](https://github.com/syntithenai/hermod/blob/master/rasa/joke/data/nlu_data.md) and [Sample story training data](https://github.com/syntithenai/hermod/blob/master/rasa/joke/data/stories.md) is available in the source code.
 
@@ -159,7 +164,7 @@ In general, a service should send message to let the dialog manager know when it
 
 
 
-<img src='hermod.svg.png' style="background-color:white" />
+<img src='message-flow-hermod.svg.png' style="background-color:white" />
 
 
 
@@ -815,4 +820,4 @@ https://github.com/RasaHQ/conversational-ai-workshop-18
 
 
 
-
+- openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem

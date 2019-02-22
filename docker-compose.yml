@@ -1,38 +1,42 @@
 version: '2'
 services:
-  nginxproxy:
-    image: jwilder/nginx-proxy
-    container_name: nginx-proxy
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    labels:
-      - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - /etc/nginxcerts:/etc/nginx/certs
-      - /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
-      - /var/www:/usr/share/nginx/html
-      - ./nginx.tmpl:/app/nginx.tmpl
-      - /var/docker/htpasswd:/etc/nginx/htpasswd
-    environment:
-     HTTPS_METHOD: noredirect
-     DEFAULT_HOST: hermod.syntithenai.com
-  nginxproxysslgen:
-    #image: alastaircoote/docker-letsencrypt-nginx-proxy-companion
-    image: jrcs/letsencrypt-nginx-proxy-companion:latest
-    container_name: nginxproxysslgen
-    restart: always
-    volumes_from:
-      - nginxproxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /etc/nginxcerts:/etc/nginx/certs
-      - /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
-      - /var/www:/usr/share/nginx/html
+  #nginxproxy:
+    #image: jwilder/nginx-proxy
+    #container_name: nginx-proxy
+    #restart: always
+    #ports:
+      #- "80:80"
+      #- "443:443"
+    #labels:
+      #- com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
+    #volumes:
+      #- /var/run/docker.sock:/tmp/docker.sock:ro
+      #- /etc/nginxcerts:/etc/nginx/certs
+      #- /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
+      #- /var/www:/usr/share/nginx/html
+      #- ./nginx.tmpl:/app/nginx.tmpl
+      #- /var/docker/htpasswd:/etc/nginx/htpasswd
+    #environment:
+     #HTTPS_METHOD: noredirect
+     #DEFAULT_HOST: hermod.syntithenai.com
+  #nginxproxysslgen:
+    ##image: alastaircoote/docker-letsencrypt-nginx-proxy-companion
+    #image: jrcs/letsencrypt-nginx-proxy-companion:latest
+    #container_name: nginxproxysslgen
+    #restart: always
+    #volumes_from:
+      #- nginxproxy
+    #volumes:
+      #- /var/run/docker.sock:/var/run/docker.sock:ro
+      #- /etc/nginxcerts:/etc/nginx/certs
+      #- /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
+      #- /var/www:/usr/share/nginx/html
 
-
+#VIRTUAL_HOST: hermod.syntithenai.com
+          #VIRTUAL_PORT: 3000
+          #LETSENCRYPT_HOST: hermod.syntithenai.com
+          #LETSENCRYPT_EMAIL: stever@syntithenai.com
+          
    
     ## ===========================================================================================   
     ## HERMOD VOICE SERVICES SUITE
@@ -40,32 +44,29 @@ services:
   
   hermod:
         #build: ./
-        image: syntithenai/hermod
+        image: hermod/syntithenai
         restart: always
         #privileged: true
         entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
         environment:
-          VIRTUAL_HOST: hermod.syntithenai.com
-          VIRTUAL_PORT: 3000
-          LETSENCRYPT_HOST: hermod.syntithenai.com
-          LETSENCRYPT_EMAIL: stever@syntithenai.com
           PULSE_SERVER: 192.168.1.200
           PULSE_COOKIE: /tmp/cookie
         ports:
            # web
-          - "3000:3000"
+          - "80:80"
+          - "443:443"
             # mqtt (debug) - disable for production
-          - "1883:1883"
+          #- "1883:1883"
             # mqtt web sockets 
-          - "9001:9001"
+          #- "9001:9001"
         # on your linux desktop install paprefs and enable network access to local sound devices 
         # update IP below to your machine
         volumes:
             #- /dev/snd:/dev/snd
             # HOST MOUNTS FOR DEVELOPMENT
-            - ./hermod-nodejs:/usr/src/app/hermod-nodejs
-            - ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
-            - ./browser-example:/usr/src/app/browser-example
+            #- ./hermod-nodejs:/usr/src/app/hermod-nodejs
+            #- ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
+            #- ./browser-example:/usr/src/app/browser-example
             # Use PULSE
             - ./pulseaudio/asound-pulse.conf:/etc/asound.conf
             - ./pulseaudio/client.conf:/etc/pulse/client.conf

@@ -1,4 +1,5 @@
 var config={
+	//mqttServer:'wss://hermod.syntithenai.com',
 	siteId:'default',
 	username:'admin',
 	password:'admin',

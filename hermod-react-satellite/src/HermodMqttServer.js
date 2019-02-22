@@ -14,8 +14,7 @@ export default class HermodMqttServer {
         this.onMessageArrived = this.onMessageArrived.bind(this);
         this.onConnect = this.onConnect.bind(this);
         //this.onConnectionLost = this.onConnectionLost.bind(this);
-        this.mqttConnect = this.mqttConnect.bind(this);
-        
+        this.mqttConnect = this.mqttConnect.bind(this);       
      }   
      
      setState(newState) {
@@ -37,10 +36,10 @@ export default class HermodMqttServer {
      * Connect to mqtt server
     */
     mqttConnect() {
-        let port = this.props.mqttPort && this.props.mqttPort > 0 ? parseInt(this.props.mqttPort,10) : 9001
-        let server = this.props.mqttServer && this.props.mqttServer.length > 0 ? this.props.mqttServer :  window.location.hostname ;
-        console.log(['CONNECT',{host:server,port:port,username:this.props.username,password:this.props.password},this.props.subscribe]);
-		this.mqttClient  = mqtt.connect({host:server,port:port,username:this.props.username,password:this.props.password})
+        //let port = this.props.mqttPort && this.props.mqttPort > 0 ? parseInt(this.props.mqttPort,10) : 9001
+        let server = this.props.mqttServer && this.props.mqttServer.length > 0 ? this.props.mqttServer :  'wss://'+window.location.hostname ;
+        console.log(['CONNECT',{host:server,username:this.props.username,password:this.props.password},this.props.subscribe]);
+		this.mqttClient  = mqtt.connect(server,{username:this.props.username,password:this.props.password}) //host:server,port:port,
 		 
 		this.mqttClient.on('connect', this.onConnect)
 		this.mqttClient.on('error', console.error)
