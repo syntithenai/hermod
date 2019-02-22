@@ -68,12 +68,6 @@ Prerequisites: A Linux based Intel 64 bit OS with docker installed.
 
 ```
 git clone https://github.com/syntithenai/hermod.git
-```
-
-Edit docker-compose.yml and update the pulseaudio host and path to cookie.
-Install and run paprefs and enable network access to local audio hardware.
-
-```
 docker-compose up 
 ```
 
@@ -134,8 +128,9 @@ If the hermod process is the first to gain access and lock the microphone it is 
 
 ## Docker Quickstart
 
-As mentioned above, docker-compose is the easiest way to get started. It provides an example of using pulse audio to allow both the local audio and browser audio to work at the same time. It also provides example of nginx-proxy and nginx-proxy-sslgen for virtual hosting of containers against domain names and automatic generation of ssl certificates.
-
+As mentioned above, docker-compose is the easiest way to get started. It provides an example of using pulse audio to allow both the local audio and browser audio to work at the same time.
+Edit docker-compose.yml and update the pulseaudio host and path to cookie.
+Install and run paprefs and enable network access to local audio hardware.
 
 A Dockerfile build file is included that incorporates the deepspeech model and installed dependancies. The official build is available on Docker hub. Running the image requires parameters to allow access to sound hardware and expose network mqtt and web.
 
@@ -151,6 +146,7 @@ https://www.freedesktop.org/wiki/Software/PulseAudio/Ports/Windows/Support/
 
 OSX seems to support pulseaudio
 http://macappstore.org/pulseaudio/
+
 
 
 
@@ -339,9 +335,12 @@ For example "Hey Google Ask Meeka Music to play some blues by JL Hooker".
 
 To minimise this problem, the hotword system can be configured to use different ASR and NLU models based on which hotword is detected. With this configuration, each hotword has a different personality and optimised suite of intents.
 
-There are a number of open source implementations of hotword services including picovoice porcupine, snowboy and pocketSphinx. The Snips hotword detector is closed source but free to use.
+There are a number of semi open source implementations of hotword services including picovoice porcupine, snowboy and pocketSphinx. The Snips hotword detector is closed source but free to use.
 
+[Mycroft Precise](https://github.com/MycroftAI/mycroft-precise/wiki/Software-Comparison) is the fully open source and accurate. 
 
+It is also possible to use the ASR engine to do keyword spotting against a minimal word model.
+https://discourse.mozilla.org/t/feature-request-spotting-keywords/36042
 
 #### Configuration
 

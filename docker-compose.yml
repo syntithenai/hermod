@@ -64,7 +64,7 @@ services:
         volumes:
             #- /dev/snd:/dev/snd
             # HOST MOUNTS FOR DEVELOPMENT
-            #- ./hermod-nodejs:/usr/src/app/hermod-nodejs
+            - ./hermod-nodejs/config.js:/usr/src/app/hermod-nodejs/config.js
             #- ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
             #- ./browser-example:/usr/src/app/browser-example
             # Use PULSE

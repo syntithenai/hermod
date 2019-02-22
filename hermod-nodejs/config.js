@@ -6,16 +6,16 @@ var config={
 	allowedSites:['default','demo'],
 	skills: {'joke':'../rasa/joke/'},
 	services: {
-		HermodAudioLoggingServiceDirect: {
+		//HermodAudioLoggingServiceDirect: {
 			
-		},
-		HermodMicrophoneService: {
+		//},
+		//HermodMicrophoneService: {
 			
-		}
-		,
-		HermodSpeakerService: {
-		}
-		,
+		//}
+		//,
+		//HermodSpeakerService: {
+		//}
+		//,
 		HermodTtsService: {
 		}
 		,
