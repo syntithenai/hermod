@@ -112,7 +112,7 @@ After the service replies "hi david nice to meet you", it will restart the micro
 Then ...
 Try say "tell me a joke" and the service replies "this is a joke" and stops the microphone.
 
-The first attempt may be problematic as the service starts and the NLU model loads on first request. Subsequent conversations work fine.
+The first attempt may be problematic (especially from non SSD drives) as the service starts and the NLU model loads on first request. Subsequent conversations work fine.
 
 
 A [full list of intents](https://github.com/syntithenai/hermod/blob/master/rasa/joke/data/nlu_data.md) and [Sample story training data](https://github.com/syntithenai/hermod/blob/master/rasa/joke/data/stories.md) is available in the source code.

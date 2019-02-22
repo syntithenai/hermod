@@ -44,7 +44,7 @@ services:
   
   hermod:
         #build: ./
-        image: hermod/syntithenai
+        image: syntithenai/hermod
         restart: always
         #privileged: true
         entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
