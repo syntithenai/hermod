@@ -64,6 +64,8 @@ Other services include
 
 ## Quickstart
 
+Prerequisites: A Linux based Intel 64 bit OS with docker installed.
+
 ```
 git clone https://github.com/syntithenai/hermod.git
 ```
@@ -74,6 +76,9 @@ Install and run paprefs and enable network access to local audio hardware.
 ```
 docker-compose up 
 ```
+
+The total image size including deepspeech and rasa modules and node_modules is 11G. !!!
+
 
 Using the docker image containing all dependancies installed is the easiest way to get started. 
 
