@@ -9,7 +9,7 @@ typing==3.6.4
 ruamel.yaml==0.15.37
 requests~=2.20
 keras==2.1.6
-tensorflow==1.10.0
+tensorflow==1.15.0
 h5py==2.7.1
 apscheduler==3.5.1
 tqdm==4.23.3
