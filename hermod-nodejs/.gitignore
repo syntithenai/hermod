@@ -1,6 +1,5 @@
 deepspeech-model
 node_modules
 package-lock.json
-porcupine
 testpico.sh
 tests/old
