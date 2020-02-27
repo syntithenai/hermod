@@ -1,0 +1,44 @@
+version: '2'
+services:
+    ## ===========================================================================================   
+    ## HERMOD VOICE SERVICES SUITE
+    ## ===========================================================================================   
+  rasa:
+    image: rasa/rasa
+    restart: always
+    
+  hermod:
+        build: ./
+        image: syntithenai/hermod
+        restart: always
+        #privileged: true
+        #entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
+        #environment:
+        #  PULSE_SERVER: 192.168.1.200
+        #  PULSE_COOKIE: /tmp/cookie
+        ports:
+           # web
+         # - "80:80"
+         # - "443:443"
+            # mqtt (debug) - disable for production
+          - "1883:1883"
+            # mqtt web sockets 
+          - "9001:9001"
+        # on your linux desktop install paprefs and enable network access to local sound devices 
+        # update IP below to your machine
+        volumes:
+            - /dev/snd:/dev/snd
+            # HOST MOUNTS FOR DEVELOPMENT
+            - ./:/usr/src/app/hermod-nodejs
+            #- ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
+            #- ./browser-example:/usr/src/app/browser-example
+            # ATTACH DEEPSPEECH MODEL
+            - ../deepspeech-0.6.1-models:/usr/src/app/hermod-nodejs/deepspeech-model
+            
+            
+            # Use PULSE
+            #- ./pulseaudio/asound-pulse.conf:/etc/asound.conf
+            #- ./pulseaudio/client.conf:/etc/pulse/client.conf
+            # PULSE COOKIE FROM HOST
+            #- /home/stever/.config/pulse/cookie:/tmp/cookie
+    

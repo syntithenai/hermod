@@ -6,6 +6,7 @@ snowboy.tgz
 rasa/models
 rasa/out.log
 hermod-nodejs/*.wav
+hermod-nodejs/porcupine-orig
 deepspeech-model/models
 old
 node_modules

@@ -4,26 +4,13 @@
   "description": "voice services stack from audio hardware through hotword, ASR, NLU, AI routing and TTS bound by messaging protocol over MQTT",
   "main": "hermod-nodejs/index.js",
   "dependencies": {
-    "babel-eslint": "^10.0.1",
-    "eslint": "^5.12.1",
     "mosca": "^2.8.3",
-    "nan": "^2.12.1",
-    "node-gyp": "^3.8.0",
-    "node-pre-gyp": "^0.12.0"
+    "nodemon": "^2.0.2"
   },
   "devDependencies": {},
   "scripts": {
-    "start": "cd hermod-nodejs; node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "installreactdemo": "npm i ./hermod-react-satellite && npm i ./hermod-react-satellite/example",
-    "installnodejs": "npm i ./hermod-nodejs",
-    "installdeepspeechmodel": "npm i ./deepspeech-model",
-    "installmongodb": "npm i ./mongodb",
-    "installmosquitto": "npm i ./mosquitto",
-    "installrasa": "npm i ./rasa",
-    "installduckling": "cd duckling; ./install.sh",
-    "install": "npm run-script installreactdemo && npm run-script installnodejs && npm run-script installdeepspeechmodel && npm run-script installmongodb && npm run-script installmosquitto && npm run-script installrasa && npm run-script installduckling ",
-    "startrasa": "cd rasa && ./run.sh &"
+    "start": "./pm2start.sh",
+    "test": "cd hermod-nodejs; jest"
   },
   "repository": {
     "type": "git",

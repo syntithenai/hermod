@@ -49,27 +49,30 @@ services:
         #privileged: true
         entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
         environment:
-          PULSE_SERVER: 192.168.1.200
-          PULSE_COOKIE: /tmp/cookie
+          #PULSE_SERVER: 192.168.1.200
+          #PULSE_COOKIE: /tmp/cookie
         ports:
            # web
-          - "80:80"
-          - "443:443"
-            # mqtt (debug) - disable for production
-          #- "1883:1883"
-            # mqtt web sockets 
-          #- "9001:9001"
+          #- "80:80"
+          #- "443:443"
+          # mqtt 
+          - "1883:1883"
+          # mqtt web sockets 
+          - "9001:9001"
         # on your linux desktop install paprefs and enable network access to local sound devices 
         # update IP below to your machine
         volumes:
-            #- /dev/snd:/dev/snd
+            # without pulseaudio, just allow access to sound device
+            - /dev/snd:/dev/snd
             # HOST MOUNTS FOR DEVELOPMENT
-            - ./hermod-nodejs/config.js:/usr/src/app/hermod-nodejs/config.js
+            - ./hermod-nodejs:/usr/src/app/hermod-nodejs
+            # ATTACH DEEPSPEECH MODEL
+            - ./deepspeech-model:/usr/src/app/hermod-nodejs/deepspeech-model
             #- ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
             #- ./browser-example:/usr/src/app/browser-example
             # Use PULSE
-            - ./pulseaudio/asound-pulse.conf:/etc/asound.conf
-            - ./pulseaudio/client.conf:/etc/pulse/client.conf
+            #- ./pulseaudio/asound-pulse.conf:/etc/asound.conf
+            #- ./pulseaudio/client.conf:/etc/pulse/client.conf
             # PULSE COOKIE FROM HOST
-            - /home/stever/.config/pulse/cookie:/tmp/cookie
+            #- /home/stever/.config/pulse/cookie:/tmp/cookie
     

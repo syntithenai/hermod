@@ -29,7 +29,7 @@ function loadAuthorizer(credentialsFile, cb) {
 
 function setup() {
 	//// setup authorizer
-	//console.log('setup mosca');
+	console.log('setup mosca');
 	//loadAuthorizer("./credentials.json", function(err, authorizer) {
 	    //console.log(['setup mosca authorizer',authorizer,authorizer.users.admin]);
 	    //if (err) {

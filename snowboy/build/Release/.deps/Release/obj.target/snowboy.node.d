@@ -1,1 +1,0 @@
-cmd_Release/obj.target/snowboy.node := g++ -shared -pthread -rdynamic -m64 -Wl,--no-as-needed  -Wl,-soname=snowboy.node -o Release/obj.target/snowboy.node -Wl,--start-group Release/obj.target/snowboy/swig/Node/snowboy.o -Wl,--end-group -lcblas /usr/src/app/hermod-nodejs/node_modules/snowboy/lib/ubuntu64/libsnowboy-detect.a

@@ -1,11 +1,18 @@
 var config = require('./config')
 // ensure siteId
 config.siteId = config.siteId ? config.siteId :  'site'+parseInt(Math.random()*100000000,10);
-        
-var HermodSubscriptionManager = require('./HermodSubscriptionManager')
+    
+console.log('mosca')
+if (!config.mqttServer) {
+	require('./mosca/index.js')    
+}
+console.log(config.mqttServer)
+    
+var HermodSubscriptionManager = require('./src/HermodSubscriptionManager')
 var manager = new HermodSubscriptionManager({siteId:config.siteId,username:config.username,password:config.password,allowedSites:config.allowedSites,mqttServer:config.mqttServer});
 manager.mqttConnect().then(function() {
-
+console.log('OManager created')
+		
 	// Require then instantiate each service key passing contained properties to constructor
 	Object.keys(config.services).map(function(serviceKey) {
 		var classRef = null;
@@ -13,8 +20,10 @@ manager.mqttConnect().then(function() {
 		if (config.services[serviceKey].require) {
 			classRef = require(config.services[serviceKey].require);
 		} else {
-			classRef = require('./' + serviceKey);
+			classRef = require('./src/' + serviceKey);
 		}
+		console.log('IManager ')
+		console.log(classRef)
 		var imanager = new HermodSubscriptionManager({siteId:config.siteId,username:config.username,password:config.password,allowedSites:config.allowedSites,mqttServer:config.mqttServer});
 		imanager.mqttConnect().then(function() {
 
@@ -23,3 +32,4 @@ manager.mqttConnect().then(function() {
 	})	
 })
 
+ 
