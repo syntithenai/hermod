@@ -10,7 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "audio-type": "^1.0.2",
-    "bumblebee-hotword-node": "0.0.4",
     "deepspeech": "^0.6.1",
     "fs": "0.0.1-security",
     "mosca": "^2.8.3",
@@ -23,7 +22,6 @@
     "node-vad": "^1.1.4",
     "pcm-convert": "^1.6.5",
     "pcm-volume": "^1.0.0",
-    "snowboy": "file:../../../tmp/snowboy",
     "speaker": "^0.5.1",
     "stream": "0.0.2",
     "stream-chunker": "^1.2.8",

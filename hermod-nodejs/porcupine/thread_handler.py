@@ -24,6 +24,7 @@ class ThreadHandler(Singleton):
         run_event = threading.Event()
         run_event.set()
         thread = threading.Thread(target=target, args=args + (run_event, ))
+        # thread.setDaemon(True)
         self.thread_pool.append(thread)
         self.run_events.append(run_event)
         thread.start()
