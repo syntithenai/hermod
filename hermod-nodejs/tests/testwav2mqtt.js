@@ -5,5 +5,5 @@ var wav2mqtt = require('./wav2mqtt')
 var mqtt2wav = require('./mqtt2wav')
 
 mqtt.startMoscaAndConnect(config).then(function(client) {
-	wav2mqtt.start(client,'jest','./bumblebee.wav')
+	wav2mqtt.start(client,'jest','./audio/picovoice.wav')
 })

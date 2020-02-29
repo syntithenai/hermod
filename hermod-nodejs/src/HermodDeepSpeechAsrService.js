@@ -26,7 +26,9 @@ class HermodDeepSpeechAsrService extends HermodService  {
 		this.silenceBuffers = {};
 		this.firstChunkVoice = {};	
 		
-		this.DEEPSPEECH_MODEL="/home/pi/deepspeech-0.6.1-models"
+		this.DEEPSPEECH_MODEL=props.deepspeech_model_dir
+		this.DEEPSPEECH_FILES=props.files
+		
 
 		this.SILENCE_THRESHOLD = 900; // how many milliseconds of inactivity before processing the audio
 
@@ -69,9 +71,9 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	}
     
 	createModel(modelDir, options) {
-		let modelPath = modelDir + '/output_graph.tflite';
-		let lmPath = modelDir + '/lm.binary';
-		let triePath = modelDir + '/trie';
+		let modelPath = modelDir + this.DEEPSPEECH_FILES.model;
+		let lmPath = modelDir + this.DEEPSPEECH_FILES.lm;
+		let triePath = modelDir + this.DEEPSPEECH_FILES.trie;
 		let model = new DeepSpeech.Model(modelPath, options.BEAM_WIDTH);
 		model.enableDecoderWithLM(lmPath, triePath, options.LM_ALPHA, options.LM_BETA);
 		//console.log('created model')

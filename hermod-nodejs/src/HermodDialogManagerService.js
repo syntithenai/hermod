@@ -1,12 +1,12 @@
 var HermodService = require('./HermodService')
 
-const record = require('node-record-lpcm16');
-const Detector = require('snowboy').Detector;
-const Models = require('snowboy').Models;
+//const record = require('node-record-lpcm16');
+//const Detector = require('snowboy').Detector;
+//const Models = require('snowboy').Models;
 
-var stream = require('stream') 
-var Readable = stream.Readable;
-var WaveFile = require('wavefile')
+//var stream = require('stream') 
+//var Readable = stream.Readable;
+//var WaveFile = require('wavefile')
 
 class HermodDialogManagerService extends HermodService  {
 

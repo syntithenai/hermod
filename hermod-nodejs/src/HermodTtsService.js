@@ -43,11 +43,16 @@ class HermodTtsService extends HermodService  {
 				const exec = require("child_process").exec
 				exec(command, (error, stdout, stderr) => {
 					//console.log('say execed');
+					console.log(error)
+					console.log(stdout)
+					console.log(stderr)
 					// stream the file
 					var fs = require('fs');
 					fs.readFile(randomFileName	, function(err, wav) {
-						//console.log('read file ');
-						if (err || wav.length > 0) {
+						console.log('read file ');
+						console.log(err)
+						console.log(wav)
+						if (err || wav.length == 0) {
 							that.sendMqtt('hermod/'+siteId+'/tts/finished',{id:payload.id})
 						} else {
 							let callbacks = {}
