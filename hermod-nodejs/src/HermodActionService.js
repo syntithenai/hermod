@@ -2,7 +2,6 @@ var HermodService = require('./HermodService')
 
 var yaml = require('js-yaml');
 var fs   = require('fs');
-// this has to go
 const config = require('./config')
 
 class HermodActionService extends HermodService  {

@@ -4,10 +4,10 @@ var config={
 	username:'',
 	password:'',
 	services: {
-		HermodMicrophoneService: {
+		//HermodMicrophoneService: {
 			
-		}
-		,
+		//}
+		//,
 		HermodSpeakerService: {
 		}
 		,

@@ -76,12 +76,12 @@ class HermodDeepSpeechAsrService extends HermodService  {
 		let triePath = modelDir + this.DEEPSPEECH_FILES.trie;
 		let model = new DeepSpeech.Model(modelPath, options.BEAM_WIDTH);
 		model.enableDecoderWithLM(lmPath, triePath, options.LM_ALPHA, options.LM_BETA);
-		//console.log('created model')
+		console.log('created model')
 		return model;
 	}
 
 	createStream(siteId) {
-		//console.log('create stream '+siteId)
+		console.log('create stream '+siteId)
 		
 		if (siteId) {
 			this.modelStream[siteId] = this.englishModel.createStream();
@@ -96,7 +96,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	} 
 	
 	onRecog(siteId,results) {
-		//console.log('recog - ' + results)
+		console.log('recog - ' + results)
 		//id:( (this.dialogIds && this.dialogIds.hasOwnProperty(siteId)) ? this.dialogIds[siteId] : 'noid'),
 		let text = results;
 		// require hotword
@@ -142,7 +142,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 			this.mqttStreams[siteId]._read = () => {} // _read is required but you can noop it
 			this.mqttStreams[siteId].on('data', function(data) {
 				that.processAudioStream(siteId,data, (results) => {
-					//console.log('data processed')
+					console.log('data processed')
 					//console.log(results)
 					this.onRecog(siteId,results)
 				});
@@ -159,7 +159,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	// incoming message onto mqtt stream
 	onAudioMessage(topic,siteId,buffer) {
 		//console.log([this])
-		//console.log('audio message')
+		console.log('audio message')
 		//console.log(buffer.length)
 		//console.log(siteId)
 		//console.log([this.mqttStreams])
@@ -240,7 +240,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	
 
 	endAudioStream(siteId,callback) {
-		//console.log('[end]');
+		console.log('[end]');
 		let results = this.intermediateDecode(siteId);
 		if (results) {
 			if (callback) {
@@ -251,7 +251,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 
 	resetAudioStream(siteId) {
 		if (this.endTimeout && this.endTimeout.hasOwnProperty(siteId)) clearTimeout(this.endTimeout[siteId]);
-		//console.log('[reset]');
+		console.log('[reset]');
 		this.intermediateDecode(siteId); // ignore results
 		this.recordedChunks[siteId] = 0;
 		this.silenceStart[siteId] = null;
@@ -259,7 +259,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 
 	
 	processSilence(siteId,data, callback) {
-		//console.log('silence ')
+		console.log('silence ')
 		
 		if (this.recordedChunks[siteId] > 0) { // recording is on
 			process.stdout.write('-'); // silence detected while recording
@@ -323,7 +323,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 
 
 	processVoice(siteId,data) {
-		//console.log('voice ')
+		console.log('voice ')
 		
 		this.silenceStart[siteId] = null;
 		//if (this.recordedChunks[siteId] === 0) {
@@ -378,9 +378,9 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	}
 
 	feedAudioContent(siteId,chunk) {
-		//console.log('feed audio ')
 		
 		if (chunk) {
+			console.log('feed audio ')
 			//this.recordedAudioLength[siteId] += (chunk.length / 2) * (1 / 16000) * 1000;
 			this.englishModel.feedAudioContent(this.modelStream[siteId], chunk.slice(0, chunk.length / 2));
 		}
