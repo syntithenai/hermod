@@ -1,0 +1,31 @@
+Metadata-Version: 2.1
+Name: deepspeech
+Version: 0.6.1
+Summary: A library for running inference on a DeepSpeech model
+Home-page: https://github.com/mozilla/DeepSpeech
+Author: Mozilla
+License: MPL-2.0
+Project-URL: Documentation, https://github.com/mozilla/DeepSpeech/tree/v0.6.1#project-deepspeech
+Project-URL: Tracker, https://github.com/mozilla/DeepSpeech/issues
+Project-URL: Repository, https://github.com/mozilla/DeepSpeech/tree/v0.6.1
+Project-URL: Discussions, https://discourse.mozilla.org/c/deep-speech
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Topic :: Multimedia :: Sound/Audio :: Speech
+Classifier: Topic :: Scientific/Engineering :: Human Machine Interfaces
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Utilities
+Description-Content-Type: text/x-rst; charset=UTF-8
+Requires-Dist: numpy (>=1.7.0)
+
+Full project description and documentation on GitHub: `https://github.com/mozilla/DeepSpeech <https://github.com/mozilla/DeepSpeech>`_
+
+
