@@ -23,6 +23,36 @@ afterAll(() => {
 //// THESE TESTS REQUIRE UNDERLYING AUDIO SERVICES
 ////////////////////////
 
+
+
+////////////////////
+ //Hotword
+//////////////////////
+
+test('hotword detected', () => {
+	let started = false;
+	let played = false;
+	return new Promise(function(resolve,reject) {
+		mqtt.connect(config).then(function(mqttClient) {
+			mqttClient.subscribe('hermod/jest/hotword/detected')
+			mqttClient.on('message', function(message,body) {
+				if (message == 'hermod/jest/hotword/detected') {
+					mqttClient.publish('hermod/jest/hotword/deactivate')
+					mqttClient.unsubscribe('hermod/jest/hotword/detected')
+					setTimeout(function() {resolve()},200)
+				} 
+			});
+			mqttClient.publish('hermod/jest/hotword/activate')
+			setTimeout(function() {
+				mqttClient.publish('hermod/jest/hotword/start')
+				setTimeout(function() {wav2mqtt.start(mqttClient,'jest','tests/audio/picovoice.wav') }, 3000)
+			},500)
+		})
+	})	
+	
+},25000);
+
+
 test('asr text detected - my name is fred', () => {
 	return new Promise(function(resolve,reject) {
 		mqtt.connect(config).then(function(mqttClient) {
@@ -54,41 +84,13 @@ test('asr text detected - my name is fred', () => {
 				}
 			});
 			mqttClient.publish('hermod/jest/asr/activate')
-			mqttClient.publish('hermod/jest/asr/start')
-			setTimeout(function() {wav2mqtt.start(mqttClient,'jest','./tests/audio/fred.wav') }, 100)
+			setTimeout(function() {
+				mqttClient.publish('hermod/jest/asr/start')
+				setTimeout(function() {wav2mqtt.start(mqttClient,'jest','./tests/audio/fred.wav') }, 400)
+			},900)
 		})
 	})	
 },15000);
-
-
-
-
-//////////////////////
- ////Hotword
-//////////////////////
-
-//test('hotword detected', () => {
-	//let started = false;
-	//let played = false;
-	//return new Promise(function(resolve,reject) {
-		//mqtt.connect(config).then(function(mqttClient) {
-			//mqttClient.subscribe('hermod/jest/hotword/detected')
-			//mqttClient.on('message', function(message,body) {
-				//if (message == 'hermod/jest/hotword/detected') {
-					//mqttClient.publish('hermod/jest/hotword/deactivate')
-					//mqttClient.unsubscribe('hermod/jest/hotword/detected')
-					//setTimeout(function() {resolve()},200)
-				//} 
-			//});
-			//mqttClient.publish('hermod/jest/hotword/activate')
-			//setTimeout(function() {
-				//mqttClient.publish('hermod/jest/hotword/start')
-				//setTimeout(function() {wav2mqtt.start(mqttClient,'jest','tests/audio/picovoice.wav') }, 3000)
-			//},500)
-		//})
-	//})	
-	
-//},25000);
 
 
 
@@ -96,7 +98,7 @@ test('asr text detected - my name is fred', () => {
  ////Audio Services
 ////////////////////
 
-// TODO enable this test with two preceding and this test fails. remove previous tests and it works.
+//// TODO enable this test with two preceding and this test fails. remove previous tests and it works.
 
 //// TODO test stop and volume and mp3 play
 //test('speaker plays wav', () => {
@@ -122,7 +124,7 @@ test('asr text detected - my name is fred', () => {
 	//})	
 //});
 
- //////TODO capture, check packets??
+ ////TODO capture, check packets??
 //test('microphone sends audio when started', () => {
 	
 	//return new Promise(function(resolve,reject) {
@@ -137,6 +139,7 @@ test('asr text detected - my name is fred', () => {
 					//resolve()
 				//}
 			//});
+			//console.log('publish start')
 			//mqttClient.publish('hermod/jest/microphone/start',null);
 		//})	
 	//})	

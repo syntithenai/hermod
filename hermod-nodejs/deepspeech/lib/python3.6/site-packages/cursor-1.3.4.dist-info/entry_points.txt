@@ -1,0 +1,4 @@
+[console_scripts]
+cursor_hide = cursor:hide
+cursor_show = cursor:show
+

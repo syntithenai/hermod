@@ -1,6 +1,6 @@
 var HermodService = require('./HermodService')
 var Microphone = require('./MicStream')
-var VAD= require('node-vad')
+//var VAD= require('node-vad')
 var Chunker = require('stream-chunker');
 var stream = require('stream') 
 var Readable = stream.Readable;
@@ -16,72 +16,70 @@ class HermodMicrophoneService extends HermodService  {
         if (!props.siteId || props.siteId.length === 0) {
             throw "Microphone must be configured with a siteId property";
         }
-        this.packetCount={}
-        this.isRecording={}
-        this.started = false;
-        this.isStreaming = false;
-        this.silenceTimeout = null;
+        this.isRecording=false
         this.micInstance = null
+        this.stream = null
+        
         let eventFunctions = {
             'hermod/+/microphone/start' : function(topic,siteId,payload) {
-				that.packetCount[siteId] = 0;
-                that.startRecording(siteId);
-                that.isRecording[siteId] = true;
+				//console.log('mic start')
+				that.startRecording(siteId);
+                that.isRecording = true;
             },
             'hermod/+/microphone/stop' : function(topic,siteId,payload) {
+                //console.log('mic stop')
                 that.stopRecording(siteId);
-                that.isRecording[siteId] = false;
+                that.isRecording = false;
             }
         }
-        this.stream = null;
-        this.vadStream = null;
         this.manager = this.connectToManager('MICROPHONE',props.manager,eventFunctions,false);
     }  
     
     startRecording(siteId) {
-		if (!this.isRecording[siteId]) {
+		if (!this.isRecording) {
 			let that = this;
-			const vad = new VAD(VAD.Mode.NORMAL);
+			//const vad = new VAD(VAD.Mode.NORMAL);
 
 			var chunker = Chunker(512,{flush:true});
 			chunker.on('data', function(data) {
+				//console.log('data chunk')
 				that.manager.sendAudioMqtt("hermod/"+that.props.siteId+"/microphone/audio",data);
 			});
-			let isStreaming = false;
-			let splitStream = new Readable()
-			splitStream._read = () => {} // _read is required but you can noop it
-			splitStream.on('data', function(data) {
-				function sendChunk() {
-					if (isStreaming)  {
-						chunker.push(data);
-					}
-				}
-				vad.processAudio(data, 16000).then(res => {
-					switch (res) {
-						case VAD.Event.ERROR:
-							//sendChunk()
-							break;
-						case VAD.Event.NOISE:
-							sendChunk()
-							break;
-						case VAD.Event.SILENCE:
-							that.silenceTimeout = setTimeout(function() {
-								isStreaming = false;
-								sendChunk()
-							},2000);
-							break;
-						case VAD.Event.VOICE:
-							isStreaming = true;
-							sendChunk()
-							if (that.silenceTimeout) clearTimeout(that.silenceTimeout);
-							break;
-					 }
+			//let isStreaming = false;
+			//let splitStream = new Readable()
+			//splitStream._read = () => {} // _read is required but you can noop it
+			//splitStream.on('data', function(data) {
+				////function sendChunk() {
+					//if (isStreaming)  {
+						//chunker.write(data);
+					//}
+				////}
+				////vad.processAudio(data, 16000).then(res => {
+					////switch (res) {
+						////case VAD.Event.ERROR:
+							//////sendChunk()
+							////break;
+						////case VAD.Event.NOISE:
+							////sendChunk()
+							////break;
+						////case VAD.Event.SILENCE:
+							////that.silenceTimeout = setTimeout(function() {
+								////isStreaming = false;
+								////sendChunk()
+							////},2000);
+							////break;
+						////case VAD.Event.VOICE:
+							////isStreaming = true;
+							////sendChunk()
+							////if (that.silenceTimeout) clearTimeout(that.silenceTimeout);
+							////break;
+					 ////}
 					 
-				})
-			});
+				////})
+			//});
 			
-			this.started = true;
-			var output;
+			//this.started = true;
+			//var output;
 			 
 			var wavConfig = {
 			  "channels": 1,
@@ -97,10 +95,11 @@ class HermodMicrophoneService extends HermodService  {
 			var inBody = false;
 			wavReader.on('format', function (format) {					 
 			//   the WAVE header is stripped from the output of the reader
-			 inBody = true;
+				inBody = true;
 			});
 			wavReader.on('data', function (data) {
-				if (inBody) splitStream.push(data);
+				//console.log('wav data')
+				if (inBody) chunker.write(data);
 			});
 			this.stream.pipe(wavReader);
 			
@@ -109,9 +108,7 @@ class HermodMicrophoneService extends HermodService  {
 	}
     
 	stopRecording(siteId) {
-		this.started = false;
-        this.voiceDetected = false;
-        if (this.micInstance && this.micInstance.stop) this.micInstance.stop()
+		if (this.micInstance && this.micInstance.stop) this.micInstance.stop()
 		if (this.stream) {
 			this.stream.pause();
 			this.stream.destroy();

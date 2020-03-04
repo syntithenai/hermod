@@ -11,7 +11,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), './binding/python'))
 sys.path.append(os.path.join(os.path.dirname(__file__), './resources/util/python'))
 
 # from pvporcupine import Porcupine
+
+# constants
 from util import *
+# implementation
 from hotword_service import HotwordService
 
 

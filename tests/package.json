@@ -1,0 +1,20 @@
+{
+  "name": "hermodtests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "config.js",
+  "dependencies": {
+    "jest": "^25.1.0",
+    "mqtt": "^3.0.0",
+    "node-vad": "^1.1.4",
+    "stream-chunker": "^1.2.8",
+    "tree-kill": "^1.2.2",
+    "wav": "^1.0.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "jest -i --forceExit"
+  },
+  "author": "",
+  "license": "ISC"
+}

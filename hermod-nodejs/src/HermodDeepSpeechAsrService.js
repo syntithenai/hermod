@@ -7,6 +7,8 @@ var Readable = stream.Readable;
 var WaveFile = require('wavefile')
 var HermodService = require('./HermodService')
 
+// WTF. THIS WAS WORKING FINE. NOW DIES WHEN START RECOGNITION. THE CHANGE (was working, dies on start) IS ALSO TRUE OF THE 
+// Deepspeech-examples node_mic_... example (although the node_wav example works).
 class HermodDeepSpeechAsrService extends HermodService  {
 
 	constructor(props) {
@@ -26,9 +28,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 		this.silenceBuffers = {};
 		this.firstChunkVoice = {};	
 		
-		this.DEEPSPEECH_MODEL=props.deepspeech_model_dir
-		this.DEEPSPEECH_FILES=props.files
-		
+		this.DEEPSPEECH_MODEL="/projects/deepspeech-0.6.1-models"
 
 		this.SILENCE_THRESHOLD = 900; // how many milliseconds of inactivity before processing the audio
 
@@ -71,17 +71,21 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	}
     
 	createModel(modelDir, options) {
-		let modelPath = modelDir + this.DEEPSPEECH_FILES.model;
-		let lmPath = modelDir + this.DEEPSPEECH_FILES.lm;
-		let triePath = modelDir + this.DEEPSPEECH_FILES.trie;
-		let model = new DeepSpeech.Model(modelPath, options.BEAM_WIDTH);
-		model.enableDecoderWithLM(lmPath, triePath, options.LM_ALPHA, options.LM_BETA);
+		let model = null;
+		let modelPath = modelDir + '/output_graph.pbmm'; //tflite';
+		let lmPath = modelDir + '/lm.binary';
+		let triePath = modelDir + '/trie';
+		try {
+			model = new DeepSpeech.Model(modelPath, options.BEAM_WIDTH);
+			model.enableDecoderWithLM(lmPath, triePath, options.LM_ALPHA, options.LM_BETA);
+			} catch(e) {console.log(e)};
 		console.log('created model')
+		console.log([modelPath,lmPath,triePath,model])
 		return model;
 	}
 
 	createStream(siteId) {
-		console.log('create stream '+siteId)
+		//console.log('create stream '+siteId)
 		
 		if (siteId) {
 			this.modelStream[siteId] = this.englishModel.createStream();
@@ -96,7 +100,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	} 
 	
 	onRecog(siteId,results) {
-		console.log('recog - ' + results)
+		//console.log('recog - ' + results)
 		//id:( (this.dialogIds && this.dialogIds.hasOwnProperty(siteId)) ? this.dialogIds[siteId] : 'noid'),
 		let text = results;
 		// require hotword
@@ -142,7 +146,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 			this.mqttStreams[siteId]._read = () => {} // _read is required but you can noop it
 			this.mqttStreams[siteId].on('data', function(data) {
 				that.processAudioStream(siteId,data, (results) => {
-					console.log('data processed')
+					//console.log('data processed')
 					//console.log(results)
 					this.onRecog(siteId,results)
 				});
@@ -194,7 +198,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	}
 	
 	processAudioStream(siteId, data, callback) {
-		//console.log('process audio str')
+		console.log('process audio str')
 		//console.log(data.length)
 		//console.log(data)
 		let that = this;
@@ -232,7 +236,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 		// timeout after 1s of inactivity
 		clearTimeout(that.endTimeout[siteId]);
 		that.endTimeout[siteId] = setTimeout(function() {
-			//console.log('timeout');
+			console.log('timeout');
 			that.resetAudioStream(siteId);
 		},that.SILENCE_THRESHOLD*3);
 	}
@@ -341,12 +345,12 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	
 		
 	finishStream(siteId) {
-		//console.log('finish text: ')
+		console.log('finish text: ')
 		
 		if (this.modelStream[siteId]) {
 			let start = new Date();
 			let text = this.englishModel.finishStream(this.modelStream[siteId]);
-			//console.log(text)
+			console.log(text)
 				
 			if (text) {
 				if (text === 'i' || text === 'a') {
@@ -370,7 +374,7 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	
 
 	intermediateDecode(siteId) {
-		//console.log('inter decode ')
+		console.log('inter decode ')
 		
 		let results = this.finishStream(siteId);
 		this.createStream(siteId);
@@ -378,12 +382,12 @@ class HermodDeepSpeechAsrService extends HermodService  {
 	}
 
 	feedAudioContent(siteId,chunk) {
+		console.log('feed audio ')
 		
-		if (chunk) {
-			console.log('feed audio ')
+		//if (chunk) {
 			//this.recordedAudioLength[siteId] += (chunk.length / 2) * (1 / 16000) * 1000;
 			this.englishModel.feedAudioContent(this.modelStream[siteId], chunk.slice(0, chunk.length / 2));
-		}
+		//}
 	}
 	
 

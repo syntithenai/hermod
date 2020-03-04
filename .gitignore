@@ -1,3 +1,9 @@
+hermod-nodejs/bin
+hermod-nodejs/pyvenv.cfg
+hermod-nodejs/lib
+hermod-python/__pycache__
+hermod-python/model
+packagehermodnodejs.json
 /docker-run
 ibm-watson-stt-auth-server
 snowboy.tgz

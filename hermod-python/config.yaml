@@ -1,0 +1,14 @@
+mqtt_hostname: "localhost"
+mqtt_port: 1883
+site: jest
+services:
+  microphone_service:
+  speaker_service:
+  #deepspeech_asr_service:
+    #model_path: "/projects/deepspeech-0.6.1-models"
+  #picovoice_hotword_service:
+    #hotwords: "picovoice,bumblebee,porcupine"
+    #sensitivity: 0.5
+  pico2wav_tts_service:
+  #dialog_manager_service:
+#  

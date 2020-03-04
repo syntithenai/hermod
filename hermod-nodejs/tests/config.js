@@ -4,20 +4,20 @@ var config={
 	username:'',
 	password:'',
 	services: {
-		//HermodMicrophoneService: {
+		HermodMicrophoneService: {
 			
-		//}
-		//,
+		}
+		,
 		HermodSpeakerService: {
 		}
 		,
 		HermodTtsService: {
 		}
 		,
-		HermodPorcupineHotwordService: {
+		HermodPorcupinePythonHotwordService: {
 		}
 		,
-		HermodDeepSpeechAsrService: {
+		HermodPythonDeepSpeechAsrService: {
 			 deepspeech_model_dir: "/projects/deepspeech-0.6.1-models/",
 			 files: {
 				model :"output_graph.pbmm",  // use .tflite on raspberry pi

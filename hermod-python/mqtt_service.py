@@ -5,13 +5,10 @@ from datetime import datetime
 from threading import Thread
 import json
 import time
-import wave
 import io
 from socket import error as socket_error
 import paho.mqtt.client as mqtt
-import warnings
-import numpy as np
-import soundfile
+
 
 from thread_handler import ThreadHandler
 
@@ -27,7 +24,7 @@ class MqttService(object):
             ):
 
         super(MqttService, self).__init__()
-        
+        # print('MQTT CONSTRUCTOR {} {} {}'.format(mqtt_hostname,mqtt_port,site))
         self.thread_handler = ThreadHandler()
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
@@ -44,7 +41,7 @@ class MqttService(object):
         retry = 0
         while run_event.is_set():
             try:
-               # self.log("Trying to connect to {} {}".format(self.mqtt_hostname,self.mqtt_port))
+                self.log("Trying to connect to {} {}".format(self.mqtt_hostname,self.mqtt_port))
                 self.client.connect(self.mqtt_hostname, self.mqtt_port, 60)
                 break
             except (socket_error, Exception) as e:
@@ -76,18 +73,22 @@ class MqttService(object):
             self.thread_handler.run(target=threadTarget)
 
     def on_message(self, client, userdata, msg):
+        self.log('PARENT ONMESSAGE {} ',msg.topic)
         pass
                 
         
     def log(self, message):
         print(message);
         sys.stdout.flush()
+        
+    def site_from_topic(topic):
+		let parts = topic.split('/')
+		return parts[1];
 
-
-    def run(self):
+    def run(self,run_event):
         # start mqtt connection
         for threadTarget in self.thread_targets:
-            self.log('start thread {} '.format(threadTarget))
+            # self.log('start thread {} '.format(threadTarget))
             
             self.thread_handler.run(target=threadTarget)
         self.thread_handler.start_run_loop()

@@ -17,7 +17,6 @@ from thread_handler import ThreadHandler
 from mqtt_service import MqttService
 
 from io_buffer import BytesLoop
-import logging
 import threading, collections, queue, os, os.path
 import deepspeech
 import numpy as np
@@ -26,27 +25,25 @@ import wave
 import webrtcvad
 from scipy import signal
 
-logging.basicConfig(level=20)
 
 
-class AsrService(MqttService):
+class deepspeech_asr_service(MqttService):
     FORMAT = pyaudio.paInt16
     # Network/VAD rate-space
     RATE_PROCESS = 16000
     CHANNELS = 1
     BLOCKS_PER_SECOND = 50           
  
+    
+ 
     def __init__(
             self,
-            mqtt_hostname='localhost',
-            mqtt_port=1883 ,
-            site = 'default',
-            model_path = './model',
+            config
             ):
 
-        
+        self.config = config
 
-        super(AsrService, self).__init__()
+        super(deepspeech_asr_service, self).__init__(config['mqtt_hostname'],config['mqtt_port'],config['site'])
         self.thread_targets.append(self.startASR)    
        
         self.sample_rate = self.RATE_PROCESS
@@ -58,14 +55,10 @@ class AsrService(MqttService):
         self.buffer_queue = queue.Queue()
         
         self.vad = webrtcvad.Vad(3)
-        
-        self.mqtt_hostname = mqtt_hostname
-        self.mqtt_port = mqtt_port
-        self.model_path = model_path
-        print('asr ubut' )
-        self.site = site
+        self.site = config['site']
+        self.model_path = config['services']['deepspeech_asr_service']['model_path']
         self.started = True
-        self.subscribe_to='hermod/'+site+'/microphone/audio,hermod/'+site+'/asr/start,hermod/'+site+'/asr/stop'
+        self.subscribe_to='hermod/'+self.site+'/microphone/audio,hermod/'+self.site+'/asr/start,hermod/'+self.site+'/asr/stop'
     
 
     def on_message(self, client, userdata, msg):
@@ -76,22 +69,22 @@ class AsrService(MqttService):
         audioTopic = 'hermod/'+self.site+'/microphone/audio'
         if topic == startTopic:
             self.started = True ;
-            print('start')
+            # print('start')
         elif topic == stopTopic:
-            print('stop')
+            # print('stop')
             self.started = False;
         elif topic == audioTopic :
             #print(msg.payload)
             #self.buffer_queue.put(msg.payload)
             self.audio_stream.write(msg.payload) ;
-            print('write {} {} {}'.format(self.block_size,self.audio_stream.length(),len(msg.payload)))
-        sys.stdout.flush()
+            # print('write {} {} {}'.format(self.block_size,self.audio_stream.length(),len(msg.payload)))
+        # sys.stdout.flush()
 
     def read(self):
         """Return a block of audio data, blocking if necessary."""  
         a = self.audio_stream.read(self.block_size*2);
-        if (len(a) > 0):
-            self.log('read data ask {} got {} from {}'.format(self.block_size,len(a),self.audio_stream.length()))
+        # if (len(a) > 0):
+            # self.log('read data ask {} got {} from {}'.format(self.block_size,len(a),self.audio_stream.length()))
         return a
         # *2
         #print('read {} {} {}'.format(self.block_size,self.audio_stream.hasBytes(self.block_size),self.audio_stream.length()))
@@ -127,13 +120,8 @@ class AsrService(MqttService):
             if len(frame) < 640:
                 yield None
                 return
-            print('frame')
-            sys.stdout.flush()
             
             is_speech = self.vad.is_speech(frame, self.sample_rate)
-            print('isspeech' )
-            print(is_speech)
-            sys.stdout.flush()
             if not triggered:
                 ring_buffer.append((frame, is_speech))
                 num_voiced = len([f for f, speech in ring_buffer if speech])
@@ -157,9 +145,10 @@ class AsrService(MqttService):
     def startASR(self, run_event):
         modelFile = 'output_graph.pbmm'
         
-        print('uname')
+        # TODO fix the following check, see porcupine utility class for processor interpretation.
+        # print('uname')
         system,  release, version, machine, processor = os.uname()                
-        print([system,machine,processor])
+        # print([system,machine,processor])
         if processor == 'arm7': modelFile = 'output_graph.tflite'
         
         # Load DeepSpeech model
@@ -168,29 +157,25 @@ class AsrService(MqttService):
             lm = os.path.join(self.model_path, 'lm.binary')
             trie = os.path.join(self.model_path, 'trie')
 
-            self.log('Initializing model...' + modelPath)
-            logging.info("ARGS.model: %s", modelPath)
+         #   self.log('Initializing model...' + modelPath)
             model = deepspeech.Model(modelPath, 500)
             if lm and trie:
-                logging.info("ARGS.lm: %s", lm)
-                logging.info("ARGS.trie: %s", trie)
                 model.enableDecoderWithLM(lm, trie, 0.75, 1.85)
-            self.log('asr get streawm')
+           # self.log('asr get streawm')
         
             stream_context = model.createStream()
-            self.log('asr stream ready')
-            self.log(stream_context)
+            # self.log('asr stream ready')
+            # self.log(stream_context)
             while True and run_event.is_set():
                 frames = self.vad_collector()
 
                 for frame in frames:
                     if frame is not None:
-                        self.log("streaming frame")
+                       # self.log("streaming frame")
                         model.feedAudioContent(stream_context, np.frombuffer(frame, np.int16))
                     else:
-                        logging.debug("end utterence")
                         text = model.finishStream(stream_context)
-                        self.log("Recognized: %s" % text)
+                        #self.log("Recognized: %s" % text)
                         self.client.publish('hermod/'+self.site+'/asr/text',json.dumps({'text':text}))
                         stream_context = model.createStream()
                     time.sleep(0.1)

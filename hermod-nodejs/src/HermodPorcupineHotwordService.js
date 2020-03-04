@@ -5,7 +5,7 @@ var Readable = stream.Readable;
 var Wav = require('wav')
 var kill  = require('tree-kill');	
 
-	
+//	 TODO RESTORE THIS CLASS. FIRST NEED TO BE ABLE TO INSTALL PICOVOICE ..... ON PI ALSO
 class HermodPorcupineHotwordService extends HermodService  {
 
     constructor(props) {
