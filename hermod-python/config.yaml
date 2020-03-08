@@ -4,11 +4,13 @@ site: jest
 services:
   microphone_service:
   speaker_service:
-  #deepspeech_asr_service:
-    #model_path: "/projects/deepspeech-0.6.1-models"
-  #picovoice_hotword_service:
-    #hotwords: "picovoice,bumblebee,porcupine"
-    #sensitivity: 0.5
+  deepspeech_asr_service:
+    model_path: "/projects/deepspeech-0.6.1-models"
+  picovoice_hotword_service:
+    hotwords: "picovoice,bumblebee,porcupine"
+    sensitivity: 0.5
   pico2wav_tts_service:
+    binary_path: /usr/bin/pico2wave
+    cache_path: /tmp/
   #dialog_manager_service:
 #  

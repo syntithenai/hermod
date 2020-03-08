@@ -20,7 +20,6 @@ class MqttService(object):
             mqtt_hostname='localhost',
             mqtt_port=1883 ,
             site = 'default'
-            
             ):
 
         super(MqttService, self).__init__()
@@ -81,9 +80,6 @@ class MqttService(object):
         print(message);
         sys.stdout.flush()
         
-    def site_from_topic(topic):
-		let parts = topic.split('/')
-		return parts[1];
 
     def run(self,run_event):
         # start mqtt connection

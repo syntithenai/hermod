@@ -176,7 +176,8 @@ class deepspeech_asr_service(MqttService):
                     else:
                         text = model.finishStream(stream_context)
                         #self.log("Recognized: %s" % text)
-                        self.client.publish('hermod/'+self.site+'/asr/text',json.dumps({'text':text}))
+                        if (len(text) > 0):
+                            self.client.publish('hermod/'+self.site+'/asr/text',json.dumps({'text':text}))
                         stream_context = model.createStream()
                     time.sleep(0.1)
                

@@ -7,7 +7,14 @@ import io
 
 from mqtt_service import MqttService
 
-
+ # ////hotword/detected => dialog/end then wait dialog/ended then dialog/started, microphone/start, asr/start
+ # ////dialog/start => if text then dialog/started, asr/stop, nlu/parse ELSE  dialog/started, microphone/start, asr/start
+ # ////dialog/continue => if text then tts/say then wait tts/finished then  microphone/start, asr/start    ELSE microphone/start, asr/start
+ # ////asr/text => asr/stop, hotword/stop, microphone/stop, nlu/parse
+ # ////nlu/intent => intent
+ # ////nlu/fail => dialog/end
+ # ////dialog/end => dialog/ended, microphone/start, hotword/start
+ # ////router/action => action
 
 class dialog_manager_service(MqttService):
   
