@@ -46,26 +46,41 @@ class pico2wav_tts_service(MqttService):
         playFinished = 'hermod/' +site+'/speaker/finished'
         
         #sayTopic="{}".format(st)
-        self.log('ONMESS from {} - {}'.format(site, topic))
-        self.log(playFinished)
-        self.log(topic)
-       # 
+        # self.log('ONMESS from {} - {}'.format(site, topic))
+        # self.log(playFinished)
+        # self.log(topic)
+        # 
        
-        self.log("ttMESSAGE |{}|".format(topic))
-        payload = json.loads(msg.payload)
-        self.log(payload['text'])
-        if payload is not None :
-            text = payload['text']
-        #self.log('text {}'.format(text))
+        # self.log("ttMESSAGE |{}|".format(topic))
+        payload = {}
+        try:
+            payload = json.loads(msg.payload)
+        except:
+            pass
+        # self.log('dd')    
+        # self.log(payload.get('text'))
+        text = ''
+        # self.log(topic)
+        # self.log(playFinished)
+        # self.log(topic == playFinished)
+        
+        text = payload.get('text')
+        
+        # self.log('text {}'.format(text))
         if topic == sayTopic:
             # self.log('genaudio {}'.format(text))
             self.generate_audio(site,msg.topic,text)
         elif topic == playFinished:
-            self.log('yAY ALL DONE' )
+            # self.log('yAY ALL DONE' )
             # TODO - pass id
-            self.client.publish('hermod/{}/tts/finished'.format(site), json.dumps({'id':msg.payload.id}))
+            message = {"id":payload.get('id')}
+            # self.log('yAY ALL DONE {}'.format(message) )
+            
+            self.client.publish('hermod/{}/tts/finished'.format(site), json.dumps(message))
             self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
-     
+        # else:
+            # self.log('no match topic {}'.format(topic))
+            
     # TODO, FILE BASED CACHE FOR GENERATED UTTERANCES    
     def generate_audio(self,site,topic,text): 
         self.client.publish('hermod/{}/speaker/started'.format(site), None)
@@ -78,7 +93,7 @@ class pico2wav_tts_service(MqttService):
             os.system(path + ' -w=' + fileName + ' "{}" '.format(text))
             
             fp = open(fileName,"rb")
-            self.log('open {}'.format(fileName))
+            # self.log('open {}'.format(fileName))
             # if (fp.mode == 'r'):
                 # self.log('opened {}'.format(fileName))
             # self.log('FP {}'.format(fp))

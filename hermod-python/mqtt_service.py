@@ -36,11 +36,11 @@ class MqttService(object):
         self.site = site  
             
     def startMqtt(self, run_event):
-        self.log("Connecting to {} on port {}".format(self.mqtt_hostname, str(self.mqtt_port)))
+        #self.log("Connecting to {} on port {}".format(self.mqtt_hostname, str(self.mqtt_port)))
         retry = 0
         while run_event.is_set():
             try:
-                self.log("Trying to connect to {} {}".format(self.mqtt_hostname,self.mqtt_port))
+              # self.log("Trying to connect to {} {}".format(self.mqtt_hostname,self.mqtt_port))
                 self.client.connect(self.mqtt_hostname, self.mqtt_port, 60)
                 break
             except (socket_error, Exception) as e:
@@ -58,10 +58,10 @@ class MqttService(object):
       
 
     def on_connect(self, client, userdata, flags, result_code):
-        self.log("Connected with result code {}".format(result_code))
+       # self.log("Connected with result code {}".format(result_code))
         # SUBSCRIBE 
         for sub in self.subscribe_to.split(","):
-           self.log('subscribe to {}'.format(sub))
+          # self.log('subscribe to {}'.format(sub))
            self.client.subscribe(sub)
 
 

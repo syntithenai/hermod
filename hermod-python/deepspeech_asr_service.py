@@ -52,12 +52,11 @@ class deepspeech_asr_service(MqttService):
         
         
         self.audio_stream = BytesLoop()
-        self.buffer_queue = queue.Queue()
+        self.vad = webrtcvad.Vad(config.get('vad_sensitivity',1))
+        self.started = False
         
-        self.vad = webrtcvad.Vad(3)
-        self.site = config['site']
+        #self.site = config['site']
         self.model_path = config['services']['deepspeech_asr_service']['model_path']
-        self.started = True
         self.subscribe_to='hermod/'+self.site+'/microphone/audio,hermod/'+self.site+'/asr/start,hermod/'+self.site+'/asr/stop'
     
 
@@ -164,22 +163,23 @@ class deepspeech_asr_service(MqttService):
            # self.log('asr get streawm')
         
             stream_context = model.createStream()
-            # self.log('asr stream ready')
+           # self.log('asr stream ready')
             # self.log(stream_context)
             while True and run_event.is_set():
                 frames = self.vad_collector()
 
                 for frame in frames:
-                    if frame is not None:
-                       # self.log("streaming frame")
-                        model.feedAudioContent(stream_context, np.frombuffer(frame, np.int16))
-                    else:
-                        text = model.finishStream(stream_context)
-                        #self.log("Recognized: %s" % text)
-                        if (len(text) > 0):
-                            self.client.publish('hermod/'+self.site+'/asr/text',json.dumps({'text':text}))
-                        stream_context = model.createStream()
-                    time.sleep(0.1)
+                    if (self.started):
+                        if frame is not None:
+                          #  self.log("streaming frame")
+                            model.feedAudioContent(stream_context, np.frombuffer(frame, np.int16))
+                        else:
+                            text = model.finishStream(stream_context)
+                            #self.log("Recognized: %s" % text)
+                            if (len(text) > 0):
+                                self.client.publish('hermod/'+self.site+'/asr/text',json.dumps({'text':text}))
+                            stream_context = model.createStream()
+                        time.sleep(0.01)
                
                
                # frame = self.read()

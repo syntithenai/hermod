@@ -61,20 +61,21 @@ afterAll(() => {
 //test('hotword detected', () => {
 	//let started = false;
 	//let played = false;
+    //site='just'
 	//return new Promise(function(resolve,reject) {
 		//mqtt.connect(config).then(function(mqttClient) {
-			//mqttClient.subscribe('hermod/jest/hotword/detected')
+			//mqttClient.subscribe('hermod/'+site+'/hotword/detected')
 			//mqttClient.on('message', function(message,body) {
-				//if (message == 'hermod/jest/hotword/detected') {
-					//mqttClient.publish('hermod/jest/hotword/deactivate')
-					//mqttClient.unsubscribe('hermod/jest/hotword/detected')
+				//if (message == 'hermod/'+site+'/hotword/detected') {
+					//mqttClient.publish('hermod/'+site+'/hotword/deactivate')
+					//mqttClient.unsubscribe('hermod/'+site+'/hotword/detected')
 					//setTimeout(function() {resolve()},200)
 				//} 
 			//});
-			//mqttClient.publish('hermod/jest/hotword/activate')
+			//mqttClient.publish('hermod/'+site+'/hotword/activate')
 			//setTimeout(function() {
-				//mqttClient.publish('hermod/jest/hotword/start')
-				//setTimeout(function() {wav2mqtt.start(mqttClient,'jest','audio/picovoice.wav') }, 1000)
+				//mqttClient.publish('hermod/'+site+'/hotword/start')
+				//setTimeout(function() {wav2mqtt.start(mqttClient,site,'audio/picovoice.wav') }, 1000)
 			//},1000)
 		//})
 	//})	
@@ -82,44 +83,45 @@ afterAll(() => {
 //},7000);
 
 
-//test('asr text detected - my name is fred', () => {
-	//return new Promise(function(resolve,reject) {
-		//mqtt.connect(config).then(function(mqttClient) {
-			//mqttClient.subscribe('hermod/jest/asr/text')
-			//mqttClient.on('message', function(message,b) {
-				//console.log(message)
-				//console.log(b)
-				//if (message == "hermod/jest/asr/text") { 
-					//let body = {}
-					//try {
-						//body = JSON.parse(b) 
-					//} catch (e) {}
-					//console.log(body.text)
-					//mqttClient.publish('hermod/jest/asr/deactivate')
-					//mqtt2wav.stop(mqttClient,'jest');
+test('asr text detected - my name is fred', () => {
+	site='jest'
+    return new Promise(function(resolve,reject) {
+		mqtt.connect(config).then(function(mqttClient) {
+			mqttClient.subscribe('hermod/'+site+'/asr/text')
+			mqttClient.on('message', function(message,b) {
+				console.log(message)
+				console.log(b)
+				if (message == "hermod/"+site+"/asr/text") { 
+					let body = {}
+					try {
+						body = JSON.parse(b) 
+					} catch (e) {}
+					console.log(body.text)
+					mqttClient.publish('hermod/'+site+'/asr/deactivate')
+					mqtt2wav.stop(mqttClient,site);
 					//resolve()
 					
-					//if (body && body.text && (body.text.trim() == 'my name is fred' )) { 
-						//mqttClient.unsubscribe('hermod/jest/asr/text')
-						//mqttClient.publish('hermod/jest/asr/deactivate')
-						//mqtt2wav.stop(mqttClient,'jest');
-						//resolve()
-					//} else {
-						//mqttClient.unsubscribe('hermod/jest/asr/text')
-						//mqttClient.publish('hermod/jest/asr/deactivate')
-						//mqtt2wav.stop(mqttClient,'jest');
-						//reject()
-					//} 
-				//}
-			//});
-			//mqttClient.publish('hermod/jest/asr/activate')
-			//setTimeout(function() {
-				//mqttClient.publish('hermod/jest/asr/start')
-				//setTimeout(function() {wav2mqtt.start(mqttClient,'jest','./audio/fred.wav') }, 400)
-			//},900)
-		//})
-	//})	
-//},15000);
+					if (body && body.text && (body.text.trim() == 'my name is fred' )) { 
+						mqttClient.unsubscribe('hermod/'+site+'/asr/text')
+						mqttClient.publish('hermod/'+site+'/asr/deactivate')
+						mqtt2wav.stop(mqttClient,site);
+						resolve()
+					} else {
+						mqttClient.unsubscribe('hermod/'+site+'/asr/text')
+						mqttClient.publish('hermod/'+site+'/asr/deactivate')
+						mqtt2wav.stop(mqttClient,site);
+						reject()
+					} 
+				}
+			});
+			mqttClient.publish('hermod/'+site+'/asr/activate')
+			setTimeout(function() {
+				mqttClient.publish('hermod/'+site+'/asr/start')
+				setTimeout(function() {wav2mqtt.start(mqttClient,site,'./audio/fred.wav') }, 10)
+			},900)
+		})
+	})	
+},12000);
 
 
 
@@ -207,38 +209,38 @@ afterAll(() => {
  ////THESE TEST REQUIRE UNDERLYING TTS AND AUDIO SERVICES
 ////////////////////////
 
- ////TODO test stop and volume and mp3 play
-test('tts generates and plays audio', () => {
-	let started = false;
-	let played = false;
-	return new Promise(function(resolve,reject) {
-		mqtt.connect(config).then(function(mqttClient) {
-			mqttClient.subscribe('hermod/jest/tts/#')
-			mqttClient.subscribe('hermod/jest/speaker/#')
-			mqttClient.on('message', function(message,body) {
-				console.log('TTS message')
-				console.log(message)
+ //////TODO test stop and volume and mp3 play
+//test('tts generates and plays audio', () => {
+	//let started = false;
+	//let played = false;
+	//return new Promise(function(resolve,reject) {
+		//mqtt.connect(config).then(function(mqttClient) {
+			//mqttClient.subscribe('hermod/jest/tts/#')
+			//mqttClient.subscribe('hermod/jest/speaker/#')
+			//mqttClient.on('message', function(message,body) {
+				//console.log('TTS message')
+				//console.log(message)
 				
-				if (message.indexOf("hermod/jest/speaker/play") == 0 && body && body.length > 0) {
-                    console.log('SET PLAYED' )
-                    played = true;
-                }
-				if (message == "hermod/jest/tts/started") {
-                    console.log('SET STARTED' )
-                    started = true;
-                }
-                //(started && played) && 
-				if ((message == "hermod/jest/tts/finished")) {
-					console.log('SET FINISHED' )
-                    mqttClient.unsubscribe('hermod/jest/tts/#')
-					mqttClient.unsubscribe('hermod/jest/speaker/#')
-					resolve()
-				} 
-			});
-			setTimeout(function() { mqttClient.publish('hermod/jest/tts/say',JSON.stringify({text: 'hello world'}))},500)
-		})
-	})	
-},5000);
+				//if (message.indexOf("hermod/jest/speaker/play") == 0 && body && body.length > 0) {
+                    //console.log('SET PLAYED' )
+                    //played = true;
+                //}
+				//if (message == "hermod/jest/tts/started") {
+                    //console.log('SET STARTED' )
+                    //started = true;
+                //}
+                ////(started && played) && 
+				//if ((message == "hermod/jest/tts/finished")) {
+					//console.log('SET FINISHED' )
+                    //mqttClient.unsubscribe('hermod/jest/tts/#')
+					//mqttClient.unsubscribe('hermod/jest/speaker/#')
+					//resolve()
+				//} 
+			//});
+			//setTimeout(function() { mqttClient.publish('hermod/jest/tts/say',JSON.stringify({text: 'hello world'}))},500)
+		//})
+	//})	
+//},5000);
 
 
 //////////////////////////////

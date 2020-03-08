@@ -26,14 +26,14 @@ class speaker_service(MqttService):
    
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
-        self.log("ssMESSAGE {}".format(topic))
+        # self.log("ssMESSAGE {}".format(topic))
         playTopic = 'hermod/' +self.site+'/speaker/play'
         stopTopic = 'hermod/'+self.site+'/speaker/stop'
         volumeTopic = 'hermod/'+self.site+'/speaker/volume'
-        self.log("ssMESSAGETop {}".format(playTopic))
+        # self.log("ssMESSAGETop {}".format(playTopic))
         
         if topic.startswith(playTopic):
-            self.log('MATCHPLAY')
+            # self.log('MATCHPLAY')
             ptl = len(playTopic) +1
             playId = topic[ptl:]
             #self.log("playID {}".format(playId))
@@ -71,7 +71,7 @@ class speaker_service(MqttService):
         if useIndex < 0:
             print('no suitable speaker device')
         else:
-            print(['SPEAKER USE DEV',useIndex,p.get_device_info_by_host_api_device_index(0,useIndex)])
+           # print(['SPEAKER USE DEV',useIndex,p.get_device_info_by_host_api_device_index(0,useIndex)])
             remaining = len(wav)
             wf = wave.open(io.BytesIO(bytes(wav)), 'rb')
             #p = pyaudio.PyAudio()

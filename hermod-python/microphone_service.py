@@ -79,7 +79,7 @@ class microphone_service(MqttService):
         if useIndex < 0:
             print('no suitable mic device')
         else:
-            print(['MIC USE DEV',useIndex,p.get_device_info_by_host_api_device_index(0,useIndex)])
+           # print(['MIC USE DEV',useIndex,p.get_device_info_by_host_api_device_index(0,useIndex)])
             audio = pyaudio.PyAudio()
             stream = audio.open(format=pyaudio.paInt16, channels=1,
                             rate=16000, input=True,
