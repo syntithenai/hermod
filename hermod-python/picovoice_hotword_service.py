@@ -27,7 +27,12 @@ from util import *
 from mqtt_service import MqttService
 
 
-
+###############################################
+# This class implements a service that listens for mqtt audio packets and emits hotword/detected messages
+# It responds to hotword/activate, hotword/deactivate to initialise the service and hotword/start and hotword/stop to 
+# activate audio processing.
+###############################################
+ 
 class picovoice_hotword_service(MqttService):
   
     def __init__(
@@ -80,26 +85,19 @@ class picovoice_hotword_service(MqttService):
         activateTopic = 'hermod/'+site+'/hotword/activate'
         deactivateTopic = 'hermod/'+site+'/hotword/deactivate'
         if topic == activateTopic:
-          #  self.log('act')
             self.activate(site)
         elif topic == deactivateTopic:
-            #self.log('eact')
             self.deactivate(site)
         elif topic == startTopic:
-            #self.log('start')
             if (self.active[site] == True):
                 self.started[site] = True 
         elif topic == stopTopic:
-            #self.log('stop')
             self.started[site] = False
         elif topic == audioTopic :
-           # self.log('audio')
             if site in self.audio_stream:
-                #self.log('audio')
                 self.audio_stream[site].write(msg.payload) 
         
     def activate(self,site):
-      #  self.log(['activate',site,self.active,self.started]) 
         self.active[site] = True
         self.started[site] = False
         self.audio_stream[site] = BytesLoop()
@@ -109,24 +107,8 @@ class picovoice_hotword_service(MqttService):
                 model_file_path=MODEL_FILE_PATH,
                 keyword_file_paths=self.keyword_file_paths,
                 sensitivities=self.sensitivities)        
-        # if (len(site) > 0):
-            # self.log(self.active[site])
-            # if (True or self.active[site] != True):
-                # self.active[site] = True
-                # self.audio_stream[site] = BytesLoop()
-                # # subscribe mqtt
-                # #self.client.subscribe('hermod/'+site+'/microphone/audio')
-                # # instantiate porcupine and audio
-                # # self.porcupine[site] = Porcupine(
-                # # library_path=LIBRARY_PATH,
-                # # model_file_path=MODEL_FILE_PATH,
-                # # keyword_file_paths=self.keyword_file_paths,
-                # # sensitivities=self.sensitivities)
-      #  self.log(['activated',site,self.active,self.started])   
-
+      
     def deactivate(self,site):
-        # if len(site) > 0:
-            # if (self.active[site] == True):
         self.active[site] = False
         self.started[site] = False
         # unsub audio
@@ -139,45 +121,20 @@ class picovoice_hotword_service(MqttService):
                 
                 
     def startMain(self, run_event):
-      # self.log('STARTMAIN')
-      # pa = None
-       try:
-            # self.porcupine = Porcupine(
-                # library_path=LIBRARY_PATH,
-                # model_file_path=MODEL_FILE_PATH,
-                # keyword_file_paths=self.keyword_file_paths,
-                # sensitivities=self.sensitivities)
-           while True and run_event.is_set():
+        try:
+            while True and run_event.is_set():
                 # 
-               for site in self.active:
-                  
-                   if (site in self.porcupine and self.active[site] == True and self.started[site] == True  and self.audio_stream[site].hasBytes(self.porcupine[site].frame_length*2)):
-                       #self.log('HOTWORD FRAME')
-                       pcm = self.audio_stream[site].read(self.porcupine[site].frame_length*2)
-                       pcm = struct.unpack_from("h" * self.porcupine[site].frame_length, pcm)
-                       result = self.porcupine[site].process(pcm)
-                       if self.num_keywords == 1 and result:
-                        #   self.log('[%s] detected keyword' % str(datetime.now()))
-                           self.client.publish('hermod/'+site+'/hotword/detected',json.dumps({'hotword': self.keyword_names[0]}))
-                       elif self.num_keywords > 1 and result >= 0:
-                         #  self.log('[%s] detected %s' % (str(datetime.now()), self.keyword_names[result]))
-                          # self.log('SITE {}'.format(site))
-                           self.client.publish('hermod/'+site+'/hotword/detected',json.dumps({'hotword': self.keyword_names[result]}))
+                for site in self.active:
+                    if (site in self.porcupine and self.active[site] == True and self.started[site] == True  and self.audio_stream[site].hasBytes(self.porcupine[site].frame_length*2)):
+                        pcm = self.audio_stream[site].read(self.porcupine[site].frame_length*2)
+                        pcm = struct.unpack_from("h" * self.porcupine[site].frame_length, pcm)
+                        result = self.porcupine[site].process(pcm)
+                        if self.num_keywords == 1 and result:
+                            self.client.publish('hermod/'+site+'/hotword/detected',json.dumps({'hotword': self.keyword_names[0]}))
+                        elif self.num_keywords > 1 and result >= 0:
+                            self.client.publish('hermod/'+site+'/hotword/detected',json.dumps({'hotword': self.keyword_names[result]}))
         
-                  # self.log(site)
-               # self.log('site')
-               #time.sleep(2)  
-                # if (self.started == True and self.audio_stream.hasBytes(self.porcupine.frame_length*2)): 
-                    # self.log('HOTWORD FRAME')
-                    # # if self._output_path is not None:
-                        # # self._recorded_frames.append(pcm)
                     
-       except KeyboardInterrupt:
+        except KeyboardInterrupt:
             pass
-           # # self.log('stopping ...')
-        # finally:
-            # if self.porcupine is not None:
-                # self.porcupine.delete()
-
-            # if self.audio_stream is not None:
-                # self.audio_stream.close()
+       

@@ -12,7 +12,18 @@ seed(1)
 
 from mqtt_service import MqttService
 
-# # apt-get install sox libsox-fmt-all ????
+
+
+######################################################
+# This class listens for tts/say messages and triggers a sequence of messages
+# that result in the text message being converted to wav audio and played through the speaker service
+# Where the text is very long, it is split into parts and sent sequentially.
+# The speaker service sends start and end messages. 
+# This service iterates each part, waiting for each speaker/started and speaker/finished message and finally sends
+# a tts/finished  message
+# Depends on os pico2wav install with path in config.yaml
+#########################################################
+
 
 class pico2wav_tts_service(MqttService):
   
@@ -20,68 +31,33 @@ class pico2wav_tts_service(MqttService):
             self,
             config
             ):
-        # self.log('start constr')
         super(pico2wav_tts_service, self).__init__(config['mqtt_hostname'],config['mqtt_port'],config['site'])
         self.config = config
         # subscribe to all sites
-        #self.site = None
         self.subscribe_to='hermod/+/tts/say'
-        # self.log('end constr')
-    
-    # def sft(topic):
-        # self.log('SFT'.format(topic))
-        # return 'jest'
-        # # parts = [] 
-        # # #topic.split('/')
-        # # self.log('SFT parts'.format(parts))
-        # # return parts[1];
-     
+         
    
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
         parts = topic.split('/')
         site = parts[1] 
-        #site = self.sft(topic)
         sayTopic = 'hermod/' +site+'/tts/say'
         playFinished = 'hermod/' +site+'/speaker/finished'
-        
-        #sayTopic="{}".format(st)
-        # self.log('ONMESS from {} - {}'.format(site, topic))
-        # self.log(playFinished)
-        # self.log(topic)
-        # 
-       
-        # self.log("ttMESSAGE |{}|".format(topic))
         payload = {}
         try:
             payload = json.loads(msg.payload)
         except:
             pass
-        # self.log('dd')    
-        # self.log(payload.get('text'))
-        #text = ''
-        # self.log(topic)
-        # self.log(playFinished)
-        # self.log(topic == playFinished)
-        
+    
         text = payload.get('text')
         
-        # self.log('text {}'.format(text))
         if topic == sayTopic:
-            # self.log('genaudio {}'.format(text))
             self.generate_audio(site,msg.topic,text)
         elif topic == playFinished:
-            # self.log('yAY ALL DONE' )
-            # TODO - pass id
             message = {"id":payload.get('id')}
-            # self.log('yAY ALL DONE {}'.format(message) )
-            
             self.client.publish('hermod/{}/tts/finished'.format(site), json.dumps(message))
             self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
-        # else:
-            # self.log('no match topic {}'.format(topic))
-            
-    # TODO, FILE BASED CACHE FOR GENERATED UTTERANCES    
+
     def generate_audio(self,site,topic,text): 
         self.client.publish('hermod/{}/speaker/started'.format(site), None)
         cache_path = self.config['services']['pico2wav_tts_service']['cache_path']
@@ -93,23 +69,10 @@ class pico2wav_tts_service(MqttService):
             os.system(path + ' -w=' + fileName + ' "{}" '.format(text))
             
             fp = open(fileName,"rb")
-            # self.log('open {}'.format(fileName))
-            # if (fp.mode == 'r'):
-                # self.log('opened {}'.format(fileName))
-            # self.log('FP {}'.format(fp))
-            # try:
             f = fp.read()
-            # except Exception as e: 
-                # self.log("Unexpected error:")
-                # self.log(e)
-                
-            # self.log('read {}')
-             # self.log('PICO2WAV PATH')
-            # self.log(path)
-            self.client.subscribe('hermod/{}/speaker/finished'.format(site))
-            
+            self.client.subscribe('hermod/{}/speaker/finished'.format(site))            
             self.client.publish('hermod/{}/speaker/play/{}'.format(site,value), payload=bytes(f),qos=0)
-           # os.remove(fileName)
+            os.remove(fileName)
             
      
 

@@ -12,6 +12,9 @@ import paho.mqtt.client as mqtt
 
 from thread_handler import ThreadHandler
 
+############################################
+# Parent class for other mqtt based services implements connection and subscription
+############################################
 
 class MqttService(object):
    
@@ -23,7 +26,6 @@ class MqttService(object):
             ):
 
         super(MqttService, self).__init__()
-        # print('MQTT CONSTRUCTOR {} {} {}'.format(mqtt_hostname,mqtt_port,site))
         self.thread_handler = ThreadHandler()
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
@@ -47,10 +49,6 @@ class MqttService(object):
                 self.log("MQTT error {}".format(e))
                 time.sleep(5 + int(retry / 5))
                 retry = retry + 1
-            # SUBSCRIBE 
-            # for sub in self.subscribe_to.split(","):
-                # self.log('sub to '+sub)
-                # self.client.subscribe(sub)
                 
         while run_event.is_set():
             self.client.loop()
@@ -58,7 +56,7 @@ class MqttService(object):
       
 
     def on_connect(self, client, userdata, flags, result_code):
-       # self.log("Connected with result code {}".format(result_code))
+        # self.log("Connected with result code {}".format(result_code))
         # SUBSCRIBE 
         for sub in self.subscribe_to.split(","):
            # self.log('subscribe to {}'.format(sub))
@@ -68,6 +66,7 @@ class MqttService(object):
     def on_disconnect(self, client, userdata, result_code):
         #self.log("Disconnected with result code " + str(result_code))
         time.sleep(5)
+        # restart ALL thread targets
         for threadTarget in self.thread_targets:
             self.thread_handler.run(target=threadTarget)
 
@@ -81,11 +80,11 @@ class MqttService(object):
         sys.stdout.flush()
         
 
+    # child classes can override/extend this.thread_targets for additional threads
     def run(self,run_event):
         # start mqtt connection
         for threadTarget in self.thread_targets:
             # self.log('start thread {} '.format(threadTarget))
-            
             self.thread_handler.run(target=threadTarget)
         self.thread_handler.start_run_loop()
 

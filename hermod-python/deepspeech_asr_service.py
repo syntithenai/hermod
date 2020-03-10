@@ -9,7 +9,6 @@ import io
 from socket import error as socket_error
 import paho.mqtt.client as mqtt
 import warnings
-#import pyaudio
 import soundfile
 import json
 
@@ -26,6 +25,20 @@ import webrtcvad
 from scipy import signal
 
 
+######################################
+# This class listens for mqtt audio packets and publishes asr/text messages
+
+# It integrates silence detection to slice up audio and detect the end of a spoken message
+# It is designed to be run as a thread by calling run(run_event) (implemented in MqttService)
+# Based on the deepspeech examples repository python streaming example.
+# To activate the service for a site send a message - hermod/<site>/asr/activate
+# Once activated, the service will start listening for audio packets when you send - hermod/<site>/asr/start
+# The service will continue to listen and emit hermod/<site>/asr/text messages every time the deepspeech engine can recognise some non empty text
+# A hermod/<site>/asr/stop message will disable recognition while still leaving a loaded deepspeech transcription instance for the site so it can be reenabled instantly
+# A hermod/<site>/asr/deactivate message will garbage collect any resources related to the site.
+
+###############################################################
+ 
 
 class deepspeech_asr_service(MqttService):
     FORMAT = pyaudio.paInt16
@@ -33,8 +46,6 @@ class deepspeech_asr_service(MqttService):
     RATE_PROCESS = 16000
     CHANNELS = 1
     BLOCKS_PER_SECOND = 50           
- 
-    
  
     def __init__(
             self,
@@ -52,10 +63,7 @@ class deepspeech_asr_service(MqttService):
         self.vad = webrtcvad.Vad(config.get('vad_sensitivity',1))
         self.modelFile = 'output_graph.pbmm'
         
-        # TODO fix the following check, see porcupine utility class for processor interpretation.
-        # print('uname')
         system,  release, version, machine, processor = os.uname()                
-        # print([system,machine,processor])
         if processor == 'arm7': self.modelFile = 'output_graph.tflite'
         
         
@@ -65,7 +73,6 @@ class deepspeech_asr_service(MqttService):
         self.models = {}
         self.stream_contexts = {}
         
-        #self.site = config['site']
         self.model_path = config['services']['deepspeech_asr_service']['model_path']
         self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop'
     
@@ -80,11 +87,7 @@ class deepspeech_asr_service(MqttService):
         startTopic = 'hermod/' +site+'/asr/start'
         stopTopic = 'hermod/'+site+'/asr/stop'
         audioTopic = 'hermod/'+site+'/microphone/audio'
-        # self.log(topic)
-        # self.log(activateTopic)
-        # self.log(topic == activateTopic)
         if topic == activateTopic:
-            #self.log('activate t')
             self.activate(site)
         elif topic == deactivateTopic:
             self.deactivate(site)
@@ -93,33 +96,24 @@ class deepspeech_asr_service(MqttService):
         elif topic == stopTopic:
             self.started[site] = False
         elif topic == audioTopic :
-            #print(msg.payload)
-            #self.buffer_queue.put(msg.payload)
             self.audio_stream[site].write(msg.payload) ;
-            #self.log('write {} {} {}'.format(self.block_size,self.audio_stream.length(),len(msg.payload)))
-        # sys.stdout.flush()
-
+        
     def activate(self,site):
-        #self.log('activate')
         self.audio_stream[site] = BytesLoop()
         self.active[site] = True
         self.started[site] = False
         self.client.subscribe('hermod/'+site+'/microphone/audio')
           # Load DeepSpeech model
-        #self.log('activate1')
         if os.path.isdir(self.model_path):
             modelPath = os.path.join(self.model_path, self.modelFile)
             lm = os.path.join(self.model_path, 'lm.binary')
             trie = os.path.join(self.model_path, 'trie')
 
-            #self.log('Initializing model...' + modelPath)
             self.models[site] = deepspeech.Model(modelPath, 500)
             if lm and trie:
                 self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
-            #self.log('asr get streawm')
         
             self.stream_contexts[site] = self.models[site].createStream()
-            #self.log('asr created streawm')
         
    
     def deactivate(self,site):
@@ -130,25 +124,9 @@ class deepspeech_asr_service(MqttService):
         
 
     def read(self,site):
-        """Return a block of audio data, blocking if necessary."""  
         a = self.audio_stream[site].read(self.block_size*2);
-        # if (len(a) > 0):
-            # self.log('read data ask {} got {} from {}'.format(self.block_size,len(a),self.audio_stream.length()))
         return a
-        # *2
-        #print('read {} {} {}'.format(self.block_size,self.audio_stream.hasBytes(self.block_size),self.audio_stream.length()))
         
-        # if (self.started == True and self.audio_stream.hasBytes(self.block_size)): 
-            # print('read {}'.format(self.block_size))
-            # pcm = self.audio_stream.read(self.block_size)
-            # print(pcm)
-            # sys.stdout.flush()
-            # #pcm = struct.unpack_from("h" * self.block_size, pcm)
-            # return pcm    
-        # else: 
-           # return None  
-        #return self.buffer_queue.get()       
-
     def frame_generator(self,site):
         """Generator that yields all audio frames."""
         while True:
@@ -193,123 +171,25 @@ class deepspeech_asr_service(MqttService):
 
     def startASR(self, run_event):
        
-        # Load DeepSpeech model
         if os.path.isdir(self.model_path):
-            # modelPath = os.path.join(self.model_path, self.modelFile)
-            # lm = os.path.join(self.model_path, 'lm.binary')
-            # trie = os.path.join(self.model_path, 'trie')
-
-         # #   self.log('Initializing model...' + modelPath)
-            # model = deepspeech.Model(modelPath, 500)
-            # if lm and trie:
-                # model.enableDecoderWithLM(lm, trie, 0.75, 1.85)
-           # # self.log('asr get streawm')
-        
-            # stream_context = model.createStream()
-           # self.log('asr stream ready')
-            # self.log(stream_context)
             while True and run_event.is_set():
                 time.sleep(2)
-                # self.log(self.active)
                 for site in self.active:
-                    # self.log('site')
-                    # self.log(site)
                     if (site in self.models and site in self.stream_contexts and self.active[site] == True and self.started[site] == True):
-                        #self.log('site start')
-                    
                         frames = self.vad_collector(site)
 
                         for frame in frames:
-                            #if (self.started):
                             if frame is not None:
-                                # self.log("streaming frame")
                                 self.models[site].feedAudioContent(self.stream_contexts[site], np.frombuffer(frame, np.int16))
                             else:
                                 text = self.models[site].finishStream(self.stream_contexts[site])
-                                # self.log("Recognized: %s" % text)
                                 if (len(text) > 0):
                                     self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
                                 self.stream_context[site] = self.models[site].createStream()
                             time.sleep(0.01)
-                   
-                   
-               # frame = self.read()
-               # self.log('fram')
-                # vad detect call end utterance
-                # if frame is not None:
-                    # self.log("streaming frame")
-                    # model.feedAudioContent(stream_context, np.frombuffer(frame, np.int16))
-                # else:
-                    # logging.debug("end utterence")
-                    # text = model.finishStream(stream_context)
-                    # print("Recognized: %s" % text)
-                    # stream_context = model.createStream()
-                # time.sleep(0.1)
         else:
             print('missing model files at '+self.model_path) 
     
-    
-    # def startMain(self, run_event):
-        # """
-         # Creates an input audio stream, initializes wake word detection (Porcupine) object, and monitors the audio
-         # stream for occurrences of the wake word(s). It prints the time of detection for each occurrence and index of
-         # wake word.
-         # """
-        # # ARGS = {
-          # # vad_aggressiveness: 3,
-          # # lm_alpha: 0.75,
-          # # lb_beta: 1.85,
-          # # beam_width: 500,
-          # # rate: 16000,
-          # # model:'none' 
-        # # }
-        # modelFile = 'output_graph.pb'
-        
-        # print('uname')
-        # system,  release, version, machine, processor = os.uname()                
-        # print([system,machine,processor])
-        # if processor == 'arm7': modelFile = 'output_graph.tflite'
-        
-        # # Load DeepSpeech model
-        # if os.path.isdir(self.model_path):
-            # modelPath = os.path.join(self.model_path, modelFile)
-            # lm = os.path.join(self.model_path, 'lm.binary')
-            # trie = os.path.join(self.model_path, 'trie')
-
-            # print('Initializing model...')
-            # logging.info("ARGS.model: %s", modelPath)
-            # model = deepspeech.Model(modelPath, 500)
-            # if lm and trie:
-                # logging.info("ARGS.lm: %s", lm)
-                # logging.info("ARGS.trie: %s", trie)
-                # model.enableDecoderWithLM(lm, trie, 0.75, 1.85)
-
-            # stream_context = model.createStream()
-            
-            # while True and run_event.is_set():
-                    
-                # # Stream from microphone to DeepSpeech using VAD
-                
-                # frames = self.vad_collector()
-
-                # for frame in frames:
-                    # if frame is not None:
-                        # logging.debug("streaming frame")
-                        # model.feedAudioContent(stream_context, np.frombuffer(frame, np.int16))
-                    # else:
-                        # logging.debug("end utterence")
-                        # text = model.finishStream(stream_context)
-                        # print("Recognized: %s" % text)
-                        # stream_context = model.createStream()
-        # else:
-            # print('missing model files at '+self.model_path)
-# if __name__ == '__main__':
-    
-    
-    # main(ARGS)
-
-
-
-
+  
 
 

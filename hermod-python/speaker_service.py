@@ -7,7 +7,11 @@ import io
 
 from mqtt_service import MqttService
 
-
+##########################################
+# This class captures  mqtt audio packets and streams the audio to available hardware
+# Streaming is started by a speaker/play message and stopped by speaker/stop
+# This service is preconfigured for a single site.
+#############################################
 
 class speaker_service(MqttService):
   
@@ -20,23 +24,15 @@ class speaker_service(MqttService):
         self.site = config['site']
         self.volume = 5    
         self.subscribe_to='hermod/'+self.site+'/speaker/#' 
-        #play/#,hermod/'+self.site+'/speaker/stop,hermod/'+self.site+'/speaker/volume'
     
-     
-   
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
-        # self.log("ssMESSAGE {}".format(topic))
         playTopic = 'hermod/' +self.site+'/speaker/play'
         stopTopic = 'hermod/'+self.site+'/speaker/stop'
         volumeTopic = 'hermod/'+self.site+'/speaker/volume'
-        # self.log("ssMESSAGETop {}".format(playTopic))
-        
         if topic.startswith(playTopic):
-            # self.log('MATCHPLAY')
             ptl = len(playTopic) +1
             playId = topic[ptl:]
-            #self.log("playID {}".format(playId))
             self.startPlaying(msg.payload,playId)
         elif topic == stopTopic:
             self.stopPlaying(playId)
@@ -58,9 +54,6 @@ class speaker_service(MqttService):
                 pulseIndex = i
             if dev['name'] == 'default':
                 defaultIndex = i
-          # print((i,dev['name'],dev['maxInputChannels']))
-          # print (dev)
-        # sys.stdout.flush()  
         
         # use pulse if available
         if (pulseIndex >= 0):
@@ -74,7 +67,6 @@ class speaker_service(MqttService):
            # print(['SPEAKER USE DEV',useIndex,p.get_device_info_by_host_api_device_index(0,useIndex)])
             remaining = len(wav)
             wf = wave.open(io.BytesIO(bytes(wav)), 'rb')
-            #p = pyaudio.PyAudio()
             CHUNK = 256
             stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
                             channels=wf.getnchannels(),
@@ -89,7 +81,6 @@ class speaker_service(MqttService):
                 data = wf.readframes(CHUNK)
                 remaining = remaining - CHUNK
             
-            #self.log('FINISHED READING speker')
             self.client.publish("hermod/"+self.site+"/speaker/finished",json.dumps({"id":playId}));
             stream.stop_stream()
             stream.close()

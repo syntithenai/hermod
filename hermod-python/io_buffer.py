@@ -1,4 +1,8 @@
-# buffer for streaming incoming mqtt and reading fixed length chunks for wav processing by hotword/speech engine
+#############################################
+# This class implements a buffer for streaming incoming mqtt packets in
+# and reading fixed length chunks out for wav processing by hotword/speech engine
+#############################################
+
 import sys
 
 class BytesLoop:

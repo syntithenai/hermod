@@ -12,6 +12,11 @@ import json
 from mqtt_service import MqttService
 
 
+##########################################
+# This class captures audio from the available hardware and streams mqtt audio packets
+# Streaming is enabled by a microphone/start message and stopped by microphone/stop
+# This service is preconfigured for a single site.
+#############################################
 
 class microphone_service(MqttService):
   
@@ -57,19 +62,7 @@ class microphone_service(MqttService):
                     pulseIndex = i
                 if devName == 'default':
                     defaultIndex = i
-              
-#                print([ "Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0,i).get('name')])
-
-        # for i in range(p.get_device_count()):#list all available audio devices
-            # dev = p.get_device_info_by_index(i)
-            # if dev['name'] == 'pulse':
-                # pulseIndex = i
-            # if dev['name'] == 'default':
-                # defaultIndex = i
-          # # print((i,dev['name'],dev['maxInputChannels']))
-          # print (dev)
-        # sys.stdout.flush()  
-        
+  
         # use pulse if available
         if (pulseIndex >= 0):
             useIndex = pulseIndex
@@ -94,7 +87,6 @@ class microphone_service(MqttService):
                     waveFile.setsampwidth(2)
                     waveFile.setframerate(16000)
                     waveFile.writeframes(frames) 
-                    #waveFile.close()
                     topic = 'hermod/'+self.site+'/microphone/audio'.format(self.site)
                     self.client.publish(topic, payload=output.getvalue(),qos=0)
-                    #output.close()  # discard buffer memory
+                    

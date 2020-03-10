@@ -138,8 +138,8 @@ test('hotword detected', () => {
             mqtt.connect(config).then(function(mqttClient) {
                 mqttClient.subscribe('hermod/jest/speaker/#')
                 mqttClient.on('message', function(message,body) {
-                    console.log('spw message')
-                    console.log(message)
+                    //console.log('spw message')
+                    //console.log(message)
                     
                     if (message == "hermod/jest/speaker/started") started = true;
                     if (started && message == "hermod/jest/speaker/finished") {
@@ -163,15 +163,15 @@ test('hotword detected', () => {
             mqtt.connect(config).then(function(mqttClient) {
                 mqttClient.subscribe('hermod/jest/microphone/audio')
                 mqttClient.on('message', function(message,body) {
-                    console.log('msa message')
-                    console.log(message)
+                    //console.log('msa message')
+                    //console.log(message)
                     if (message == "hermod/jest/microphone/audio") {
                         mqttClient.unsubscribe('hermod/jest/microphone/audio')
                         //mqttClient.publish('hermod/jest/microphone/stop',null);
                         resolve()
                     }
                 });
-                console.log('publish start')
+                //console.log('publish start')
                 mqttClient.publish('hermod/jest/microphone/start',null);
                 setTimeout(function() {
                     mqttClient.publish('hermod/jest/microphone/stop',null);
@@ -218,20 +218,20 @@ test('tts generates and plays audio', () => {
             mqttClient.subscribe('hermod/jest/tts/#')
             mqttClient.subscribe('hermod/jest/speaker/#')
             mqttClient.on('message', function(message,body) {
-                console.log('TTS message')
-                console.log(message)
+                //console.log('TTS message')
+                //console.log(message)
                 
                 if (message.indexOf("hermod/jest/speaker/play") == 0 && body && body.length > 0) {
-                    console.log('SET PLAYED' )
+                    //console.log('SET PLAYED' )
                     played = true;
                 }
                 if (message == "hermod/jest/tts/started") {
-                    console.log('SET STARTED' )
+                    //console.log('SET STARTED' )
                     started = true;
                 }
                 //(started && played) && 
                 if ((message == "hermod/jest/tts/finished")) {
-                    console.log('SET FINISHED' )
+                    //console.log('SET FINISHED' )
                     mqttClient.unsubscribe('hermod/jest/tts/#')
                     mqttClient.unsubscribe('hermod/jest/speaker/#')
                     resolve()
