@@ -59,7 +59,7 @@ class pico2wav_tts_service(MqttService):
             pass
         # self.log('dd')    
         # self.log(payload.get('text'))
-        text = ''
+        #text = ''
         # self.log(topic)
         # self.log(playFinished)
         # self.log(topic == playFinished)

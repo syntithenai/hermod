@@ -33,8 +33,8 @@ class HermodDialogManagerService extends HermodService  {
 				that.sendMqtt('hermod/'+siteId+'/dialog/started',{id:dialogId})
 				that.sendMqtt('hermod/'+siteId+'/asr/stop',{id:dialogId,models:that.dialogs[dialogId].asrModels})
 				that.sendMqtt('hermod/'+siteId+'/nlu/parse',{id:dialogId,models:that.dialogs[dialogId].nluModels,text:payload.text,confidence:payload.confidence})
-						
 		}
+        
         let eventFunctions = {
         // SESSION
             'hermod/+/hotword/detected' : function(topic,siteId,payload) {

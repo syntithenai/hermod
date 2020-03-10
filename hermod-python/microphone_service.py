@@ -31,7 +31,7 @@ class microphone_service(MqttService):
 
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
-        self.log("MESSAGE {}".format(topic))
+        # self.log("MESSAGE {}".format(topic))
         startTopic = 'hermod/' +self.site+'/microphone/start'
         stopTopic = 'hermod/'+self.site+'/microphone/stop'
         if topic == startTopic:

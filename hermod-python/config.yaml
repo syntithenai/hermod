@@ -13,5 +13,5 @@ services:
   pico2wav_tts_service:
     binary_path: /usr/bin/pico2wave
     cache_path: /tmp/
-  #dialog_manager_service:
+  dialog_manager_service:
 #  

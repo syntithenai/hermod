@@ -61,7 +61,7 @@ class MqttService(object):
        # self.log("Connected with result code {}".format(result_code))
         # SUBSCRIBE 
         for sub in self.subscribe_to.split(","):
-          # self.log('subscribe to {}'.format(sub))
+           # self.log('subscribe to {}'.format(sub))
            self.client.subscribe(sub)
 
 
