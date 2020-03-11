@@ -1,3 +1,0 @@
-[console_scripts]
-deepspeech = deepspeech.client:main
-

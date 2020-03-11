@@ -5,7 +5,7 @@ services:
   microphone_service:
   speaker_service:
   deepspeech_asr_service:
-    model_path: "/projects/deepspeech-0.6.1-models"
+    model_path: "../hermod-python/models"
     vad_sensitivity: 1
   picovoice_hotword_service:
     hotwords: "picovoice,bumblebee,porcupine"

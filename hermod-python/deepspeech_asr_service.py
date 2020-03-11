@@ -64,7 +64,8 @@ class deepspeech_asr_service(MqttService):
         self.modelFile = 'output_graph.pbmm'
         
         system,  release, version, machine, processor = os.uname()                
-        if processor == 'arm7': self.modelFile = 'output_graph.tflite'
+        #self.log([system,  release, version, machine, processor])
+        if processor == 'armv7l': self.modelFile = 'output_graph.tflite'
         
         
         self.audio_stream = {} #BytesLoop()
@@ -79,7 +80,7 @@ class deepspeech_asr_service(MqttService):
 
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
-       # self.log("MESSAGE {}".format(topic))
+        #self.log("MESSAGE {}".format(topic))
         parts = topic.split("/")
         site = parts[1]
         activateTopic = 'hermod/' +site+'/asr/activate'
@@ -170,10 +171,9 @@ class deepspeech_asr_service(MqttService):
 
 
     def startASR(self, run_event):
-       
         if os.path.isdir(self.model_path):
             while True and run_event.is_set():
-                time.sleep(2)
+                time.sleep(1)
                 for site in self.active:
                     if (site in self.models and site in self.stream_contexts and self.active[site] == True and self.started[site] == True):
                         frames = self.vad_collector(site)
