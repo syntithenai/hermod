@@ -1,7 +1,9 @@
 bin
+old
 include
 __pycache__
 local
+lib64
 share
 pyvenv.cfg
 models
