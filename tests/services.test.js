@@ -89,11 +89,11 @@ test('asr text detected - my name is fred', () => {
             mqttClient.publish('hermod/'+site+'/asr/activate')
             setTimeout(function() {
                 mqttClient.publish('hermod/'+site+'/asr/start')
-                setTimeout(function() {wav2mqtt.start(mqttClient,site,'./audio/fred.wav') }, 10)
-            },900)
+                setTimeout(function() {wav2mqtt.start(mqttClient,site,'./audio/fred.wav') }, 100)
+            },1500)
         })
     })  
-},6000);
+},8000);
 
 
 
@@ -125,11 +125,11 @@ test('hotword detected', () => {
 },7000);
 
 
-    ////////////////////
-     //////Audio Services
-    //////////////////////
+    ////////////////////////
+     //////////Audio Services
+    //////////////////////////
 
-    //////// TODO enable this test with two preceding and this test fails. remove previous tests and it works.
+    ////////// TODO enable this test with two preceding and this test fails. remove previous tests and it works.
 
     ////// TODO test stop and volume and mp3 play
     test('speaker plays wav', () => {
@@ -243,17 +243,17 @@ test('tts generates and plays audio', () => {
 },3000);
 
 
-////////////////////////////
- //////////Dialog Manager
- //////////THESE TESTS REQUIRE UNDERLYING SERVICES AUDIO/HOTWORD/ASR AS WELL AS DIALOGMANAGER
- //////////hotword/detected => dialog/end then wait dialog/ended then dialog/started, microphone/start, asr/start
- //////////dialog/start => if text then dialog/started, asr/stop, nlu/parse ELSE  dialog/started, microphone/start, asr/start
- //////////dialog/continue => if text then tts/say then wait tts/finished then  microphone/start, asr/start    ELSE microphone/start, asr/start
- //////////asr/text => asr/stop, hotword/stop, microphone/stop, nlu/parse
- //////////nlu/intent => intent
- //////////nlu/fail => dialog/end
- //////////dialog/end => dialog/ended, microphone/start, hotword/start
- //////////router/action => action
+//////////////////////////////
+ ////////////Dialog Manager
+ ////////////THESE TESTS REQUIRE UNDERLYING SERVICES AUDIO/HOTWORD/ASR AS WELL AS DIALOGMANAGER
+ ////////////hotword/detected => dialog/end then wait dialog/ended then dialog/started, microphone/start, asr/start
+ ////////////dialog/start => if text then dialog/started, asr/stop, nlu/parse ELSE  dialog/started, microphone/start, asr/start
+ ////////////dialog/continue => if text then tts/say then wait tts/finished then  microphone/start, asr/start    ELSE microphone/start, asr/start
+ ////////////asr/text => asr/stop, hotword/stop, microphone/stop, nlu/parse
+ ////////////nlu/intent => intent
+ ////////////nlu/fail => dialog/end
+ ////////////dialog/end => dialog/ended, microphone/start, hotword/start
+ ////////////router/action => action
 
 
 

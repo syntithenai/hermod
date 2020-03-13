@@ -2,16 +2,14 @@ mqtt_hostname: "localhost"
 mqtt_port: 1883
 site: jest
 services:
-  microphone_service:
-  speaker_service:
-  deepspeech_asr_service:
+  DeepspeechAsrService:
     model_path: "../hermod-python/models"
     vad_sensitivity: 1
-  picovoice_hotword_service:
+  PicovoiceHotwordService:
     hotwords: "picovoice,bumblebee,porcupine"
     sensitivity: 0.5
-  pico2wav_tts_service:
+  Pico2wavTtsService:
     binary_path: /usr/bin/pico2wave
     cache_path: /tmp/
-  dialog_manager_service:
+  DialogManagerService:
 #  

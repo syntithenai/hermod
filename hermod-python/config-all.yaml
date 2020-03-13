@@ -1,0 +1,20 @@
+mqtt_hostname: "localhost"
+mqtt_port: 1883
+site: jest
+services:
+  MicrophoneService:
+  SpeakerService:
+  #deepspeech_asr_service:
+  DeepspeechAsrService:
+    model_path: "../hermod-python/models"
+    vad_sensitivity: 2
+  PicovoiceHotwordService:
+    hotwords: "picovoice,bumblebee,porcupine"
+    sensitivity: 0.5
+  Pico2wavTtsService:
+    binary_path: /usr/bin/pico2wave
+    cache_path: /tmp/
+  DialogManagerService:
+  #RasaNluService:
+    #rasa_url: "http://localhost:5005/"
+  

@@ -40,7 +40,7 @@ from scipy import signal
 ###############################################################
  
 
-class deepspeech_asr_service(MqttService):
+class DeepspeechAsrService(MqttService):
     FORMAT = pyaudio.paInt16
     # Network/VAD rate-space
     RATE_PROCESS = 16000
@@ -54,7 +54,7 @@ class deepspeech_asr_service(MqttService):
 
         self.config = config
 
-        super(deepspeech_asr_service, self).__init__(config['mqtt_hostname'],config['mqtt_port'],config['site'])
+        super(DeepspeechAsrService, self).__init__(config['mqtt_hostname'],config['mqtt_port'],config['site'])
         self.thread_targets.append(self.startASR)    
        
         self.sample_rate = self.RATE_PROCESS
@@ -74,7 +74,7 @@ class deepspeech_asr_service(MqttService):
         self.models = {}
         self.stream_contexts = {}
         
-        self.model_path = config['services']['deepspeech_asr_service']['model_path']
+        self.model_path = config['services']['DeepspeechAsrService']['model_path']
         self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop'
     
 

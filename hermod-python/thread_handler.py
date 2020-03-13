@@ -1,5 +1,6 @@
-# -*-: coding utf-8 -*-
-""" Thread handler. """
+"""
+ Thread handler.
+"""
 
 import threading
 import time
@@ -34,7 +35,7 @@ class ThreadHandler(Singleton):
             when sending a keyboard interrup.
         """
         try:
-            while 1:
+            while True:
                 time.sleep(.1)
         except KeyboardInterrupt:
             self.stop()

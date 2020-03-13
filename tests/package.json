@@ -13,7 +13,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "jest -i --forceExit"
+    "test": "jest -i "
   },
   "author": "",
   "license": "ISC"
