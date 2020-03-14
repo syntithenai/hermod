@@ -1,4 +1,7 @@
+rasa
+tests/rasa
 hermod-python/lib
+hermod-python/old2
 hermod-nodejs/bin
 hermod-nodejs/pyvenv.cfg
 hermod-nodejs/lib

@@ -15,6 +15,6 @@ services:
     binary_path: /usr/bin/pico2wave
     cache_path: /tmp/
   DialogManagerService:
-  #RasaNluService:
-    #rasa_url: "http://localhost:5005/"
+  RasaNluService:
+   # rasa_url: "http://localhost:5005/"
   

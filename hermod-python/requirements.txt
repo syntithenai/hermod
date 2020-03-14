@@ -8,4 +8,4 @@ scipy
 paho-mqtt
 pvporcupine
 pyyaml
-
+rasa
