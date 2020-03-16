@@ -54,7 +54,7 @@ class DeepspeechAsrService(MqttService):
 
         self.config = config
 
-        super(DeepspeechAsrService, self).__init__(config['mqtt_hostname'],config['mqtt_port'],config['site'])
+        super(DeepspeechAsrService, self).__init__(config)
         self.thread_targets.append(self.startASR)    
        
         self.sample_rate = self.RATE_PROCESS
@@ -63,6 +63,7 @@ class DeepspeechAsrService(MqttService):
         self.vad = webrtcvad.Vad(config.get('vad_sensitivity',1))
         self.modelFile = 'output_graph.pbmm'
         
+        # TFLITE model for ARM architecture
         system,  release, version, machine, processor = os.uname()                
         #self.log([system,  release, version, machine, processor])
         if processor == 'armv7l': self.modelFile = 'output_graph.tflite'

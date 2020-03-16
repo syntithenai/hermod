@@ -32,10 +32,7 @@ class DialogManagerService(MqttService):
     ):
         super(
             DialogManagerService,
-            self).__init__(
-                config['mqtt_hostname'],
-                config['mqtt_port'],
-                config['site'])
+            self).__init__(config)
         self.config = config
         self.subscribe_to = 'hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent' + \
             ',hermod/+/nlu/fail,hermod/+/dialog/end,hermod/+/router/action,hermod/+/hotword/detected' + \
@@ -45,12 +42,12 @@ class DialogManagerService(MqttService):
         self.subscriptions = {}
     
     def on_connect(self, client, userdata, flags, result_code):
-        # self.log("DM Connected with result code {}".format(result_code))
+        self.log("DM Connected with result code {}".format(result_code))
         # SUBSCRIBE
         for sub in self.subscribe_to.split(","):
             #self.log('subscribe to {}'.format(sub))
             self.client.subscribe(sub)
-        # self.log('dm serv')
+        self.log('dm serv')
         # self.log(self.config['services'])
             
         if self.config['services']['DialogManagerService'] and self.config['services']['DialogManagerService']['initialise']:

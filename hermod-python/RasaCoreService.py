@@ -24,10 +24,7 @@ class RasaCoreService(MqttService):
     ):
         super(
             picovoice_hotword_service,
-            self).__init__(
-                config['mqtt_hostname'],
-                config['mqtt_port'],
-                config['site'])
+            self).__init__(config)
         self.config = config
 
         self.subscribe_to = 'hermod/' + self.site + '/microphone/audio,hermod/' + \

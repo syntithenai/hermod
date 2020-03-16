@@ -17,33 +17,35 @@ class MqttService(object):
     """
     def __init__(
             self,
-            mqtt_hostname='localhost',
-            mqtt_port=1883,
-            site='default'
+            config
     ):
 
         super(MqttService, self).__init__()
         self.thread_handler = ThreadHandler()
-        self.client = mqtt.Client()
+    #    if config.get('mqtt_protocol') == "311":
+        self.client = mqtt.Client(protocol=mqtt.MQTTv311)
+     #   else:
+      #      self.client = mqtt.Client()
+
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
         self.client.on_message = self.on_message
-        self.mqtt_hostname = mqtt_hostname
-        self.mqtt_port = int(mqtt_port)
+        self.mqtt_hostname = config.get('mqtt_hostname')
+        self.mqtt_port = int(config.get('mqtt_port'))
         self.thread_targets = [self.start_mqtt]
-        self.subscribe_to = 'hermod/{}/DISABLED/#'.format(site)
-        self.site = site
+        self.subscribe_to = 'hermod/DISABLED'
+        #self.site = site
 
     def start_mqtt(self, run_event):
         #self.log("Connecting to {} on port {}".format(self.mqtt_hostname, str(self.mqtt_port)))
         retry = 0
-        while run_event.is_set():
+        while run_event.is_set(): 
             try:
-              # self.log("Trying to connect to {} {}".format(self.mqtt_hostname,self.mqtt_port))
+                #self.log("Trying to connect to {} {}".format(self.mqtt_hostname,self.mqtt_port))
                 self.client.connect(self.mqtt_hostname, self.mqtt_port, 60)
                 break
             except (socket_error, Exception) as e:
-                self.log("MQTT error {}".format(e))
+                self.log("MQhTT error {}".format(e))
                 time.sleep(5 + int(retry / 5))
                 retry = retry + 1
 
@@ -54,7 +56,7 @@ class MqttService(object):
         # self.log("Connected with result code {}".format(result_code))
         # SUBSCRIBE
         for sub in self.subscribe_to.split(","):
-            # self.log('subscribe to {}'.format(sub))
+            #self.log('subscribe to {}'.format(sub))
             self.client.subscribe(sub)
 
     def on_disconnect(self, client, userdata, result_code):

@@ -9,3 +9,4 @@ paho-mqtt
 pvporcupine
 pyyaml
 rasa
+hbmqtt

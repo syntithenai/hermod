@@ -3,8 +3,8 @@ mqtt_port: 1883
 site: jest
 services:
   DeepspeechAsrService:
-    model_path: "../hermod-python/models"
-    vad_sensitivity: 1
+    model_path: "./deepspeech-models"
+    vad_sensitivity: 2
   PicovoiceHotwordService:
     hotwords: "picovoice,bumblebee,porcupine"
     sensitivity: 0.5

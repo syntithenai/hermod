@@ -36,10 +36,7 @@ class PicovoiceHotwordService(MqttService):
     ):
         super(
             PicovoiceHotwordService,
-            self).__init__(
-                config['mqtt_hostname'],
-                config['mqtt_port'],
-                config['site'])
+            self).__init__(config)
         self.config = config
         self.thread_targets.append(self.start_main)
         self.audio_stream = {}  # BytesLoop()

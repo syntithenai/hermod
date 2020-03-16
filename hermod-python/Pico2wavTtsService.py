@@ -27,10 +27,7 @@ class Pico2wavTtsService(MqttService):
     ):
         super(
             Pico2wavTtsService,
-            self).__init__(
-                config['mqtt_hostname'],
-                config['mqtt_port'],
-                config['site'])
+            self).__init__(config)
         self.config = config
         # subscribe to all sites
         self.subscribe_to = 'hermod/+/tts/say'

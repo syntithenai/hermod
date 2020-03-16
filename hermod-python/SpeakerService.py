@@ -19,12 +19,9 @@ class SpeakerService(MqttService):
     ):
         super(
             SpeakerService,
-            self).__init__(
-                config['mqtt_hostname'],
-                config['mqtt_port'],
-                config['site'])
+            self).__init__(config)
         self.config = config
-        self.site = config['site']
+        self.site = config.get('site','default')
         self.volume = 5
         self.subscribe_to = 'hermod/' + self.site + '/speaker/#'
 
