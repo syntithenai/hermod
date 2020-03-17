@@ -42,40 +42,40 @@ class MicrophoneService(MqttService):
         defaultIndex = -1
         useIndex = None
         self.log('choose audio device1')
-        # p = pyaudio.PyAudio()
-        # info = p.get_host_api_info_by_index(0)
-        # self.log(info)
-        # self.log('choose audio device2')
-        # numdevices = info.get('deviceCount')
-        # # for each audio device, determine if is an input or an output and add
-        # # it to the appropriate list and dictionary
-        # self.log('choose audio device')
-        # for i in range(0, numdevices):
-            # #self.log(p.get_device_info_by_host_api_device_index(0,i))
-            # # ensure input channels and sample rate when selecting device
-            # if p.get_device_info_by_host_api_device_index(
-                    # 0, i).get('maxInputChannels') > 0:
-                # if p.get_device_info_by_host_api_device_index(
-                    # 0, i).get('defaultSampleRate') == float(16000):
+        p = pyaudio.PyAudio()
+        info = p.get_host_api_info_by_index(0)
+        self.log(info)
+        self.log('choose audio device2')
+        numdevices = info.get('deviceCount')
+        # for each audio device, determine if is an input or an output and add
+        # it to the appropriate list and dictionary
+        self.log('choose audio device')
+        for i in range(0, numdevices):
+            #self.log(p.get_device_info_by_host_api_device_index(0,i))
+            # ensure input channels and sample rate when selecting device
+            if p.get_device_info_by_host_api_device_index(
+                    0, i).get('maxInputChannels') > 0:
+                if p.get_device_info_by_host_api_device_index(
+                    0, i).get('defaultSampleRate') == float(16000):
 
-                    # devName = p.get_device_info_by_host_api_device_index(
-                        # 0, i).get('name')
+                    devName = p.get_device_info_by_host_api_device_index(
+                        0, i).get('name')
                         
-                    # if devName == 'pulse':
-                        # pulseIndex = i
-                    # if devName == 'default':
-                        # defaultIndex = i
-                    # if devName == "cap":
-                        # capIndex = i
-        # self.log('choose audio device3')
+                    if devName == 'pulse':
+                        pulseIndex = i
+                    if devName == 'default':
+                        defaultIndex = i
+                    if devName == "cap":
+                        capIndex = i
+        self.log('choose audio device3')
         
-        # # use pulse if available
-        # if pulseIndex >= 0:
-            # useIndex = pulseIndex
-        # elif capIndex >= 0:
-            # useIndex = capIndex
-        # elif defaultIndex >= 0:
-            # useIndex = defaultIndex
+        # use pulse if available
+        if pulseIndex >= 0:
+            useIndex = pulseIndex
+        elif capIndex >= 0:
+            useIndex = capIndex
+        elif defaultIndex >= 0:
+            useIndex = defaultIndex
 
         # self.log('chosen audio device')
         # if useIndex < 0:
@@ -90,9 +90,7 @@ class MicrophoneService(MqttService):
             channels=1,
             rate=16000,
             input=True,
-            frames_per_buffer=256)
-            #,
-            #input_device_index=useIndex)
+            frames_per_buffer=256, input_device_index=useIndex)
         while True and run_event.is_set():
             self.log('-')
                 

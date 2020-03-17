@@ -109,7 +109,7 @@ if ARGS.run:
 	print(CONFIG)
 	for service in CONFIG['services']:
 		# force dialog initialise if argument present
-		full_path = os.path.join(MODULE_DIR, service + '.py')
+		full_path = os.path.join(MODULE_DIR, 'src',service + '.py')
 		print('START SERVER 3')
 		print(full_path)
 		module_name = pathlib.Path(full_path).stem

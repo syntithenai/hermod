@@ -29,7 +29,7 @@ beforeAll(() => {
             setTimeout(function() {
                 //services = require('child_process').spawn( '../hermod-python/bin/python3' , ['../hermod-python/services.py']); //, '--keywords picovoice', '--site '+props.siteId 
                 //services = require('child_process').spawn( './run.sh' ); //, '--keywords picovoice', '--site '+props.siteId 
-                services = require('child_process').spawn( '/usr/bin/docker' ,['run' ,'--privileged' ,'--name','hermod-python','-i','-v','/dev/snd:/dev/snd','-v','/projects/hermod/hermod-python:/app','-p','1883:1883','syntithenai/hermod-python','-m'])  
+                services = require('child_process').spawn( '/usr/bin/docker' ,['run' ,'--privileged' ,'--name','hermod-python','-i','-v','/dev/snd:/dev/snd','-v','/projects/hermod/hermod-python/src:/app/src','-p','1883:1883','-p','8080:8080','syntithenai/hermod-python','-m'])  
                 services.stdout.on('data', function(data) {
                     console.log(data.toString()); 
                 });

@@ -16,24 +16,25 @@ RUN apt-get update && apt-get install -y libttspico0  && rm -rf /var/lib/apt/lis
 # BUT still fails on tensorflow-addons >=0.8 < 0.9 (from rasa requirements) - no such package in default and piwheels (-i)
 # https://github.com/piwheels/packages/issues/76
 
+RUN pip install --upgrade pip
 
 COPY ./requirements.txt /app
 
+#RUN python -m venv /app
 RUN pip install -r requirements.txt
 
 # copy source code
 COPY ./deepspeech-models /app/deepspeech-models
 COPY ./rasa /app/
 
-COPY ./*.py /app/
-COPY ./*.yaml /app/
+COPY ./src /app/src
 COPY ./porcupine /app/porcupine
 COPY ./.asoundrc /root
 RUN apt-get update && apt-get install -y mosquitto libttspico-utils && rm -rf /var/lib/apt/lists/*
 COPY ./run.sh /app/run.sh
 RUN chmod +x /app/run.sh
 #ENTRYPOINT [ "/bin/bash", "/app/run.sh" ]
-ENTRYPOINT [ "python", "services.py", "-m" ]
+ENTRYPOINT [ "python", "./src/services.py", "-m" ]
 
 #CMD [ "bash", "start" ]
 

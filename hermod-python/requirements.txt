@@ -10,3 +10,5 @@ pvporcupine
 pyyaml
 rasa
 hbmqtt
+pyyaml
+

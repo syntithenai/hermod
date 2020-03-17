@@ -1,5 +1,4 @@
-/usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf &
-
+source /app/bin/activate
 python services.py
 
  
