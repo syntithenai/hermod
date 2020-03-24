@@ -11,4 +11,5 @@ pyyaml
 rasa
 hbmqtt
 pyyaml
+rasa-sdk
 

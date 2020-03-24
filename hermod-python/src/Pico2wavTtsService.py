@@ -41,9 +41,10 @@ class Pico2wavTtsService(MqttService):
             payload = json.loads(msg.payload)
         except BaseException:
             pass
-
+        #self.log('message {} {}'.format(site,topic))
+        #self.log(payload)
         text = payload.get('text')
-
+        #self.log(text)
         if topic == 'hermod/' + site + '/tts/say':
             self.generate_audio(site, text)
         elif topic == 'hermod/' + site + '/speaker/finished':
@@ -55,6 +56,9 @@ class Pico2wavTtsService(MqttService):
 
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
     def generate_audio(self, site, text):
+        # self.log('gen audio')
+        # self.log(text)
+        
         self.client.publish('hermod/{}/speaker/started'.format(site), None)
         cache_path = self.config['services']['Pico2wavTtsService']['cache_path']
 

@@ -8,8 +8,8 @@ var path = require('path')
 var fs = require('fs')
 var timeout = null;
 var services = null;
-
-    
+var containerId = null;
+const os = require('os');    
 
 beforeAll(() => {
     return new Promise(function(resolve,reject) {    
@@ -22,14 +22,19 @@ beforeAll(() => {
             //console.log('stdout ', stdout);
             //console.log('stderr ', stderr);
         //});
-        
-        //require('child_process').spawn( '/usr/bin/docker' ,['kill','hermod-python'])
-        //setTimeout(function() {
-            require('child_process').spawn( '/usr/bin/docker' ,['rm','hermod-python'])
+          
+        require('child_process').spawn( '/usr/bin/docker' ,['kill','hermodpython'])
+        setTimeout(function() {
+            require('child_process').spawn( '/usr/bin/docker' ,['rm','hermodpython'])
             setTimeout(function() {
                 //services = require('child_process').spawn( '../hermod-python/bin/python3' , ['../hermod-python/services.py']); //, '--keywords picovoice', '--site '+props.siteId 
                 //services = require('child_process').spawn( './run.sh' ); //, '--keywords picovoice', '--site '+props.siteId 
-                services = require('child_process').spawn( '/usr/bin/docker' ,['run' ,'--privileged' ,'--name','hermod-python','-i','-v','/dev/snd:/dev/snd','-v','/projects/hermod/hermod-python/src:/app/src','-p','1883:1883','-p','8080:8080','syntithenai/hermod-python','-m'])  
+                console.log('START SERVICES FROM TEST')
+                services = require('child_process').spawn( '/usr/bin/docker' ,['run' ,'-i','--name','hermodpython','-p','5005:5005','-p','5055:5055', '--privileged','-e','PULSE_SERVER=192.168.1.192','-e','PULSE_COOKIE=/tmp/cookie' ,'-v', __dirname+'/../pulseaudio/asound-pulse.conf:/etc/asound.conf','-v',__dirname+'/../pulseaudio/client.conf:/etc/pulse/client.conf','-v',os.homedir()+'/.config/pulse/cookie:/tmp/cookie' ,'-v','/dev/snd:/dev/snd', '-v',__dirname+'/../hermod-python/rasa:/app/rasa','-v',__dirname+'/../hermod-python/src:/app/src','-p','1883:1883','syntithenai/hermod-python','-m'])
+                //,'-p','8080:8080'
+                //containerId = require('child_process').exec( '/usr/bin/docker' ,['run' , '-d', '--privileged' ,'-v','/dev/snd:/dev/snd','-v','/projects/hermod/hermod-python/src:/app/src','-p','1883:1883','syntithenai/hermod-python','-m']).pid  
+                //console.log(containerId)
+                
                 services.stdout.on('data', function(data) {
                     console.log(data.toString()); 
                 });
@@ -37,28 +42,119 @@ beforeAll(() => {
                     console.log(data.toString()); 
                 });
                 // wait for services to start
-                setTimeout(function() {resolve()},2000)
-            },500);
-         //},1000);
+                setTimeout(function() {resolve()},5000)
+            },2000);
+         },2000);
     })
-});
+},10000);
 
 afterAll(() => {
     return new Promise(function(resolve,reject) {
-        if (services) {
-           // console.log('KILL SERVICES')
-            services.kill()
-            
-        }
-        require('child_process').spawn( '/usr/bin/docker' ,['kill','hermod-python'])
+        //if (services) {
+            //console.log('KILL SERVICES')
+            ////console.log(services)
+          ////  services.kill()
+        //}
+        //if (containerId) {
+            //console.log('kill '+containerId)
+            //resp = require('child_process').exec( 'kill -9 '+containerId)
+            //console.log(resp)
+        //}
+        require('child_process').spawn( '/usr/bin/docker' ,['kill','hermodpython'])
         setTimeout(function() {
-            require('child_process').spawn( '/usr/bin/docker' ,['rm','hermod-python'])
+            require('child_process').spawn( '/usr/bin/docker' ,['rm','hermodpython'])
             if (mqtt && mqtt.disconnect) mqtt.disconnect()
             resolve()
         },4000)
     })
     clearTimeout(timeout)
 })
+
+
+//test('dummy',function() {
+    //return new Promise(function (resolve,reject) {
+        //setTimeout(function() {resolve()},8000)
+    //})
+//},8000)
+
+
+
+    //////////////////////////
+     ////////////Audio Services
+    ////////////////////////////
+
+    //////////// TODO enable this test with two preceding and this test fails. remove previous tests and it works.
+
+    //////// TODO test stop and volume and mp3 play
+    //test('speaker plays wav', () => {
+        //let started = false;
+        //return new Promise(function(resolve,reject) {
+            //mqtt.connect(config).then(function(mqttClient) {
+                //mqttClient.subscribe('hermod/jest/speaker/#')
+                //mqttClient.on('message', function(message,body) {
+                    ////console.log('spw message')
+                    ////console.log(message)
+                    
+                    //if (message == "hermod/jest/speaker/started") started = true;
+                    //if (started && message == "hermod/jest/speaker/finished") {
+                        //mqttClient.unsubscribe('hermod/jest/speaker/#')
+                        //resolve();
+                    //}
+                //});
+                
+                //fs.readFile('./audio/test.wav', function(err, testwav) {
+                    //if (err) console.log(['ERR failed to read testfile:',err])
+                    //mqttClient.publish('hermod/jest/speaker/play/999',testwav)
+                //})    
+            //})
+        //})    
+    //},2000);
+
+     ////TODO capture, check packets??
+    //test('microphone sends audio when started', () => {
+        
+        //return new Promise(function(resolve,reject) {
+            //mqtt.connect(config).then(function(mqttClient) {
+                //mqttClient.subscribe('hermod/jest/microphone/audio')
+                //mqttClient.on('message', function(message,body) {
+                    ////console.log('msa message')
+                    ////console.log(message)
+                    //if (message == "hermod/jest/microphone/audio") {
+                        //mqttClient.unsubscribe('hermod/jest/microphone/audio')
+                        ////mqttClient.publish('hermod/jest/microphone/stop',null);
+                        //resolve()
+                    //}
+                //});
+                ////console.log('publish start')
+                //mqttClient.publish('hermod/jest/microphone/start',null);
+                //setTimeout(function() {
+                    //mqttClient.publish('hermod/jest/microphone/stop',null);
+                //},200)
+            //})    
+        //})    
+    //},100);
+
+    //test('no audio sent when microphone is stopped', () => {
+            //return new Promise(function(resolve,reject) {
+                //mqtt.connect(config).then(function(mqttClient) {
+                    //mqttClient.publish('hermod/jest/microphone/start',null);
+                    //mqttClient.publish('hermod/jest/microphone/stop',null);
+                    //setTimeout(function() {
+                        //mqttClient.subscribe('hermod/jest/microphone/audio')
+                        //mqttClient.on('message', function(message,body) {
+                            //if (message == 'hermod/jest/microphone/audio') {
+                                //mqttClient.unsubscribe('hermod/jest/microphone/audio')
+                                //reject()
+                            //}
+                        //});
+                        //timeout = setTimeout(function() {
+                            //mqttClient.unsubscribe('hermod/jest/microphone/audio')
+                            //resolve()
+                        //},400)
+                    //},500)
+                //})
+            //})    
+    //},1100);
 
 
 
@@ -68,7 +164,7 @@ afterAll(() => {
             //mqttClient.subscribe('hermod/jest/nlu/intent')
             //mqttClient.on('message', function(message,body) {
                 //if (message=='hermod/jest/nlu/intent') {
-                    //console.log([message,body.toString()])
+                    ////console.log([message,body.toString()])
                     
                     ////if (JSON.stringify(JSON.parse(body.toString())) == JSON.stringify(payload)) {
                         //mqttClient.unsubscribe('hermod/jest/nlu/intent')
@@ -78,68 +174,36 @@ afterAll(() => {
                     ////}
                 //} 
             //});
-            //mqttClient.publish('hermod/jest/nlu/parse',JSON.stringify({query:"hello"}))
+            //// wait for nlu service to load model
+            //setTimeout(function() {
+                //mqttClient.publish('hermod/jest/nlu/parse',JSON.stringify({query:"hello"}))
+            //},6000)
         //})
     //})    
-//},100);
-
-
-
-
-////test('dummy',function() {
-    ////return new Promise(function (resolve,reject) {
-        ////setTimeout(function() {resolve()},5000)
-    ////})
-////})
-
-////////////////////////
-////// ASR
-////// THESE TESTS REQUIRE UNDERLYING AUDIO SERVICES
-//////////////////////////
-
-
-
-//test('asr text detected - my name is fred', () => {
-    //site='jost'
-    //return new Promise(function(resolve,reject) {
-        //mqtt.connect(config).then(function(mqttClient) {
-            //mqttClient.subscribe('hermod/'+site+'/asr/text')
-            //mqttClient.on('message', function(message,b) {
-                //console.log(message)
-                //console.log(b)
-                //if (message == "hermod/"+site+"/asr/text") { 
-                    //let body = {}
-                    //try {
-                        //body = JSON.parse(b) 
-                    //} catch (e) {}
-                    //console.log(body.text)
-                    //mqttClient.publish('hermod/'+site+'/asr/deactivate')
-                    //mqtt2wav.stop(mqttClient,site);
-                    //resolve()
+//},10300);
+test('NLU through', () => {
+    return new Promise(function(resolve,reject) {
+        mqtt.connect(config).then(function(mqttClient) {
+            mqttClient.subscribe('hermod/jest/dialog/end')
+            mqttClient.on('message', function(message,body) {
+                if (message=='hermod/jest/dialog/end') {
+                    //console.log([message,body.toString()])
                     
-                    //if (body && body.text && (body.text.trim() == 'my name is fred' )) { 
-                        //mqttClient.unsubscribe('hermod/'+site+'/asr/text')
-                        //mqttClient.publish('hermod/'+site+'/asr/deactivate')
-                        //mqtt2wav.stop(mqttClient,site);
-                        //resolve()
+                    //if (JSON.stringify(JSON.parse(body.toString())) == JSON.stringify(payload)) {
+                        mqttClient.unsubscribe('hermod/jest/dialog/end')
+                        resolve()
                     //} else {
-                        //mqttClient.unsubscribe('hermod/'+site+'/asr/text')
-                        //mqttClient.publish('hermod/'+site+'/asr/deactivate')
-                        //mqtt2wav.stop(mqttClient,site);
-                        //reject()
-                    //} 
-                //}
-            //});
-            //mqttClient.publish('hermod/'+site+'/asr/activate')
-            //setTimeout(function() {
-                //mqttClient.publish('hermod/'+site+'/asr/start')
-                //setTimeout(function() {wav2mqtt.start(mqttClient,site,'./audio/fred.wav') }, 100)
-            //},1500)
-        //})
-    //})  
-//},8000);
-
-
+                        //console.log('BROKEN PAYLOAD PASS ON NLU/INTENT')
+                    //}
+                } 
+            });
+            // wait for nlu service to load model
+            setTimeout(function() {
+                mqttClient.publish('hermod/jest/nlu/parse',JSON.stringify({query:"are you a bot"}))
+            },6000)
+        })
+    })    
+},10300);
 
 
 //test('hotword detected', () => {
@@ -169,89 +233,12 @@ afterAll(() => {
 //},7000);
 
 
-    ////////////////////////
-     //////////Audio Services
-    //////////////////////////
-
-    ////////// TODO enable this test with two preceding and this test fails. remove previous tests and it works.
-
-    //////// TODO test stop and volume and mp3 play
-    //test('speaker plays wav', () => {
-        //let started = false;
-        //return new Promise(function(resolve,reject) {
-            //mqtt.connect(config).then(function(mqttClient) {
-                //mqttClient.subscribe('hermod/jest/speaker/#')
-                //mqttClient.on('message', function(message,body) {
-                    ////console.log('spw message')
-                    ////console.log(message)
-                    
-                    //if (message == "hermod/jest/speaker/started") started = true;
-                    //if (started && message == "hermod/jest/speaker/finished") {
-                        //mqttClient.unsubscribe('hermod/jest/speaker/#')
-                        //resolve();
-                    //}
-                //});
-                
-                //fs.readFile('./audio/test.wav', function(err, testwav) {
-                    //if (err) console.log(['ERR failed to read testfile:',err])
-                    //mqttClient.publish('hermod/jest/speaker/play/999',testwav)
-                //})    
-            //})
-        //})    
-    //},2000);
-
-     //TODO capture, check packets??
-    test('microphone sends audio when started', () => {
-        
-        return new Promise(function(resolve,reject) {
-            mqtt.connect(config).then(function(mqttClient) {
-                mqttClient.subscribe('hermod/jest/microphone/audio')
-                mqttClient.on('message', function(message,body) {
-                    //console.log('msa message')
-                    //console.log(message)
-                    if (message == "hermod/jest/microphone/audio") {
-                        mqttClient.unsubscribe('hermod/jest/microphone/audio')
-                        //mqttClient.publish('hermod/jest/microphone/stop',null);
-                        resolve()
-                    }
-                });
-                //console.log('publish start')
-                mqttClient.publish('hermod/jest/microphone/start',null);
-                setTimeout(function() {
-                    mqttClient.publish('hermod/jest/microphone/stop',null);
-                },200)
-            })    
-        })    
-    },100);
-
-    test('no audio sent when microphone is stopped', () => {
-            return new Promise(function(resolve,reject) {
-                mqtt.connect(config).then(function(mqttClient) {
-                    mqttClient.publish('hermod/jest/microphone/start',null);
-                    mqttClient.publish('hermod/jest/microphone/stop',null);
-                    setTimeout(function() {
-                        mqttClient.subscribe('hermod/jest/microphone/audio')
-                        mqttClient.on('message', function(message,body) {
-                            if (message == 'hermod/jest/microphone/audio') {
-                                mqttClient.unsubscribe('hermod/jest/microphone/audio')
-                                reject()
-                            }
-                        });
-                        timeout = setTimeout(function() {
-                            mqttClient.unsubscribe('hermod/jest/microphone/audio')
-                            resolve()
-                        },400)
-                    },500)
-                })
-            })    
-    },1100);
 
 
-
-////////////////////
+//////////////////
  ////TTS
  ////THESE TEST REQUIRE UNDERLYING TTS AND AUDIO SERVICES
-////////////////////////
+//////////////////////
 
  //////TODO test stop and volume and mp3 play
 //test('tts generates and plays audio', () => {
@@ -262,20 +249,20 @@ afterAll(() => {
             //mqttClient.subscribe('hermod/jest/tts/#')
             //mqttClient.subscribe('hermod/jest/speaker/#')
             //mqttClient.on('message', function(message,body) {
-                ////console.log('TTS message')
-                ////console.log(message)
+                //console.log('TTS message')
+                //console.log(message)
                 
                 //if (message.indexOf("hermod/jest/speaker/play") == 0 && body && body.length > 0) {
-                    ////console.log('SET PLAYED' )
+                    //console.log('SET PLAYED' )
                     //played = true;
                 //}
                 //if (message == "hermod/jest/tts/started") {
-                    ////console.log('SET STARTED' )
+                    //console.log('SET STARTED' )
                     //started = true;
                 //}
                 ////(started && played) && 
                 //if ((message == "hermod/jest/tts/finished")) {
-                    ////console.log('SET FINISHED' )
+                    //console.log('SET FINISHED' )
                     //mqttClient.unsubscribe('hermod/jest/tts/#')
                     //mqttClient.unsubscribe('hermod/jest/speaker/#')
                     //resolve()
@@ -424,27 +411,6 @@ afterAll(() => {
 
 
 
-//test('dialog nlu/intent', () => {
-    //return new Promise(function(resolve,reject) {
-        //payload = {a:1,b:2}
-        //mqtt.connect(config).then(function(mqttClient) {
-            //mqttClient.subscribe('hermod/jest/intent')
-            //mqttClient.on('message', function(message,body) {
-                //if (message=='hermod/jest/intent') {
-                    //if (JSON.stringify(JSON.parse(body.toString())) == JSON.stringify(payload)) {
-                        //mqttClient.unsubscribe('hermod/jest/intent')
-                        //resolve()
-                    //} else {
-                        //console.log('BROKEN PAYLOAD PASS ON NLU/INTENT')
-                    //}
-                //} 
-            //});
-            //mqttClient.publish('hermod/jest/nlu/intent',JSON.stringify(payload))
-        //})
-    //})    
-//},100);
-
-
 
 
 
@@ -516,6 +482,29 @@ afterAll(() => {
         //})
     //})    
 //},100);
+
+
+//test('dialog nlu/intent', () => {
+    //return new Promise(function(resolve,reject) {
+        //payload = {a:1,b:2}
+        //mqtt.connect(config).then(function(mqttClient) {
+            //mqttClient.subscribe('hermod/jest/intent')
+            //mqttClient.on('message', function(message,body) {
+                //if (message=='hermod/jest/intent') {
+                    //if (JSON.stringify(JSON.parse(body.toString())) == JSON.stringify(payload)) {
+                        //mqttClient.unsubscribe('hermod/jest/intent')
+                        //resolve()
+                    //} else {
+                        //reject('BROKEN PAYLOAD PASS ON NLU/INTENT')
+                    //}
+                //} 
+            //});
+            //mqttClient.publish('hermod/jest/nlu/intent',JSON.stringify(payload))
+        //})
+    //})    
+//},1000);
+
+
 
 
 //test('dialog dialog/end', () => {
@@ -618,3 +607,55 @@ afterAll(() => {
         //})
     //})    
 //},100);
+
+
+
+
+//////////////////////
+//// ASR
+//// THESE TESTS REQUIRE UNDERLYING AUDIO SERVICES
+////////////////////////
+
+
+
+//test('asr text detected - my name is fred', () => {
+    //site='jost'
+    //return new Promise(function(resolve,reject) {
+        //mqtt.connect(config).then(function(mqttClient) {
+            //mqttClient.subscribe('hermod/'+site+'/asr/text')
+            //mqttClient.on('message', function(message,b) {
+                //console.log(message)
+                //console.log(b)
+                //if (message == "hermod/"+site+"/asr/text") { 
+                    //let body = {}
+                    //try {
+                        //body = JSON.parse(b) 
+                    //} catch (e) {}
+                    //console.log(body.text)
+                    //mqttClient.publish('hermod/'+site+'/asr/deactivate')
+                    //mqtt2wav.stop(mqttClient,site);
+                    //resolve()
+                    
+                    //if (body && body.text && (body.text.trim() == 'my name is fred' )) { 
+                        //mqttClient.unsubscribe('hermod/'+site+'/asr/text')
+                        //mqttClient.publish('hermod/'+site+'/asr/deactivate')
+                        //mqtt2wav.stop(mqttClient,site);
+                        //resolve()
+                    //} else {
+                        //mqttClient.unsubscribe('hermod/'+site+'/asr/text')
+                        //mqttClient.publish('hermod/'+site+'/asr/deactivate')
+                        //mqtt2wav.stop(mqttClient,site);
+                        //reject()
+                    //} 
+                //}
+            //});
+            //mqttClient.publish('hermod/'+site+'/asr/activate')
+            //setTimeout(function() {
+                //mqttClient.publish('hermod/'+site+'/asr/start')
+                //setTimeout(function() {wav2mqtt.start(mqttClient,site,'./audio/fred.wav') }, 100)
+            //},1500)
+        //})
+    //})  
+//},8000);
+
+

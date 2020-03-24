@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y wget python3-dev libportaudiocpp0 porta
 RUN wget -q https://ftp-master.debian.org/keys/release-10.asc -O- | apt-key add -
 RUN echo "deb http://deb.debian.org/debian buster non-free" >> /etc/apt/sources.list
 
-RUN apt-get update && apt-get install -y libttspico0  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libttspico0 mosquitto libttspico-utils  && rm -rf /var/lib/apt/lists/*
 
 
 # for pi4 need 
@@ -20,22 +20,18 @@ RUN pip install --upgrade pip
 
 COPY ./requirements.txt /app
 
-#RUN python -m venv /app
 RUN pip install -r requirements.txt
+
+RUN apt-get update && apt-get install -y pulseaudio  && rm -rf /var/lib/apt/lists/*
+
 
 # copy source code
 COPY ./deepspeech-models /app/deepspeech-models
-COPY ./rasa /app/
+COPY ./rasa /app/rasa
 
 COPY ./src /app/src
 COPY ./porcupine /app/porcupine
 COPY ./.asoundrc /root
-RUN apt-get update && apt-get install -y mosquitto libttspico-utils && rm -rf /var/lib/apt/lists/*
-COPY ./run.sh /app/run.sh
-RUN chmod +x /app/run.sh
-#ENTRYPOINT [ "/bin/bash", "/app/run.sh" ]
+
 ENTRYPOINT [ "python", "./src/services.py", "-m" ]
 
-#CMD [ "bash", "start" ]
-
-#ENTRYPOINT bash

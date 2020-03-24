@@ -60,7 +60,7 @@ class DeepspeechAsrService(MqttService):
         self.sample_rate = self.RATE_PROCESS
         self.block_size = int(self.RATE_PROCESS / float(self.BLOCKS_PER_SECOND))
         self.frame_duration_ms = 1000 * self.block_size // self.sample_rate
-        self.vad = webrtcvad.Vad(config.get('vad_sensitivity',1))
+        self.vad = webrtcvad.Vad(config['services']['DeepspeechAsrService'].get('vad_sensitivity',0))
         self.modelFile = 'output_graph.pbmm'
         
         # TFLITE model for ARM architecture
@@ -132,7 +132,10 @@ class DeepspeechAsrService(MqttService):
     def frame_generator(self,site):
         """Generator that yields all audio frames."""
         while True:
-            yield self.read(site)
+            if self.audio_stream[site].has_bytes(self.block_size*2):
+                yield self.read(site)
+            time.sleep(0.0001)
+            #padding_ms=300
             
     def vad_collector(self, site,padding_ms=300, ratio=0.75, frames=None):
         """Generator that yields series of consecutive audio frames comprising each utterence, separated by yielding a single None.
@@ -146,7 +149,7 @@ class DeepspeechAsrService(MqttService):
         triggered = False
 
         for frame in frames:
-            if len(frame) < 640:
+            if len(frame) < 1:  # 640
                 yield None
                 return
             
@@ -174,20 +177,24 @@ class DeepspeechAsrService(MqttService):
     def startASR(self, run_event):
         if os.path.isdir(self.model_path):
             while True and run_event.is_set():
-                time.sleep(1)
+                time.sleep(0.001)
                 for site in self.active:
-                    if (site in self.models and site in self.stream_contexts and self.active[site] == True and self.started[site] == True):
+                    if (site in self.models and site in self.stream_contexts and self.active[site] == True):
                         frames = self.vad_collector(site)
 
                         for frame in frames:
-                            if frame is not None:
-                                self.models[site].feedAudioContent(self.stream_contexts[site], np.frombuffer(frame, np.int16))
-                            else:
-                                text = self.models[site].finishStream(self.stream_contexts[site])
-                                if (len(text) > 0):
-                                    self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
-                                self.stream_context[site] = self.models[site].createStream()
-                            time.sleep(0.01)
+                            if self.started[site] == True:
+                                if frame is not None:
+                                   # self.log('feed content')
+                                    self.models[site].feedAudioContent(self.stream_contexts[site], np.frombuffer(frame, np.int16))
+                                else:
+                                    text = self.models[site].finishStream(self.stream_contexts[site])
+                                    self.log('got text {}'.format(text))
+                                    if (len(text) > 0):
+                                        self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
+                                    del self.stream_contexts[site]
+                                    self.stream_contexts[site] = self.models[site].createStream()
+                            #time.sleep(0.001)
         else:
             print('missing model files at '+self.model_path) 
     

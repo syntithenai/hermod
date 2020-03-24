@@ -45,7 +45,7 @@ class MqttService(object):
                 self.client.connect(self.mqtt_hostname, self.mqtt_port, 60)
                 break
             except (socket_error, Exception) as e:
-                self.log("MQhTT error {}".format(e))
+                self.log("MQTT error {}".format(e))
                 time.sleep(5 + int(retry / 5))
                 retry = retry + 1
 
@@ -56,7 +56,7 @@ class MqttService(object):
         # self.log("Connected with result code {}".format(result_code))
         # SUBSCRIBE
         for sub in self.subscribe_to.split(","):
-            #self.log('subscribe to {}'.format(sub))
+            # self.log('subscribe to {}'.format(sub))
             self.client.subscribe(sub)
 
     def on_disconnect(self, client, userdata, result_code):

@@ -27,6 +27,12 @@ PARSER = argparse.ArgumentParser(description="Stream from microphone to DeepSpee
 PARSER.add_argument('-r', '--run', type=str, default='all',
 					help="Run mode - all|server|client")
 
+PARSER.add_argument('-sd', '--speakerdevice', type=str, default='',
+					help="Alsa device name for speaker")
+                    
+PARSER.add_argument('-md', '--microphonedevice', type=str, default='',
+					help="Alsa device name for microphone")
+
 PARSER.add_argument('-i', '--initialise', type=str, default='',
 					help="Send init messages to listed sites to start microphone and hotword. Eg home,default,client1")
 
@@ -41,6 +47,37 @@ print("RUN MODE {} {}".format(ARGS.run,ARGS.initialise))
 F = open(os.path.join(os.path.dirname(__file__), 'config-'+ARGS.run+'.yaml'), "r")
 CONFIG = yaml.load(F.read(), Loader=yaml.FullLoader)
 
+# start rasa action server
+def start_rasa_action_server(run_event):
+    print('START RASA ACTIONS SERVER')
+    #cmd = ['/usr/local/bin/rasa','run','../rasa/actions'] 
+    cmd = ['python','-m','rasa_sdk','--actions','rasa.actions'] 
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+    while run_event.is_set():
+        time.sleep(0.5)
+    #print('STOP MQTT SERVER')
+    
+    p.terminate()
+    p.wait()
+    # -c /etc/mosquitto.conf')
+    
+THREAD_HANDLER.run(start_rasa_action_server)
+
+# start rasa  server
+def start_rasa_action_server(run_event):
+    print('START RASA SERVER')
+    #cmd = ['/usr/local/bin/rasa','run','../rasa/actions'] 
+    cmd = ['rasa','run','--enable-api','--debug','--model','rasa/models'] 
+    p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+    while run_event.is_set():
+        time.sleep(0.1)
+    #print('STOP MQTT SERVER')
+    
+    p2.terminate()
+    p2.wait()
+    # -c /etc/mosquitto.conf')
+    
+THREAD_HANDLER.run(start_rasa_action_server)
 
 if ARGS.mqttserver:
 	# use mosquitto
@@ -105,6 +142,13 @@ if ARGS.run:
 	if len(ARGS.initialise) > 0 and 'DialogManagerService' in CONFIG['services']:
 	#		print('have args init {}'.format(ARGS.initialise))
 			CONFIG['services']['DialogManagerService'] = {'initialise' : ARGS.initialise}
+	
+	if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
+	#		print('have args init {}'.format(ARGS.initialise))
+			CONFIG['services']['AudioService'] = {'outputdevice' : ARGS.speakerdevice}
+	if len(ARGS.microphonedevice) > 0 and 'AudioService' in CONFIG['services']:
+	#		print('have args init {}'.format(ARGS.initialise))
+			CONFIG['services']['AudioService'] = {'inputdevice' : ARGS.microphonedevice}
 	#print('START SERVER 2')
 	print(CONFIG)
 	for service in CONFIG['services']:

@@ -17,13 +17,13 @@ from io_buffer import BytesLoop
 sys.path.append(
     os.path.join(
         os.path.dirname(__file__),
-        './porcupine/binding/python'))
+        '../porcupine/binding/python'))
 from pvporcupine import Porcupine
 
 sys.path.append(
     os.path.join(
         os.path.dirname(__file__),
-        './porcupine/resources/util/python'))
+        '../porcupine/resources/util/python'))
 from util import *
 
 
@@ -85,11 +85,11 @@ class PicovoiceHotwordService(MqttService):
         elif topic == 'hermod/' + site + '/hotword/deactivate':
             self.deactivate(site)
         elif topic == 'hermod/' + site + '/hotword/start':
-            self.log('started')
+            # self.log('started')
             #if self.active[site]:
             self.started[site] = True
         elif topic == 'hermod/' + site + '/hotword/stop':
-            self.log('stopped')
+            # self.log('stopped')
             self.started[site] = False
         elif topic == 'hermod/' + site + '/microphone/audio':
             if site in self.audio_stream:
@@ -105,7 +105,7 @@ class PicovoiceHotwordService(MqttService):
             model_file_path=MODEL_FILE_PATH,
             keyword_file_paths=self.keyword_file_paths,
             sensitivities=self.sensitivities)
-        self.log('activated')
+        # self.log('activated')
 
     def deactivate(self, site):
         self.active[site] = False
@@ -117,13 +117,15 @@ class PicovoiceHotwordService(MqttService):
             self.porcupine[site].delete()
         if self.audio_stream[site] is not None:
             self.audio_stream[site].close()
-        self.log('deactivated')
+        # self.log('deactivated')
         
     def start_main(self, run_event):
+        # self.log('start main')
         try:
             while True and run_event.is_set():
                 time.sleep(0.01)
                 for site in self.active:
+                    #self.log(site)
                     if site in self.porcupine and self.active[site] and self.started[site] and self.audio_stream[site].has_bytes(
                             self.porcupine[site].frame_length * 2):
                         pcm = self.audio_stream[site].read(
@@ -131,11 +133,13 @@ class PicovoiceHotwordService(MqttService):
                         pcm = struct.unpack_from(
                             "h" * self.porcupine[site].frame_length, pcm)
                         result = self.porcupine[site].process(pcm)
-                        self.log(result)
+                        # self.log(result)
                         if self.num_keywords == 1 and result:
+                            self.log('HOTWORD DETECTED')
                             self.client.publish(
                                 'hermod/' + site + '/hotword/detected', json.dumps({'hotword': self.keyword_names[0]}))
                         elif self.num_keywords > 1 and result >= 0:
+                            self.log('HOTWORD DETECTED')
                             self.client.publish(
                                 'hermod/' + site + '/hotword/detected', json.dumps({'hotword': self.keyword_names[result]}))
 

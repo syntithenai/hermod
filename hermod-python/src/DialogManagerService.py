@@ -34,27 +34,28 @@ class DialogManagerService(MqttService):
             DialogManagerService,
             self).__init__(config)
         self.config = config
-        self.subscribe_to = 'hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent' + \
-            ',hermod/+/nlu/fail,hermod/+/dialog/end,hermod/+/router/action,hermod/+/hotword/detected' + \
-            ',hermod/+/dialog/continue'
+        self.subscribe_to = 'hermod/+/dialog/continue,hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent' + \
+            ',hermod/+/nlu/fail,hermod/+/dialog/end,hermod/+/router/action,hermod/+/hotword/detected' 
+            
         self.dialogs = {}
         self.waiters = {}
         self.subscriptions = {}
     
     def on_connect(self, client, userdata, flags, result_code):
-        self.log("DM Connected with result code {}".format(result_code))
+        #self.log("DM Connected with result code {}".format(result_code))
         # SUBSCRIBE
         for sub in self.subscribe_to.split(","):
-            #self.log('subscribe to {}'.format(sub))
+            self.log('subscribe to {}'.format(sub))
             self.client.subscribe(sub)
-        self.log('dm serv')
+        #self.log('dm serv')
         # self.log(self.config['services'])
             
         if self.config['services']['DialogManagerService'] and self.config['services']['DialogManagerService']['initialise']:
             sites = str(self.config['services']['DialogManagerService']['initialise']).split(",")
             for site in sites:
-                self.log('initialise site {}'.format(site))
+                #self.log('initialise site {}'.format(site))
                 self.client.publish('hermod/'+site+'/hotword/activate')
+                self.client.publish('hermod/'+site+'/asr/activate')
                 self.client.publish('hermod/'+site+'/microphone/start')
                 self.client.publish('hermod/'+site+'/hotword/start')
 
@@ -88,13 +89,13 @@ class DialogManagerService(MqttService):
 
     def callback_hotword_dialog_ended(self, prep, topic, message):
         self.client.publish(prep + 'dialog/started', json.dumps({}))
-        self.client.publish(prep + 'microphone/start', json.dumps({}))
         self.client.publish(prep + 'asr/start', json.dumps({}))
-
+        self.client.publish(prep + 'microphone/start', json.dumps({}))
+        
     def callback_dmcontinue_ttsfinished(self, prep, topic, message):
-        self.client.publish(prep + 'microphone/start', json.dumps({}))
         self.client.publish(prep + 'asr/start', json.dumps({}))
-
+        self.client.publish(prep + 'microphone/start', json.dumps({}))
+        
     def start_dialog(self, site, text):
         prep = 'hermod/' + site + '/'
         # if starting with text, dive straight into nlu/parse
@@ -120,13 +121,13 @@ class DialogManagerService(MqttService):
             pass
         text = payload.get('text')
         prep = 'hermod/' + site + '/'
-        #self.log("DM MESSAGE {} - {}".format(site,topic))
+        self.log("DM MESSAGE {} - {}".format(site,topic))
 
         # first handle temporary subscription bindings
         self.handle_waiters(prep, topic, payload)
-
         # now handle main subscription bindings
         if topic == prep + 'hotword/detected':
+            self.client.publish(prep + 'microphone/stop', json.dumps({}))
             self.send_and_wait(
                 prep + 'dialog/end',
                 payload,
@@ -134,25 +135,26 @@ class DialogManagerService(MqttService):
                 self.callback_hotword_dialog_ended)
 
         elif topic == prep + 'dialog/continue':
-            if len(text) > 0:
+            
+            if text:
                 self.send_and_wait(
                     prep + 'tts/say',
                     payload,
                     prep + 'tts/finished',
                     self.callback_dmcontinue_ttsfinished)
             else:
-                self.client.publish(prep + 'microphone/start', json.dumps({}))
                 self.client.publish(prep + 'asr/start', json.dumps({}))
-
+                self.client.publish(prep + 'microphone/start', json.dumps({}))
+                
         elif topic == prep + 'dialog/start':
             self.start_dialog(site, text)
 
         elif topic == prep + 'asr/text':
             self.client.publish(prep + 'asr/stop', json.dumps({}))
-            self.client.publish(prep + 'hotword/stop', json.dumps({}))
+            #self.client.publish(prep + 'hotword/stop', json.dumps({}))
             self.client.publish(prep + 'microphone/stop', json.dumps({}))
-            self.client.publish(prep + 'nlu/parse', json.dumps({"text": text}))
-
+            self.client.publish(prep + 'nlu/parse', json.dumps({"query": text}))
+            
         elif topic == prep + 'nlu/intent':
             self.client.publish(prep + 'intent', json.dumps(payload))
 
@@ -160,9 +162,9 @@ class DialogManagerService(MqttService):
             self.client.publish(prep + 'dialog/end', json.dumps(payload))
 
         elif topic == prep + 'dialog/end':
-            self.client.publish(prep + 'dialog/ended', json.dumps(payload))
+            self.log("DM end")
+            self.client.publish(prep + 'dialog/ended', json.dumps({}))
             self.client.publish(prep + 'microphone/start', json.dumps({}))
             self.client.publish(prep + 'hotword/start', json.dumps({}))
 
-        elif topic == prep + 'router/action':
-            self.client.publish(prep + 'action', json.dumps(payload))
+     
