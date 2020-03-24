@@ -19,8 +19,25 @@ class RasaService(MqttService):
         self.rasa_server = self.config['services']['RasaService'].get('rasa_server','http://localhost:5005/')
         
         self.subscribe_to = 'hermod/+/dialog/ended,hermod/+/nlu/parse,hermod/+/intent,hermod/+/dialog/started'
-       
-           
+        
+        
+    def on_connect(self, client, userdata, flags, result_code):
+        # self.log("Connected with result code {}".format(result_code))
+        # SUBSCRIBE
+        for sub in self.subscribe_to.split(","):
+            # self.log('subscribe to {}'.format(sub))
+            self.client.subscribe(sub)
+        
+        while True:
+            try:
+                response = requests.get(self.rasa_server)
+                if response.status_code == 200:
+                    break
+                time.sleep(3)
+            except: 
+                pass
+        self.client.publish('hermod/rasa/ready',json.dumps({}))
+                   
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
         parts = topic.split("/")

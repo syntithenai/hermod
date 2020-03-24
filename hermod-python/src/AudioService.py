@@ -6,6 +6,7 @@ This service is preconfigured for a single site.
 
 import wave
 import io
+import os
 import pyaudio
 import time
 import json
@@ -25,13 +26,13 @@ class AudioService(MqttService):
         # self.log('MIC constructor {}'.format(self.site))
         self.thread_targets.append(self.send_audio_frames)
         self.started = False
-        self.subscribe_to = 'hermod/' + self.site + \
+        self.subscribe_to = 'hermod/rasa/ready,hermod/' + self.site + \
             '/microphone/start,hermod/' + self.site + '/microphone/stop,hermod/' + self.site + '/speaker/#'
         self.volume = 5
        
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
-        # self.log('AUDIO SERVice {}'.format(topic))
+        self.log('AUDIO SERVice {}'.format(topic))
         if topic == 'hermod/' + self.site + '/microphone/start':
             self.started = True
         elif topic == 'hermod/' + self.site + '/microphone/stop':
@@ -44,6 +45,23 @@ class AudioService(MqttService):
             self.stop_playing(playId)
         elif topic == 'hermod/' + self.site + '/speaker/volume':
             self.volume = msg.payload
+        elif topic == 'hermod/rasa/ready':
+            self.client.publish('hermod/'+self.site+'/hotword/activate',json.dumps({}))
+            self.client.publish('hermod/'+self.site+'/asr/activate',json.dumps({}))
+            self.client.publish('hermod/'+self.site+'/microphone/start',json.dumps({}))
+            self.client.publish('hermod/'+self.site+'/hotword/start',json.dumps({}))
+            self.log('wavdpme1')
+            this_folder = os.path.dirname(os.path.realpath(__file__))
+            wav_file = os.path.join(this_folder, 'loaded.wav')
+            self.log('wav '+wav_file)
+            f = open(wav_file, "rb")
+            self.log('wavdpme12')
+            wav = f.read();
+            self.log('wavdpme13')
+            self.log(wav)
+            self.log('wavdpme14')
+            self.client.publish('hermod/'+self.site+'/speaker/play',wav)
+            self.log('wavdpme5')
 
 
     def send_audio_frames(self, run_event):

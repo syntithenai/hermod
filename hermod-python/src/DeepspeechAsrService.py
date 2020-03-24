@@ -101,28 +101,30 @@ class DeepspeechAsrService(MqttService):
             self.audio_stream[site].write(msg.payload) ;
         
     def activate(self,site):
-        self.audio_stream[site] = BytesLoop()
-        self.active[site] = True
-        self.started[site] = False
-        self.client.subscribe('hermod/'+site+'/microphone/audio')
-          # Load DeepSpeech model
-        if os.path.isdir(self.model_path):
-            modelPath = os.path.join(self.model_path, self.modelFile)
-            lm = os.path.join(self.model_path, 'lm.binary')
-            trie = os.path.join(self.model_path, 'trie')
+        #if not self.active[site]:
+            self.audio_stream[site] = BytesLoop()
+            self.active[site] = True
+            self.started[site] = False
+            self.client.subscribe('hermod/'+site+'/microphone/audio')
+              # Load DeepSpeech model
+            if os.path.isdir(self.model_path):
+                modelPath = os.path.join(self.model_path, self.modelFile)
+                lm = os.path.join(self.model_path, 'lm.binary')
+                trie = os.path.join(self.model_path, 'trie')
 
-            self.models[site] = deepspeech.Model(modelPath, 500)
-            if lm and trie:
-                self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
-        
-            self.stream_contexts[site] = self.models[site].createStream()
-        
+                self.models[site] = deepspeech.Model(modelPath, 500)
+                if lm and trie:
+                    self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
+            
+                self.stream_contexts[site] = self.models[site].createStream()
+            
    
     def deactivate(self,site):
-        self.client.unsubscribe('hermod/'+site+'/microphone/audio')
-        self.audio_stream.pop(site, '')
-        self.active[site] = False
-        self.started[site] = False
+        #if self.active[site]:
+            self.client.unsubscribe('hermod/'+site+'/microphone/audio')
+            self.audio_stream.pop(site, '')
+            self.active[site] = False
+            self.started[site] = False
         
 
     def read(self,site):

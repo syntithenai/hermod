@@ -96,28 +96,30 @@ class PicovoiceHotwordService(MqttService):
                 self.audio_stream[site].write(msg.payload)
 
     def activate(self, site):
-        self.active[site] = True
-        self.started[site] = False
-        self.audio_stream[site] = BytesLoop()
-        self.client.subscribe('hermod/' + site + '/microphone/audio')
-        self.porcupine[site] = Porcupine(
-            library_path=LIBRARY_PATH,
-            model_file_path=MODEL_FILE_PATH,
-            keyword_file_paths=self.keyword_file_paths,
-            sensitivities=self.sensitivities)
-        # self.log('activated')
+       # if not self.active[site]:
+            self.active[site] = True
+            self.started[site] = False
+            self.audio_stream[site] = BytesLoop()
+            self.client.subscribe('hermod/' + site + '/microphone/audio')
+            self.porcupine[site] = Porcupine(
+                library_path=LIBRARY_PATH,
+                model_file_path=MODEL_FILE_PATH,
+                keyword_file_paths=self.keyword_file_paths,
+                sensitivities=self.sensitivities)
+            # self.log('activated')
 
     def deactivate(self, site):
-        self.active[site] = False
-        self.started[site] = False
-        # unsub audio
-        self.client.unsubscribe('hermod/' + site + '/microphone/audio')
-        # destroy porcupine and audio
-        if self.porcupine[site] is not None:
-            self.porcupine[site].delete()
-        if self.audio_stream[site] is not None:
-            self.audio_stream[site].close()
-        # self.log('deactivated')
+       # if self.active[site]:
+            self.active[site] = False
+            self.started[site] = False
+            # unsub audio
+            self.client.unsubscribe('hermod/' + site + '/microphone/audio')
+            # destroy porcupine and audio
+            if self.porcupine[site] is not None:
+                self.porcupine[site].delete()
+            if self.audio_stream[site] is not None:
+                self.audio_stream[site].close()
+            # self.log('deactivated')
         
     def start_main(self, run_event):
         # self.log('start main')

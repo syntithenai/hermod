@@ -45,19 +45,19 @@ class DialogManagerService(MqttService):
         #self.log("DM Connected with result code {}".format(result_code))
         # SUBSCRIBE
         for sub in self.subscribe_to.split(","):
-            self.log('subscribe to {}'.format(sub))
+            #self.log('subscribe to {}'.format(sub))
             self.client.subscribe(sub)
         #self.log('dm serv')
         # self.log(self.config['services'])
             
-        if self.config['services']['DialogManagerService'] and self.config['services']['DialogManagerService']['initialise']:
-            sites = str(self.config['services']['DialogManagerService']['initialise']).split(",")
-            for site in sites:
-                #self.log('initialise site {}'.format(site))
-                self.client.publish('hermod/'+site+'/hotword/activate')
-                self.client.publish('hermod/'+site+'/asr/activate')
-                self.client.publish('hermod/'+site+'/microphone/start')
-                self.client.publish('hermod/'+site+'/hotword/start')
+        # if self.config['services']['DialogManagerService'] and self.config['services']['DialogManagerService']['initialise']:
+            # sites = str(self.config['services']['DialogManagerService']['initialise']).split(",")
+            # for site in sites:
+                # #self.log('initialise site {}'.format(site))
+                # self.client.publish('hermod/'+site+'/hotword/activate')
+                # self.client.publish('hermod/'+site+'/asr/activate')
+                # self.client.publish('hermod/'+site+'/microphone/start')
+                # self.client.publish('hermod/'+site+'/hotword/start')
 
     def send_and_wait(self, topic, message, waitFor, callback):
         # push callback to waiters and subscribe
