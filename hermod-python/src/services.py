@@ -41,6 +41,9 @@ PARSER.add_argument('-r', '--rasaserver', action='store_true',
 
 PARSER.add_argument('-a', '--actionserver', action='store_true',
 					help="Run local rasa_sdk action server")
+PARSER.add_argument('-ss', '--skipservices', action='store_true', default=False,
+					help="Do not start hermod services")
+
 
 ARGS = PARSER.parse_args()
 #print(ARGS)
@@ -49,11 +52,13 @@ print("RUN MODE {} ".format(ARGS.runmode))
 F = open(os.path.join(os.path.dirname(__file__), 'config-'+ARGS.runmode+'.yaml'), "r")
 CONFIG = yaml.load(F.read(), Loader=yaml.FullLoader)
 
+
+
 # start rasa action server
 def start_rasa_action_server(run_event):
     print('START RASA ACTIONS SERVER')
-    cmd = ['python','-m','rasa_sdk','--actions','rasa.actions'] 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+    cmd = ['python','-m','rasa_sdk','--actions','actions','-vv'] 
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
     while run_event.is_set():
         time.sleep(0.5)
     p.terminate()
@@ -65,8 +70,9 @@ if ARGS.actionserver > 0:
 # start rasa  server
 def start_rasa_action_server(run_event):
     print('START RASA SERVER')
-    cmd = ['rasa','run','--enable-api','--debug','--model','rasa/models'] 
-    p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+    cmd = ['rasa','run','--enable-api']  
+    # '--debug',,'--model','models'
+    p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
     while run_event.is_set():
         time.sleep(0.1)
     p2.terminate()
@@ -129,7 +135,7 @@ if ARGS.mqttserver > 0:
 		
 	# THREAD_HANDLER.run(start_mqtt_server)
 
-if ARGS.runmode:
+if ARGS.runmode and not ARGS.skipservices:
 	SERVICES = []
 	print('START SERVER')
 	MODULE_DIR = os.getcwd()

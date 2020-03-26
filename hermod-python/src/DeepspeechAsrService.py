@@ -6,6 +6,7 @@ from threading import Thread
 import json
 import time
 import io
+
 from socket import error as socket_error
 import paho.mqtt.client as mqtt
 import warnings
@@ -77,7 +78,12 @@ class DeepspeechAsrService(MqttService):
         
         self.model_path = config['services']['DeepspeechAsrService']['model_path']
         self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop'
-    
+        
+        this_folder = os.path.dirname(os.path.realpath(__file__))
+        wav_file = os.path.join(this_folder, 'turn_off.wav')
+        f = open(wav_file, "rb")
+        self.turn_off_wav = f.read();
+        
 
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
@@ -89,14 +95,19 @@ class DeepspeechAsrService(MqttService):
         startTopic = 'hermod/' +site+'/asr/start'
         stopTopic = 'hermod/'+site+'/asr/stop'
         audioTopic = 'hermod/'+site+'/microphone/audio'
+        
+        
         if topic == activateTopic:
             self.activate(site)
         elif topic == deactivateTopic:
             self.deactivate(site)
         elif topic == startTopic:
             self.started[site] = True
+            
         elif topic == stopTopic:
             self.started[site] = False
+            #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
+            
         elif topic == audioTopic :
             self.audio_stream[site].write(msg.payload) ;
         
@@ -149,8 +160,15 @@ class DeepspeechAsrService(MqttService):
         num_padding_frames = padding_ms // self.frame_duration_ms
         ring_buffer = collections.deque(maxlen=num_padding_frames)
         triggered = False
-
+        last_audio =  time.time()
+                    
         for frame in frames:
+            now = time.time()
+            if (now - last_audio) > 10:
+                self.log('TIMEOUT')
+                self.client.publish('hermod/'+site+'/asr/stop',json.dumps({}))
+                break;
+                            
             if len(frame) < 1:  # 640
                 yield None
                 return
@@ -166,6 +184,7 @@ class DeepspeechAsrService(MqttService):
                     ring_buffer.clear()
 
             else:
+                last_audio = time.time()
                 yield frame
                 ring_buffer.append((frame, is_speech))
                 num_unvoiced = len([f for f, speech in ring_buffer if not speech])
@@ -177,14 +196,21 @@ class DeepspeechAsrService(MqttService):
 
 
     def startASR(self, run_event):
+        empty_count = {}
         if os.path.isdir(self.model_path):
             while True and run_event.is_set():
                 time.sleep(0.001)
                 for site in self.active:
+                    empty_count[site] = 0;
                     if (site in self.models and site in self.stream_contexts and self.active[site] == True):
                         frames = self.vad_collector(site)
-
+                        
                         for frame in frames:
+                            if empty_count[site] > 4:
+                                self.log('TIMEOUT EMPTY')
+                                self.client.publish('hermod/'+site+'/asr/stop',json.dumps({}))
+                                break;
+                            
                             if self.started[site] == True:
                                 if frame is not None:
                                    # self.log('feed content')
@@ -192,11 +218,14 @@ class DeepspeechAsrService(MqttService):
                                 else:
                                     text = self.models[site].finishStream(self.stream_contexts[site])
                                     self.log('got text {}'.format(text))
-                                    if (len(text) > 0):
+                                    if len(text) > 0:
+                                        empty_count[site] = 0
                                         self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
+                                    else:
+                                        empty_count[site] = empty_count[site]  + 1
                                     del self.stream_contexts[site]
                                     self.stream_contexts[site] = self.models[site].createStream()
-                            #time.sleep(0.001)
+                            time.sleep(0.001)
         else:
             print('missing model files at '+self.model_path) 
     

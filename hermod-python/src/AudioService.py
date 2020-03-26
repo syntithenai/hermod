@@ -50,19 +50,12 @@ class AudioService(MqttService):
             self.client.publish('hermod/'+self.site+'/asr/activate',json.dumps({}))
             self.client.publish('hermod/'+self.site+'/microphone/start',json.dumps({}))
             self.client.publish('hermod/'+self.site+'/hotword/start',json.dumps({}))
-            self.log('wavdpme1')
             this_folder = os.path.dirname(os.path.realpath(__file__))
             wav_file = os.path.join(this_folder, 'loaded.wav')
-            self.log('wav '+wav_file)
             f = open(wav_file, "rb")
-            self.log('wavdpme12')
             wav = f.read();
-            self.log('wavdpme13')
-            self.log(wav)
-            self.log('wavdpme14')
             self.client.publish('hermod/'+self.site+'/speaker/play',wav)
-            self.log('wavdpme5')
-
+            
 
     def send_audio_frames(self, run_event):
         # determine which audio device

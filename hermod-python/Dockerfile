@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y libttspico0 mosquitto libttspico-utils 
 
 
 # for pi4 need 
-# apt install libatlas-base-dev libatlas3-base liblapack-dev liblapack3 liblapacke liblapacke-dev libtmglib3 libjlapack-java gfortran liblapack-dev musl musl-dev libgfortran4 libgcc1
+# RUN apt install libatlas-base-dev libatlas3-base libjlapack-java liblapack-dev liblapack3 liblapacke liblapacke-dev libopenblas-base libopenblas-base-dev liblapack-dev liblapack3 liblapacke liblapacke-dev libtmglib3 libjlapack-java gfortran liblapack-dev musl musl-dev libgfortran4 libgcc1
 # also pip install scipy -i https://www.piwheels.org/simples (fails without -i)
 # BUT still fails on tensorflow-addons >=0.8 < 0.9 (from rasa requirements) - no such package in default and piwheels (-i)
 # https://github.com/piwheels/packages/issues/76

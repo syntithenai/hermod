@@ -8,7 +8,7 @@ scipy
 paho-mqtt
 pvporcupine
 pyyaml
-rasa
+rasa==1.7.0
 hbmqtt
 pyyaml
 rasa-sdk
