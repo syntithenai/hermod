@@ -15,4 +15,4 @@ rasa-sdk
 flask-dance
 gunicorn
 blinker
-python-dotenv
+

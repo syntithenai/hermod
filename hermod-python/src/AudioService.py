@@ -32,7 +32,7 @@ class AudioService(MqttService):
        
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
-        self.log('AUDIO SERVice {}'.format(topic))
+        #self.log('AUDIO SERVice {}'.format(topic))
         if topic == 'hermod/' + self.site + '/microphone/start':
             self.started = True
         elif topic == 'hermod/' + self.site + '/microphone/stop':
@@ -93,47 +93,22 @@ class AudioService(MqttService):
                 rate=16000,
                 input=True,
                 frames_per_buffer=256, input_device_index=useIndex)
-            # self.log('choose audio device1.6')
-            # self.log(stream)
+            
             while True and run_event.is_set():
-                #self.log('-')
-                    
                 time.sleep(0.01)
-                #self.log('0')
-               
                 frames = stream.read(256, exception_on_overflow = False)
-               # self.log(':')
                 if self.started:
-                   # self.log('.')
-                    # generate wav file in memory
-                    # output = io.BytesIO()
-                    # waveFile = wave.open(output, "wb")
-                    # waveFile.setnchannels(1)
-                    # waveFile.setsampwidth(2)
-                    # waveFile.setframerate(16000)
-                    # waveFile.writeframes(frames)
                     topic = 'hermod/' + self.site + '/microphone/audio'
-                    # # strip wav header
-                    # payload = output.getvalue()
-                    # payload = payload[43:]
                     self.client.publish(
                         topic, payload=frames, qos=0)
             stream.stop_stream()
             stream.close();
             
     def start_playing(self, wav, playId = ''):
-        # self.log('st p[l')  
-        # self.log(self.client)
-        # self.log(json.dumps({"id": playId}))
         self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
-        # self.log('st p[l2')  
-        # self.log(self.p)
         info = self.p.get_host_api_info_by_index(0)
-        # self.log('st p[l23')  
         numdevices = info.get('deviceCount')
-        # self.log('st p[l24')  
         useIndex = -1
-        # self.log('st p[l25')    
         # device from config, first match
         devices = []
         device = self.config['services']['AudioService'].get('outputdevice',False)
@@ -146,9 +121,6 @@ class AudioService(MqttService):
                     # only use the first found
                     if useIndex < 0:
                         useIndex = i
-       
-        
-        #useIndex = 2
         if useIndex < 0:
             self.log('no suitable speaker device')
             self.log('Available output devices:')
@@ -167,16 +139,10 @@ class AudioService(MqttService):
 
             data = wf.readframes(CHUNK)
             remaining = remaining - CHUNK
-            #self.log('first')
             while data is not None and remaining > 0:
-                #self.log('next1')
                 stream.write(data)
-                #self.log('next2')
                 data = wf.readframes(CHUNK)
-                #self.log('next3')
                 remaining = remaining - CHUNK
-                #self.log('next4')
-            # self.log('last')
             self.client.publish("hermod/" + self.site +
                                 "/speaker/finished", json.dumps({"id": playId}))
             stream.stop_stream()

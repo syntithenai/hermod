@@ -121,7 +121,7 @@ class DialogManagerService(MqttService):
             pass
         text = payload.get('text')
         prep = 'hermod/' + site + '/'
-        self.log("DM MESSAGE {} - {}".format(site,topic))
+        #self.log("DM MESSAGE {} - {}".format(site,topic))
 
         # first handle temporary subscription bindings
         self.handle_waiters(prep, topic, payload)

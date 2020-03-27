@@ -25,7 +25,6 @@ import wave
 import webrtcvad
 from scipy import signal
 
-
 ######################################
 # This class listens for mqtt audio packets and publishes asr/text messages
 
@@ -150,7 +149,7 @@ class DeepspeechAsrService(MqttService):
             time.sleep(0.0001)
             #padding_ms=300
             
-    def vad_collector(self, site,padding_ms=300, ratio=0.75, frames=None):
+    def vad_collector(self, site,padding_ms=400, ratio=0.75, frames=None):
         """Generator that yields series of consecutive audio frames comprising each utterence, separated by yielding a single None.
             Determines voice activity by ratio of frames in padding_ms. Uses a buffer to include padding_ms prior to being triggered.
             Example: (frame, ..., frame, None, frame, ..., frame, None, ...)
@@ -206,7 +205,7 @@ class DeepspeechAsrService(MqttService):
                         frames = self.vad_collector(site)
                         
                         for frame in frames:
-                            if empty_count[site] > 4:
+                            if empty_count[site] > 8 and self.started[site]:
                                 self.log('TIMEOUT EMPTY')
                                 self.client.publish('hermod/'+site+'/asr/stop',json.dumps({}))
                                 break;

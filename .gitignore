@@ -1,3 +1,5 @@
+.env
+hermod-python/src/.env
 rasa
 tests/rasa
 hermod-python/lib

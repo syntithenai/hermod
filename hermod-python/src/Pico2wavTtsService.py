@@ -64,7 +64,13 @@ class Pico2wavTtsService(MqttService):
 
         value = randint(0, 1000000)
         file_name = os.path.join(cache_path, 'tts-' + str(value) + '.wav')
+        
         if len(text) > 0:
+            # text_parts = text.split(" ") 
+            # # split into multiple messages
+            # if len(text_parts) > 5:
+                
+                
             path = self.config['services']['Pico2wavTtsService']['binary_path']
             os.system(path + ' -w=' + file_name + ' "{}" '.format(text))
 

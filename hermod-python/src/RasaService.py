@@ -86,9 +86,9 @@ class RasaService(MqttService):
             self.finish(site)
         
     def finish(self,site):
-        self.log('finish')
+        #self.log('finish')
         response = requests.get(self.rasa_server+"conversations/"+site+"/tracker",json.dumps({}))
-        self.log(response.json())
+        #self.log(response.json())
         events = response.json().get('events')
         # end conversation
         if len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_end':
