@@ -1,0 +1,94 @@
+<html><body>
+
+hiddd
+
+
+<script src="bundle.js" ></script>
+
+
+<button onClick=start() >Start</button>
+<button onClick=stop() >Stop</button>
+
+<script>
+    
+let SENSITIVITIES = new Float32Array([
+        0.5, // "Hey Edison"
+        0.5, // "Hot Pink"
+        0.5, // "Deep Pink"
+        0.5, // "Fire Brick"
+        0.5, // "Papaya Whip"
+        0.5, // "Peach Puff"
+        0.5, // "Sandy Brown"
+        0.5, // "Lime Green"
+        0.5, // "Forest Green"
+        0.5, // "Midnight Blue"
+        0.5, // "Magenta"
+        0.5, // "White Smoke"
+        0.5, // "Lavender Blush"
+        0.5 // "Dim Gray"
+    ]);
+       
+let processCallback = function (keyword) {
+    if (keyword) console.log('heard '+keyword)
+};
+
+let porcupineManager;
+
+let audioManagerErrorCallback = function (ex) {
+    console.log(ex.toString());
+};
+
+start = function () {
+    porcupineManager = window.PorcupineManager(
+        "./porcupine/porcupine_worker.js");
+
+    porcupineManager.start(window.KeywordData, SENSITIVITIES, processCallback, audioManagerErrorCallback);
+};
+
+stop = function () {
+    console.log('stop')
+    console.log(porcupineManager)
+    porcupineManager.stop();
+};
+start()
+        
+        
+ //var config = {
+    //server: "ws://jest:hermod@localhost:9001",
+    //subscribe: "hermod/jest/#",
+    //hotwordsensitivity : 0.9,
+    //site:'jest'
+//}
+   ////console.log(window.HermodWebClient)
+//console.log('pov')
+//console.log(navigator)
+//console.log(window)
+    //var client = new window.HermodWebClient(config)
+    //client.connect().then(function() {
+            //client.startHotword(config.site)
+        //})
+//var constraints = {
+    //video: false,
+    //audio: true
+//}
+//navigator.mediaDevices.getUserMedia({audio:true}).then(function success(stream) {
+    ///* do stuff */
+//}).catch(function(err) {
+    ////log to console first 
+    //console.log(err); /* handle the error */
+    //if (err.name == "NotFoundError" || err.name == "DevicesNotFoundError") {
+        ////required track is missing 
+    //} else if (err.name == "NotReadableError" || err.name == "TrackStartError") {
+        ////webcam or mic are already in use 
+    //} else if (err.name == "OverconstrainedError" || err.name == "ConstraintNotSatisfiedError") {
+        ////constraints can not be satisfied by avb. devices 
+    //} else if (err.name == "NotAllowedError" || err.name == "PermissionDeniedError") {
+        ////permission denied in browser 
+    //} else if (err.name == "TypeError" || err.name == "TypeError") {
+        ////empty constraints object 
+    //} else {
+        ////other errors 
+    //}
+//});
+</script>
+</body></html>

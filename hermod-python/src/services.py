@@ -138,7 +138,7 @@ if ARGS.mqttserver:
 	# use mosquitto
 	def start_mqtt_server(run_event):
 		print('START MQTT SERVER')
-		cmd = ['/usr/sbin/mosquitto','-d'] 
+		cmd = ['/usr/sbin/mosquitto','-d','-c','/etc/mosquitto/mosquitto.conf'] 
 		p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
 		while run_event.is_set():
 			time.sleep(0.5)

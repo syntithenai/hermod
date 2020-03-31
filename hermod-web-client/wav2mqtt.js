@@ -40,9 +40,9 @@ function  start(mqttClient,siteId,filename) {
 	 inBody = true;
 	});
 	wavReader.on('data', function (data) {
-		if (inBody) {
-			//console.log('read body')
-			//console.log(data && data.buffer ? data.buffer .length : -1)
+		if (inBody ) { //&& data && data.length > 0
+			console.log('read body')
+			console.log(data && data.buffer ? data.buffer.length : -1)
 			//console.log(data.buffer)
 			chunker.write(data);
 		}
@@ -52,7 +52,7 @@ function  start(mqttClient,siteId,filename) {
     
 function stopRecording(siteId) {
 		started = false;
-        voiceDetected = false;
+       // voiceDetected = false;
        // if (this.micInstance && this.micInstance.stop) this.micInstance.stop()
 		if (dastream) {
 			dastream.pause();
