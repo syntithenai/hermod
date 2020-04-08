@@ -22,8 +22,9 @@ import os
 #from hbmqtt.broker import Broker
 from flask import Flask, redirect, url_for, cli, redirect
 from flask_dance.contrib.google import make_google_blueprint, google
-from subprocess import call
-
+from subprocess import call, run
+import AuthService
+import WebService
 
 from thread_handler import ThreadHandler
 THREAD_HANDLER = ThreadHandler()
@@ -41,12 +42,12 @@ PARSER.add_argument('-md', '--microphonedevice', type=str, default='',
 
 PARSER.add_argument('-m', '--mqttserver',action='store_true',
 					help="Run MQTT server")
+                 
+PARSER.add_argument('-r', '--rasaserver', type=str,
+					help="RASA server")
                     
-PARSER.add_argument('-r', '--rasaserver', action='store_true',
-					help="Run RASA server")
-                    
-PARSER.add_argument('-z', '--authorizationserver', action='store_true',
-					help="Run RASA auth server")
+PARSER.add_argument('-w', '--webserver', action='store_true',
+					help="Run hermod web server")
                     
 PARSER.add_argument('-a', '--actionserver', action='store_true',
 					help="Run local rasa_sdk action server")
@@ -54,56 +55,21 @@ PARSER.add_argument('-a', '--actionserver', action='store_true',
 PARSER.add_argument('-ss', '--skipservices', action='store_true', default=False,
 					help="Do not start hermod services")
 
+#cli.load_dotenv(path=os.path.dirname(__file__))
 
 ARGS = PARSER.parse_args()
-#print(ARGS)
+#print(ARGS) 
 print("RUN MODE {} ".format(ARGS.runmode))
 
 F = open(os.path.join(os.path.dirname(__file__), 'config-'+ARGS.runmode+'.yaml'), "r")
 CONFIG = yaml.load(F.read(), Loader=yaml.FullLoader)
 
-def get_password(stringLength=10):
-    """Generate a random string of fixed length """
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(stringLength))
+F = open(os.path.join(os.path.dirname(__file__), 'secrets.yaml'), "r")
+secrets = yaml.load(F.read(), Loader=yaml.FullLoader)
+if not secrets: secrets = {}
 
-# mosquitto_passwd -b passwordfile username password
-def get_mosquitto_user(email):
-    email_clean = email.replace("@","__")
-    print('START RASA ACTIONS SERVER')
-    password = get_password()
-    cmd = ['mosquitto_passwd','-b','/etc/mosquitto/password',email_clean,password] 
-    p = call(cmd)
-    return {"email":email,"email_clean":email_clean,"password":password}
-
-
-# start login server
-cli.load_dotenv(path=os.path.dirname(__file__))
-app = Flask(__name__)
-print(os.environ.get("GOOGLE_OAUTH_CLIENT_ID"))
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrithermod")
-app.config["GOOGLE_OAUTH_CLIENT_ID"] = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
-app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
-google_bp = make_google_blueprint(scope=["profile", "email"])
-app.register_blueprint(google_bp, url_prefix="/login")
-
-@app.route("/")
-def index():
-    if not google.authorized:
-        return redirect(url_for("google.login"))
-    resp = google.get("/oauth2/v1/userinfo")
-    assert resp.ok, resp.text
-    return json.dumps(get_mosquitto_user(resp.json()["email"]))
-    # return redirect('http://localhost/'+urllib.urlencode(get_mosquitto_user(resp.json()["email"])))
-    #return "You are {email} on Google".format(email=resp.json()["email"])
-
-def start_rasa_auth_server(run_event):
-    print('START AUTH SERVER')
-    app.run(host='0.0.0.0')
-    
-   
-if ARGS.authorizationserver > 0:
-    THREAD_HANDLER.run(start_rasa_auth_server)
+if ARGS.webserver > 0:
+    THREAD_HANDLER.run(WebService.start_server)
 
 
 
@@ -131,22 +97,60 @@ def start_rasa_action_server(run_event):
     p2.terminate()
     p2.wait()
 
-if ARGS.rasaserver > 0:
+if ARGS.rasaserver:
+    CONFIG['services']['RasaService']['rasa_server'] = ARGS.rasaserver
+else:
     THREAD_HANDLER.run(start_rasa_action_server)
+    
+# use recent version of mosquitto
+def start_mqtt_server(run_event):
+    print('START MQTT SERVER')
+    cmd = ['/app/mosquitto-1.6.9/src/mosquitto','-v','-c','/etc/mosquitto/mosquitto.conf'] 
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+    while run_event.is_set():
+        time.sleep(0.5)
+    p.terminate()
+    p.wait()
 
-if ARGS.mqttserver:
-	# use mosquitto
-	def start_mqtt_server(run_event):
-		print('START MQTT SERVER')
-		cmd = ['/usr/sbin/mosquitto','-d','-c','/etc/mosquitto/mosquitto.conf'] 
-		p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
-		while run_event.is_set():
-			time.sleep(0.5)
-		p.terminate()
-		p.wait()
+def start_secure_mqtt_server(run_event):
+    print('START SECURE MQTT SERVER')
+    cmd = ['/app/mosquitto-1.6.9/src/mosquitto','-v','-c','/etc/mosquitto/mosquitto-ssl.conf'] 
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+    while run_event.is_set():
+        time.sleep(0.5)
+    p.terminate()
+    p.wait()
+            
+# send HUP signal to mosquitto when password file is updated    
+def start_mqtt_auth_watcher(run_event):
+    print('START MQTT   WATCHER')
+    cmd = ['./mosquitto_watcher.sh'] 
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+    while run_event.is_set():
+        time.sleep(0.5)
+    p.terminate()
+    p.wait()
 		
 if ARGS.mqttserver > 0:
-	THREAD_HANDLER.run(start_mqtt_server)
+    print('MQTT')
+    print(secrets.get('SSL_CERTIFICATES_FOLDER'))
+    if secrets.get('SSL_CERTIFICATES_FOLDER'):
+        print(secrets.get('SSL_CERTIFICATES_FOLDER'))
+        cmd = ['./update_ssl.sh ' + secrets.get('SSL_CERTIFICATES_FOLDER')]
+        #cmd = ['pwd']
+        print('CMD')
+        print(cmd)
+        #print(os.path.join(os.path.dirname(__file__),'../mosquitto'))
+        p = call(cmd, shell=True)
+        #print(p.stdout.decode('utf-8'))
+        #rint(ca(cmd, shell=True))
+        #,cwd=os.path.join(os.path.dirname(__file__),'../mosquitto')
+        print('OK')
+        
+        THREAD_HANDLER.run(start_secure_mqtt_server)
+    else:
+        THREAD_HANDLER.run(start_mqtt_server)
+    THREAD_HANDLER.run(start_mqtt_auth_watcher)
 	
 	# # use hbmqtt
 	# config = {

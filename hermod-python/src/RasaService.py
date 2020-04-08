@@ -25,24 +25,28 @@ class RasaService(MqttService):
         # self.log("Connected with result code {}".format(result_code))
         # SUBSCRIBE
         for sub in self.subscribe_to.split(","):
-            # self.log('subscribe to {}'.format(sub))
+            self.log('RASA subscribe to {}'.format(sub))
             self.client.subscribe(sub)
         
         while True:
+            self.log('check rasa service '+self.rasa_server)
             try:
                 response = requests.get(self.rasa_server)
                 if response.status_code == 200:
+                    self.log('FOUND rasa service')
                     break
                 time.sleep(3)
-            except: 
+            except Exception as e: 
+                self.log(e)
                 pass
+            time.sleep(3)
         self.client.publish('hermod/rasa/ready',json.dumps({}))
                    
     def on_message(self, client, userdata, msg):
         topic = "{}".format(msg.topic)
         parts = topic.split("/")
         site = parts[1]
-        # self.log("MESSAGE {}".format(topic))
+        self.log("RASA MESSAGE {}".format(topic))
         ps = str(msg.payload, encoding='utf-8')
         payload = {}
         text = ''
@@ -54,15 +58,20 @@ class RasaService(MqttService):
         if topic == 'hermod/' + site + '/nlu/parse':
             if payload: 
                 text = payload.get('query')
-                response = requests.post(self.rasa_server+"model/parse",json.dumps({"text":text,"message_id":site}))
+                # self.log('PARSE REQUEST')
+                # self.log(text)
+                # self.log(self.rasa_server+"model/parse")
+                # self.log(json.dumps({"text":text,"message_id":site})    )
+                response = requests.post(self.rasa_server+"model/parse",data = json.dumps({"text":text,"message_id":site}),headers = {'content-type': 'application/json'})
                 self.client.publish('hermod/'+site+'/nlu/intent',json.dumps(response.json()))
         
         elif topic == 'hermod/' + site + '/intent':
             if payload:
+                # self.log('HANDLE INTENT')
                 self.handle_intent(topic,site,payload)
 
         elif topic == 'hermod/' + site + '/tts/finished':
-            self.client.unsubscribe('hermod/'+site+'tts/finished')
+            self.client.unsubscribe('hermod/'+site+'/tts/finished')
             self.finish(site)
             
         elif topic == 'hermod/' + site + '/dialog/ended':
@@ -72,16 +81,25 @@ class RasaService(MqttService):
     def reset_tracker(self,site):
         self.log('reset tracker '+site)
         #requests.post(self.rasa_server+"conversations/"+site+"/tracker/events",json.dumps({"event": "restart"}))
-        requests.put(self.rasa_server+"conversations/"+site+"/tracker/events",json.dumps([]))
+        requests.put(self.rasa_server+"conversations/"+site+"/tracker/events",json.dumps([]),headers = {'content-type': 'application/json'})
 
     def handle_intent(self,topic,site,payload):
         self.client.publish('hermod/'+site+'/core/started',json.dumps({}));
-        response = requests.post(self.rasa_server+"conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')}))
+        # self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))
+        response = requests.post(self.rasa_server+"conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')}),headers = {'content-type': 'application/json'})
+        # self.log('resp RASA TRIGGER')
         messages = response.json().get('messages')
+        # self.log('HANDLE INTENT MESSAGES')
+        self.log(messages)
         if messages:
             message = '. '.join(map(lambda x: x.get('text',''   ),messages))
             self.client.subscribe('hermod/'+site+'/tts/finished')
             self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message}))
+            # send action messages from server actions to client action
+            for message in messages:
+                self.log(message)
+                if message.action:
+                    self.client.publish('hermod/'+site+'/action',json.dumps(message.action))
         else:
             self.finish(site)
         

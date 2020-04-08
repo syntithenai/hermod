@@ -42,7 +42,7 @@ class MqttService(object):
         while run_event.is_set(): 
             try:
                 #self.log("Trying to connect to {} {}".format(self.mqtt_hostname,self.mqtt_port))
-                self.client.username_pw_set(config.get('mqtt_user'), config.get('mqtt_password'))
+                self.client.username_pw_set(self.config.get('mqtt_user'), self.config.get('mqtt_password'))
                 self.client.connect(self.mqtt_hostname, self.mqtt_port, 60)
                 break
             except (socket_error, Exception) as e:

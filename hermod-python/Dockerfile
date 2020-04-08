@@ -2,11 +2,15 @@ FROM python:3.7.7-buster
 USER root
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y wget pulseaudio python3-dev libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libc-ares-dev libwebsockets-dev libssl-dev  xsltproc docbook-xsl wget curl pulseaudio python3-dev nano libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
 
+# mosquitto build to get version > 1.6 [which supports websocket max header size settings and avoids connection error bug]
+RUN wget -q -O tmpfile https://mosquitto.org/files/source/mosquitto-1.6.9.tar.gz ; tar xzf tmpfile; rm tmpfile;  cd mosquitto-1.6.9; make WITH_WEBSOCKETS=yes; cp ./src/mosquitto /usr/sbin/mosquitto; 
+# cd ..; rm -rf mosquitto-1.6.9
+
+# pico2wav install from non-free
 RUN wget -q https://ftp-master.debian.org/keys/release-10.asc -O- | apt-key add -
 RUN echo "deb http://deb.debian.org/debian buster non-free" >> /etc/apt/sources.list
-
 RUN apt-get update && apt-get install -y libttspico0 mosquitto libttspico-utils  && rm -rf /var/lib/apt/lists/*
 
 # for pi4 need 
@@ -21,16 +25,18 @@ COPY ./requirements.txt /app
 
 RUN pip install -r requirements.txt
 
-RUN apt-get update && apt-get install -y nano  && rm -rf /var/lib/apt/lists/*
-
 # copy source code
 COPY ./deepspeech-models /app/deepspeech-models
 COPY ./rasa /app/rasa
 
 COPY ./src /app/src
+COPY ./www /app/www
 COPY ./porcupine /app/porcupine
-COPY ./.asoundrc /root
+COPY ./certs /etc/certs
 COPY ./mosquitto/ /etc/mosquitto
 
-ENTRYPOINT [ "python", "./src/services.py", "-m" ]
+RUN apt-get update && apt-get install -y entr && rm -rf /var/lib/apt/lists/*
+
+
+ENTRYPOINT [ "python", "./src/services.py", "-marz" ]
 

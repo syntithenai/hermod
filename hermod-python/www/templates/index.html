@@ -1,0 +1,153 @@
+<html><body>
+
+<script  type="text/javascript" src="bundle.js" ></script>
+<script>
+var state = 0
+var client = null
+
+
+
+
+function showStopped() {
+    document.getElementById('microphone_button').style.backgroundColor='grey'
+    document.getElementById('microphone_button').style.borderColor='black'
+    //document.getElementById('microphone_button').onClick=function() {
+   
+    //}
+}
+function showHotword() {
+    document.getElementById('microphone_button').style.backgroundColor='pink'
+    document.getElementById('microphone_button').style.borderColor='red'
+    //document.getElementById('microphone_button').onClick=function() {
+        //console.log('START MIC')
+        //client.startMicrophone()
+    //}
+}
+function showListening() {
+    document.getElementById('microphone_button').style.backgroundColor='green'
+    document.getElementById('microphone_button').style.borderColor='darkblue'
+    //document.getElementById('microphone_button').onClick=function() {
+        ////client.stopMicrophone()
+        ////client.startHotword()
+    //}
+}
+
+
+
+        var protocol = 'ws://'
+        var port = 9001
+        if (window.location.protocol == "https:") {
+            protocol = 'wss://'
+        }
+        var config = {
+            server: protocol + window.location.hostname + ':' + port, //window.location.port, //"wss://peppertrees.asuscomm.com:9001",
+            username: "{{data.get('email_clean')}}",
+            password: "{{data.get('password')}}",
+            subscribe: "hermod/{{data.get('email_clean')}}/#",
+            hotwordsensitivity : 0.5    ,
+            site:"{{data.get('email_clean')}}"
+        }
+
+
+        function onClick() {
+            if (state == 0) {
+                client.stopMicrophone()
+                client.stopHotword()
+                client.sendMessage('hermod/'+config.site+'/dialog/end',{})
+            } else if (state == 1) {
+                client.stopMicrophone()
+                client.stopHotword()
+                client.sendMessage('hermod/'+config.site+'/hotword/detected',{})
+            } else if (state == 2) {
+                client.stopMicrophone()
+                client.stopHotword()
+                client.sendMessage('hermod/'+config.site+'/dialog/end',{})
+            }
+        }
+        
+        function stopAll() {
+            client.stopMicrophone()
+            client.stopHotword()
+        }
+        
+        
+        
+        //console.log(config)
+        //document.getElementById('microphone_button').style.display='block'
+        
+        client = new window.HermodWebClient(config)
+
+        var state = 0;
+        client.bind('hotwordDetected',function() {
+           showListening(); 
+        })
+        client.bind('microphoneStart',function() {
+           showListening(); 
+           state = 2
+        })
+        client.bind('hotwordStart',function() {
+           showHotword(); 
+           state = 1
+        })
+        client.bind('hotwordStop',function() {
+           showStopped(); 
+           state = 0
+        })
+        client.bind('microphoneStop',function() {
+           showStopped(); 
+           state = 0
+        })
+        client.bind('message',function(message,payload) {
+           //console.log([message,payload]) 
+        })
+
+
+        client.connect().then(function() {
+            client.startHotword()
+        })
+        //// use timeouts in case the following fails (refuse to play on first page load
+        // need to wait for first user interaction before playing sound
+        //setTimeout(function() {
+            //client.say("Hi, I'm Edison. How can I help.").then(function() {
+                //setTimeout(function() {
+                    //client.say("Or not help.").then(function() {
+                        //client.stopMicrophone()
+                        //client.startHotword()
+                    //})
+                //},1000)
+            //})
+        //},100)
+            
+    
+    
+    console.log('WINDOW MESSAGE')
+    console.log(event)
+
+
+
+
+</script>    
+fred
+<button id='microphone_button'   onClick=onClick() style="   position: fixed; top: 10px; right: 10px; font-size: 1em; background-color:grey; border: 1px solid black; border-radius: 2em; height: 4em; width: 4em;" >
+    <!--img style="height: 2em; width: 2em; padding: 0.4em" src='microphone-slash-solid.svg' /-->
+<svg aria-hidden="true" style="height: 2.2em; width: 2.2em; padding: 0.3em"  focusable="false" data-prefix="fas" data-icon="microphone" class="svg-inline--fa fa-microphone fa-w-11" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512"><path fill="currentColor" d="M176 352c53.02 0 96-42.98 96-96V96c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96zm160-160h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16z"></path></svg>
+</button>
+sss
+
+<script>
+    //document.getElementById("microphone_button").onmouseup = function(event) {
+        //event.preventDefault()
+        //return false;
+    //}
+    document.getElementById("microphone_button").oncontextmenu = function(event) {
+            if (event.which == 3) {
+                stopAll()
+            }
+            event.preventDefault()
+            return false;
+        }
+</script>
+
+<!--iframe style="overflow-y: hidden; width: 100%; height: 100%; overflow:hidden"  src='http://localhost:5000' ></iframe--  >
+
+</body></html>

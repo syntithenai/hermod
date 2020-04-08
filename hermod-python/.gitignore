@@ -1,3 +1,4 @@
+src/secrets.yaml
 deepspeech-models
 rasa
 tests/rasa

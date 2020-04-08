@@ -12,3 +12,4 @@ The suite is also suitable for integrating into a nodejs server application and 
 
 TODO: The suite is available as a HassIO plugin 
 
+sudo python rasa_x_commands.py create --update admin me <PASSWORD>
