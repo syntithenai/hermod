@@ -76,7 +76,7 @@ class MqttService(object):
         sys.stdout.flush()
 
     # child classes can override/extend this.thread_targets for additional
-    # threads
+    # threads at run or at any time call self.thread_handler.run(target,args)
 
     def run(self, run_event):
         # start mqtt connection

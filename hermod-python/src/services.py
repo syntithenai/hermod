@@ -26,7 +26,8 @@ from subprocess import call, run
 import AuthService
 import WebService
 
-from thread_handler import ThreadHandler
+# threads are used for external processes - mqtt, rasa, rasa action server, web server
+from ThreadHandler import ThreadHandler
 THREAD_HANDLER = ThreadHandler()
 
 PARSER = argparse.ArgumentParser(description="Stream from microphone to DeepSpeech using VAD")
@@ -97,7 +98,7 @@ def start_rasa_action_server(run_event):
     p2.terminate()
     p2.wait()
 
-if ARGS.rasaserver:
+if ARGS.rasaserver and CONFIG['services'].get('RasaService',False):
     CONFIG['services']['RasaService']['rasa_server'] = ARGS.rasaserver
 else:
     THREAD_HANDLER.run(start_rasa_action_server)
@@ -192,27 +193,59 @@ if ARGS.mqttserver > 0:
 		
 	# THREAD_HANDLER.run(start_mqtt_server)
 
-if ARGS.runmode and not ARGS.skipservices:
-	SERVICES = []
-	print('START SERVER')
-	MODULE_DIR = os.getcwd()
-	sys.path.append(MODULE_DIR)
-	
-	if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
-	#		print('have args init {}'.format(ARGS.initialise))
-			CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice
-	if len(ARGS.microphonedevice) > 0 and 'AudioService' in CONFIG['services']:
-	#		print('have args init {}'.format(ARGS.initialise))
-			CONFIG['services']['AudioService']['inputdevice'] = ARGS.microphonedevice
-	#print('START SERVER 2')
-	print(CONFIG)
-	for service in CONFIG['services']:
-		# force dialog initialise if argument present
-		full_path = os.path.join(MODULE_DIR, 'src',service + '.py')
-		module_name = pathlib.Path(full_path).stem
-		module = importlib.import_module(module_name)
-		a = getattr(module, service)(CONFIG)
-		THREAD_HANDLER.run(target=a.run)
 
-	print('started services')
-	THREAD_HANDLER.start_run_loop()
+def start_hermod(run_event):
+    while True and run_event.is_set():
+        asyncio.run(async_start_hermod())
+
+async def async_start_hermod():
+    # start hermod services as asyncio events in an event loop
+    SERVICES = []
+    print('START SERVER')
+    MODULE_DIR = os.getcwd()
+    sys.path.append(MODULE_DIR)
+    # override config with args
+    if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
+    #		print('have args init {}'.format(ARGS.initialise))
+            CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice
+    if len(ARGS.microphonedevice) > 0 and 'AudioService' in CONFIG['services']:
+    #		print('have args init {}'.format(ARGS.initialise))
+            CONFIG['services']['AudioService']['inputdevice'] = ARGS.microphonedevice
+    #print('START SERVER 2')
+    print(CONFIG)
+    
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+    run_services = []
+    for service in CONFIG['services']:
+        # force dialog initialise if argument present
+        full_path = os.path.join(MODULE_DIR, 'src',service + '.py')
+        module_name = pathlib.Path(full_path).stem
+        module = importlib.import_module(module_name)
+        a = getattr(module, service)(CONFIG,loop)
+        print(service)
+        print(a)
+        run_services.append(a.run())
+        print('also run')
+        
+        if hasattr(a,'also_run'):
+            print(a.also_run)
+            for i in a.also_run:
+                print(i)
+                #print(a.also_run[i])
+                run_services.append(i())
+        #THREAD_HANDLER.run(target=a.run)
+    print('starting services')
+    print(run_services)
+    await asyncio.gather(*run_services)
+        
+    print('started services')
+    #loop.run_until_complete()
+    print('ended services')
+        
+if ARGS.runmode and not ARGS.skipservices:
+    THREAD_HANDLER.run(start_hermod)
+    
+# start all threads
+THREAD_HANDLER.start_run_loop()
+

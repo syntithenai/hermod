@@ -10,27 +10,29 @@ import os
 import pyaudio
 import time
 import json
+import asyncio
 
-from mqtt_service import MqttService
+from MqttService import MqttService
 
 
 class AudioService(MqttService):
     """
     AudioService Service Class
     """
-    def __init__(self,config):
-        super(AudioService,self).__init__(config)
+    def __init__(self,config,loop):
+        super(AudioService,self).__init__(config,loop)
         self.config = config
         self.p = pyaudio.PyAudio()
         self.site = config['services']['AudioService'].get('site','default')
         # self.log('MIC constructor {}'.format(self.site))
-        self.thread_targets.append(self.send_audio_frames)
+        #self.thread_targets.append(self.send_audio_frames)
+        self.also_run=[self.send_audio_frames]
         self.started = False
         self.subscribe_to = 'hermod/rasa/ready,hermod/' + self.site + \
             '/microphone/start,hermod/' + self.site + '/microphone/stop,hermod/' + self.site + '/speaker/#'
         self.volume = 5
        
-    def on_message(self, client, userdata, msg):
+    async def on_message(self, msg):
         topic = "{}".format(msg.topic)
         #self.log('AUDIO SERVice {}'.format(topic))
         if topic == 'hermod/' + self.site + '/microphone/start':
@@ -40,24 +42,24 @@ class AudioService(MqttService):
         elif topic.startswith('hermod/' + self.site + '/speaker/play'):
             ptl = len('hermod/' + self.site + '/speaker/play') + 1
             playId = topic[ptl:]
-            self.start_playing(msg.payload, playId)
+            await self.start_playing(msg.payload, playId)
         elif topic == 'hermod/' + self.site + '/speaker/stop':
-            self.stop_playing(playId)
+            await self.stop_playing(playId)
         elif topic == 'hermod/' + self.site + '/speaker/volume':
             self.volume = msg.payload
         elif topic == 'hermod/rasa/ready':
-            self.client.publish('hermod/'+self.site+'/hotword/activate',json.dumps({}))
-            self.client.publish('hermod/'+self.site+'/asr/activate',json.dumps({}))
-            self.client.publish('hermod/'+self.site+'/microphone/start',json.dumps({}))
-            self.client.publish('hermod/'+self.site+'/hotword/start',json.dumps({}))
+            await self.client.publish('hermod/'+self.site+'/hotword/activate',json.dumps({}))
+            await self.client.publish('hermod/'+self.site+'/asr/activate',json.dumps({}))
+            await self.client.publish('hermod/'+self.site+'/microphone/start',json.dumps({}))
+            await self.client.publish('hermod/'+self.site+'/hotword/start',json.dumps({}))
             this_folder = os.path.dirname(os.path.realpath(__file__))
             wav_file = os.path.join(this_folder, 'loaded.wav')
             f = open(wav_file, "rb")
             wav = f.read();
-            self.client.publish('hermod/'+self.site+'/speaker/play',wav)
+            await self.client.publish('hermod/'+self.site+'/speaker/play',wav)
             
 
-    def send_audio_frames(self, run_event):
+    async def send_audio_frames(self):
         # determine which audio device
         info = self.p.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
@@ -94,18 +96,21 @@ class AudioService(MqttService):
                 input=True,
                 frames_per_buffer=256, input_device_index=useIndex)
             
-            while True and run_event.is_set():
-                time.sleep(0.01)
+            while True:
+                await asyncio.sleep(0.0001)
+                #await asyncio.sleep(1)
+                #self.log('send audio frame')
                 frames = stream.read(256, exception_on_overflow = False)
                 if self.started:
                     topic = 'hermod/' + self.site + '/microphone/audio'
-                    self.client.publish(
+                    await self.client.publish(
                         topic, payload=frames, qos=0)
+            
             stream.stop_stream()
             stream.close();
             
-    def start_playing(self, wav, playId = ''):
-        self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
+    async def start_playing(self, wav, playId = ''):
+        await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         info = self.p.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
         useIndex = -1
@@ -143,18 +148,18 @@ class AudioService(MqttService):
                 stream.write(data)
                 data = wf.readframes(CHUNK)
                 remaining = remaining - CHUNK
-            self.client.publish("hermod/" + self.site +
+            await self.client.publish("hermod/" + self.site +
                                 "/speaker/finished", json.dumps({"id": playId}))
             stream.stop_stream()
             stream.close()
 
         #p.terminate()
 
-    def stop_playing(self, playId):
+    async def stop_playing(self, playId):
         stream.stop_stream()
         stream.close()
 
         #p.terminate()
-        self.client.publish("hermod/" + self.site +
+        await self.client.publish("hermod/" + self.site +
                             "/speaker/finished", json.dumps({"id": playId}))            
         

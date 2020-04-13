@@ -16,7 +16,7 @@ class ThreadHandler(Singleton):
         self.thread_pool = []
         self.run_events = []
 
-    def run(self, target, args=()):
+    def run(self, target, kwargs={}):
         """ Run a function in a separate thread.
 
         :param target: the function to run.
@@ -24,7 +24,8 @@ class ThreadHandler(Singleton):
         """
         run_event = threading.Event()
         run_event.set()
-        thread = threading.Thread(target=target, args=args + (run_event, ))
+        kwargs['run_event'] = run_event
+        thread = threading.Thread(target=target, kwargs=kwargs)
         # thread.setDaemon(True)
         self.thread_pool.append(thread)
         self.run_events.append(run_event)
@@ -36,7 +37,7 @@ class ThreadHandler(Singleton):
         """
         try:
             while True:
-                time.sleep(.1)
+                time.sleep(0.0001)
         except KeyboardInterrupt:
             self.stop()
 

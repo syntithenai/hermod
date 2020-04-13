@@ -15,7 +15,7 @@ services:
   PicovoiceHotwordService:
     hotwords: "picovoice"
     #,bumblebee,porcupine"
-    sensitivity: 0.7
+    sensitivity: 0.9
   Pico2wavTtsService:
     binary_path: /usr/bin/pico2wave
     cache_path: /tmp/

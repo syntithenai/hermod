@@ -18,7 +18,8 @@ microphone/start, asr/start
 
 import json
 import time
-from mqtt_service import MqttService
+import asyncio
+from MqttService import MqttService
 
 
 
@@ -28,38 +29,50 @@ class DialogManagerService(MqttService):
     """
     def __init__(
             self,
-            config
+            config,
+            loop
     ):
         super(
             DialogManagerService,
-            self).__init__(config)
+            self).__init__(config,loop)
+        self.log('dm init ')
         self.config = config
-        self.subscribe_to = 'hermod/+/hotword/detected,hermod/+/dialog/continue,hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent' + \
-            ',hermod/+/nlu/fail,hermod/+/dialog/end,hermod/+/router/action' 
-            
+        self.subscribe_to = 'hermod/+/hotword/detected,hermod/+/dialog/continue,hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent,hermod/+/nlu/fail,hermod/+/dialog/end' 
         self.dialogs = {}
         self.waiters = {}
         self.subscriptions = {}
+        self.log('dm init done')
+        self.log(self.subscribe_to)
     
-    def on_connect(self, client, userdata, flags, result_code):
-        #self.log("DM Connected with result code {}".format(result_code))
-        # SUBSCRIBE
-        for sub in self.subscribe_to.split(","):
-            self.log('DM subscribe to {}'.format(sub))
-            self.client.subscribe(sub)
-        #self.log('dm serv')
+    # def on_connect(self, client, userdata, flags, result_code):
+        # #self.log("DM Connected with result code {}".format(result_code))
+        # # SUBSCRIBE
+        # for sub in self.subscribe_to.split(","):
+            # self.log('DM subscribe to {}'.format(sub))
+            # self.client.subscribe(sub)
+        # self.log('dm serv')
         # self.log(self.config['services'])
             
-        # if self.config['services']['DialogManagerService'] and self.config['services']['DialogManagerService']['initialise']:
-            # sites = str(self.config['services']['DialogManagerService']['initialise']).split(",")
-            # for site in sites:
-                # #self.log('initialise site {}'.format(site))
-                # self.client.publish('hermod/'+site+'/hotword/activate')
-                # self.client.publish('hermod/'+site+'/asr/activate')
-                # self.client.publish('hermod/'+site+'/microphone/start')
-                # self.client.publish('hermod/'+site+'/hotword/start')
+        # # if self.config['services']['DialogManagerService'] and self.config['services']['DialogManagerService']['initialise']:
+            # # sites = str(self.config['services']['DialogManagerService']['initialise']).split(",")
+            # # for site in sites:
+                # # #self.log('initialise site {}'.format(site))
+                # # self.client.publish('hermod/'+site+'/hotword/activate')
+                # # self.client.publish('hermod/'+site+'/asr/activate')
+                # # self.client.publish('hermod/'+site+'/microphone/start')
+                # # self.client.publish('hermod/'+site+'/hotword/start')
 
-    def send_and_wait(self, topic, message, waitFor, callback):
+    # def on_connect(self, client, userdata, flags, result_code):
+        # self.log("Connected with result code {}".format(result_code))
+        # self.log(self.__class__.__name__)
+        # self.log(self.subscribe_to)
+        
+        # # SUBSCRIBE
+        # for sub in self.subscribe_to.split(","):
+            # self.log('subscribe to {}'.format(sub))
+            # self.client.subscribe(sub)
+            
+    async def send_and_wait(self, topic, message, waitFor, callback):
         # push callback to waiters and subscribe
         self.waiters[waitFor] = callback
         # keep a tally of subscriptions/topic and limit real subscriptions to
@@ -71,10 +84,10 @@ class DialogManagerService(MqttService):
         self.subscriptions[waitFor] = sub_count
         # only subscribe for first waiter
         if sub_count < 2:
-            self.client.subscribe(waitFor)
-        self.client.publish(topic, json.dumps(message))
+            await self.client.subscribe(waitFor)
+        await self.client.publish(topic, json.dumps(message))
 
-    def handle_waiters(self, prep, topic, message):
+    async def handle_waiters(self, prep, topic, message):
         if topic in self.waiters:
             # remove waiter and decrement (and possibly) unsub subscriptions
             callback = self.waiters.pop(topic, None)
@@ -84,44 +97,45 @@ class DialogManagerService(MqttService):
                 # don't unsubscribe dm constant topics
                 parts = self.subscribe_to.split(",")
                 if topic not in parts:
-                    self.client.unsubscribe(topic)
-            callback(prep, topic, message)
+                    await self.client.unsubscribe(topic)
+            await callback(prep, topic, message)
 
-    def callback_hotword_dialog_ended(self, prep, topic, message):
-        self.client.publish(prep + 'dialog/started', json.dumps({}))
-        self.client.publish(prep + 'asr/start', json.dumps({}))
-        self.client.publish(prep + 'microphone/start', json.dumps({}))
+    async def callback_hotword_dialog_ended(self, prep, topic, message):
+        await self.client.publish(prep + 'dialog/started', json.dumps({}))
+        await self.client.publish(prep + 'asr/start', json.dumps({}))
+        await self.client.publish(prep + 'microphone/start', json.dumps({}))
         
-    def callback_dmcontinue_ttsfinished(self, prep, topic, message):
-        self.client.publish(prep + 'asr/start', json.dumps({}))
-        self.client.publish(prep + 'microphone/start', json.dumps({}))
+    async def callback_dmcontinue_ttsfinished(self, prep, topic, message):
+        await self.client.publish(prep + 'asr/start', json.dumps({}))
+        await self.client.publish(prep + 'microphone/start', json.dumps({}))
         
-    def start_dialog(self, site, text):
+    async def start_dialog(self, site, text):
         prep = 'hermod/' + site + '/'
         # if starting with text, dive straight into nlu/parse
         if len(text) > 0:
-            self.client.publish(prep + 'dialog/started', json.dumps({}))
-            self.client.publish(prep + 'asr/stop', json.dumps({}))
-            self.client.publish(prep + 'microphone/stop', json.dumps({}))
-            self.client.publish(prep + 'nlu/parse', json.dumps({"text": text}))
+            await self.client.publish(prep + 'dialog/started', json.dumps({}))
+            await self.client.publish(prep + 'asr/stop', json.dumps({}))
+            await self.client.publish(prep + 'microphone/stop', json.dumps({}))
+            await self.client.publish(prep + 'nlu/parse', json.dumps({"text": text}))
         # otherwise start dialog and asr
         else:
-            self.client.publish(prep + 'dialog/started', json.dumps({}))
-            self.client.publish(prep + 'microphone/start', json.dumps({}))
-            self.client.publish(prep + 'asr/start', json.dumps({}))
+            await self.client.publish(prep + 'dialog/started', json.dumps({}))
+            await self.client.publish(prep + 'microphone/start', json.dumps({}))
+            await self.client.publish(prep + 'asr/start', json.dumps({}))
 
-    def on_message(self, client, userdata, msg):
+    async def on_message(self, msg):
         self.log("DM start message")
+        self.log(msg)
         topic = "{}".format(msg.topic)
         parts = topic.split("/")
         site = parts[1]
         #payload_text = "{}".format(msg.payload)
         payload_text = msg.payload
-        self.log("PL text")
-        self.log(payload_text)
+        # self.log("PL text")
+        # self.log(payload_text)
         
         payload = {}
-        self.log("DqM MESSAGE {} - {} - {}".format(site,topic,msg.payload))
+        # self.log("DqM MESSAGE {} - {} - {}".format(site,topic,msg.payload))
         try:
             payload = json.loads(payload_text)
         except Exception as e:
@@ -130,15 +144,15 @@ class DialogManagerService(MqttService):
         self.log(payload)
         
         prep = 'hermod/' + site + '/'
-        self.log("DaM MESSAGE {} - {} - {}".format(site,topic,prep))
+        # self.log("DaM MESSAGE {} - {} - {}".format(site,topic,prep))
 
         # first handle temporary subscription bindings
-        self.handle_waiters(prep, topic, payload)
+        await self.handle_waiters(prep, topic, payload)
         # now handle main subscription bindings
         if topic == prep + 'hotword/detected':
-            self.log("HW MESSAGE")
-            self.client.publish(prep + 'microphone/stop', json.dumps({}))
-            self.send_and_wait(
+            # self.log("HW MESSAGE")
+            await self.client.publish(prep + 'microphone/stop', json.dumps({}))
+            await self.send_and_wait(
                 prep + 'dialog/end',
                 payload,
                 prep + 'dialog/ended',
@@ -147,37 +161,37 @@ class DialogManagerService(MqttService):
         elif topic == prep + 'dialog/continue':
             text = payload.get('text','')
             if text:
-                self.send_and_wait(
+                await self.send_and_wait(
                     prep + 'tts/say',
                     payload,
                     prep + 'tts/finished',
                     self.callback_dmcontinue_ttsfinished)
             else:
-                self.client.publish(prep + 'asr/start', json.dumps({}))
-                self.client.publish(prep + 'microphone/start', json.dumps({}))
+                await self.client.publish(prep + 'asr/start', json.dumps({}))
+                await self.client.publish(prep + 'microphone/start', json.dumps({}))
                 
         elif topic == prep + 'dialog/start':
             text = payload.get('text','')
-            self.start_dialog(site, text)
+            await self.start_dialog(site, text)
 
         elif topic == prep + 'asr/text':
             text = payload.get('text','')
-            self.client.publish(prep + 'asr/stop', json.dumps({}))
+            await self.client.publish(prep + 'asr/stop', json.dumps({}))
             #self.client.publish(prep + 'hotword/stop', json.dumps({}))
-            self.client.publish(prep + 'microphone/stop', json.dumps({}))
-            self.client.publish(prep + 'nlu/parse', json.dumps({"query": text}))
+            await self.client.publish(prep + 'microphone/stop', json.dumps({}))
+            await self.client.publish(prep + 'nlu/parse', json.dumps({"query": text}))
             
         elif topic == prep + 'nlu/intent':
-            self.client.publish(prep + 'intent', json.dumps(payload))
+            await self.client.publish(prep + 'intent', json.dumps(payload))
 
         elif topic == prep + 'nlu/fail':
-            self.client.publish(prep + 'dialog/end', json.dumps(payload))
+            await self.client.publish(prep + 'dialog/end', json.dumps(payload))
 
         elif topic == prep + 'dialog/end':
             self.log("DM end")
-            self.client.publish(prep + 'dialog/ended', json.dumps({}))
-            self.client.publish(prep + 'asr/stop', json.dumps({}))
-            self.client.publish(prep + 'microphone/start', json.dumps({}))
-            self.client.publish(prep + 'hotword/start', json.dumps({}))
+            await self.client.publish(prep + 'dialog/ended', json.dumps({}))
+            await self.client.publish(prep + 'asr/stop', json.dumps({}))
+            await self.client.publish(prep + 'microphone/start', json.dumps({}))
+            await self.client.publish(prep + 'hotword/start', json.dumps({}))
 
      

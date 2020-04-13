@@ -10,9 +10,10 @@ Depends on os pico2wav install with path in config.yaml
 
 import json
 import os
+import asyncio
 from random import seed
 from random import randint
-from mqtt_service import MqttService
+from MqttService import MqttService
 
 # seed random number generator
 seed(1)
@@ -23,16 +24,17 @@ class Pico2wavTtsService(MqttService):
 
     def __init__(
             self,
-            config
+            config,
+            loop
     ):
         super(
             Pico2wavTtsService,
-            self).__init__(config)
+            self).__init__(config,loop)
         self.config = config
         # subscribe to all sites
         self.subscribe_to = 'hermod/+/tts/say'
 
-    def on_message(self, client, userdata, msg):
+    async def on_message(self, msg):
         topic = "{}".format(msg.topic)
         parts = topic.split('/')
         site = parts[1]
@@ -46,20 +48,20 @@ class Pico2wavTtsService(MqttService):
         text = payload.get('text')
         #self.log(text)
         if topic == 'hermod/' + site + '/tts/say':
-            self.generate_audio(site, text)
+            await self.generate_audio(site, text)
         elif topic == 'hermod/' + site + '/speaker/finished':
             message = {"id": payload.get('id')}
-            self.client.publish(
+            await self.client.publish(
                 'hermod/{}/tts/finished'.format(site),
                 json.dumps(message))
-            self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
+            await self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
 
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
-    def generate_audio(self, site, text):
+    async def generate_audio(self, site, text):
         # self.log('gen audio')
         # self.log(text)
         
-        self.client.publish('hermod/{}/speaker/started'.format(site), None)
+        await self.client.publish('hermod/{}/speaker/started'.format(site), None)
         cache_path = self.config['services']['Pico2wavTtsService']['cache_path']
 
         value = randint(0, 1000000)
@@ -76,7 +78,7 @@ class Pico2wavTtsService(MqttService):
 
             file_pointer = open(file_name, "rb")
             audio_file = file_pointer.read()
-            self.client.subscribe('hermod/{}/speaker/finished'.format(site))
-            self.client.publish(
+            await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
+            await self.client.publish(
                 'hermod/{}/speaker/play/{}'.format(site, value), payload=bytes(audio_file), qos=0)
             os.remove(file_name)
