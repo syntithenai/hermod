@@ -95,7 +95,7 @@ function showListening() {
         })
         client.bind('microphoneStop',function() {
            showStopped(); 
-           state = 0
+           state = 1
         })
         client.bind('message',function(message,payload) {
            //console.log([message,payload]) 

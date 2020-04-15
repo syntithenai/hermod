@@ -16,4 +16,4 @@ flask-dance
 gunicorn
 blinker
 asyncio_mqtt
-
+python-dotenv

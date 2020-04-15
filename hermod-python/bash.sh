@@ -1,6 +1,6 @@
-#docker kill duckling
-#docker rm duckling
-#docker run -p 8000:8000 --name duckling rasa/duckling &
+docker kill duckling
+docker rm duckling
+docker run -p 8000:8000 --name duckling rasa/duckling &
 
 
 docker kill hermodpython

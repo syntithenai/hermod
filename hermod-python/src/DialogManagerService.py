@@ -35,14 +35,14 @@ class DialogManagerService(MqttService):
         super(
             DialogManagerService,
             self).__init__(config,loop)
-        self.log('dm init ')
+        # self.log('dm init ')
         self.config = config
         self.subscribe_to = 'hermod/+/hotword/detected,hermod/+/dialog/continue,hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent,hermod/+/nlu/fail,hermod/+/dialog/end' 
         self.dialogs = {}
         self.waiters = {}
         self.subscriptions = {}
-        self.log('dm init done')
-        self.log(self.subscribe_to)
+        # self.log('dm init done')
+        # self.log(self.subscribe_to)
     
     # def on_connect(self, client, userdata, flags, result_code):
         # #self.log("DM Connected with result code {}".format(result_code))
@@ -124,8 +124,8 @@ class DialogManagerService(MqttService):
             await self.client.publish(prep + 'asr/start', json.dumps({}))
 
     async def on_message(self, msg):
-        self.log("DM start message")
-        self.log(msg)
+        # self.log("DM start message")
+        # self.log(msg)
         topic = "{}".format(msg.topic)
         parts = topic.split("/")
         site = parts[1]
@@ -141,7 +141,7 @@ class DialogManagerService(MqttService):
         except Exception as e:
             self.log(e)
             pass
-        self.log(payload)
+        # self.log(payload)
         
         prep = 'hermod/' + site + '/'
         # self.log("DaM MESSAGE {} - {} - {}".format(site,topic,prep))
@@ -188,7 +188,7 @@ class DialogManagerService(MqttService):
             await self.client.publish(prep + 'dialog/end', json.dumps(payload))
 
         elif topic == prep + 'dialog/end':
-            self.log("DM end")
+            # self.log("DM end")
             await self.client.publish(prep + 'dialog/ended', json.dumps({}))
             await self.client.publish(prep + 'asr/stop', json.dumps({}))
             await self.client.publish(prep + 'microphone/start', json.dumps({}))

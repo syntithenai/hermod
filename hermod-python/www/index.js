@@ -452,13 +452,13 @@ var HermodWebClient = function(config) {
              try {
                 if (navigator.getUserMedia) {
                   navigator.getUserMedia({audio:true}, function(stream) {
-                    console.log('bind speaking have audoi')
+                    //console.log('bind speaking have audoi')
                     var options = {};
                     var speechEvents = hark(stream, options);
 
                     speechEvents.on('speaking', function() {
                       clearTimeout(speakingTimeout)
-                      console.log('speaking');
+                      //console.log('speaking');
                       sendAudioBuffer(config.site)
                       speaking = true
                     });
@@ -467,7 +467,7 @@ var HermodWebClient = function(config) {
                       // send an extra second of silence for ASR
                       speakingTimeout = setTimeout(function() {
                              clearTimeout(speakingTimeout)
-                             console.log('stop speaking');
+                             //console.log('stop speaking');
                              speaking = false
                       },4000);
                     });    
@@ -497,7 +497,7 @@ var HermodWebClient = function(config) {
         }
         
         function sendAudioBuffer(site) {
-            console.log(['SEND BUFFER'])
+            //console.log(['SEND BUFFER'])
             for (var a in microphoneAudioBuffer) {
                 sendAudioMessage('hermod/'+site+'/microphone/audio',microphoneAudioBuffer[a]);
             }
@@ -506,7 +506,7 @@ var HermodWebClient = function(config) {
         
         
         function startMicrophone() {
-            console.log('start rec -'+config.site)
+            //console.log('start rec -'+config.site)
             isSending = true;
            
             if (onCallbacks.hasOwnProperty('microphoneStart')) {
@@ -517,7 +517,7 @@ var HermodWebClient = function(config) {
         }
         
         function activateRecording(site) {
-            console.log('activate rec'+site)
+            //console.log('activate rec'+site)
             //this.setState({sending:true});
             //if (onCallbacks.hasOwnProperty('microphoneStart')) {
                 //onCallbacks['microphoneStart']()
@@ -597,10 +597,10 @@ var HermodWebClient = function(config) {
                           //console.log(['REC'])
                           resample(e.inputBuffer,16000,function(res) {
                             if (speaking) {
-                                console.log(['SEND'])
+                                //console.log(['SEND'])
                                 sendAudioMessage('hermod/'+site+'/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
                             } else {
-                                console.log(['BUFFER'])
+                                //console.log(['BUFFER'])
                                 bufferAudio(Buffer.from(convertFloat32ToInt16(res)));
                             }
                           });

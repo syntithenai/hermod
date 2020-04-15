@@ -51,6 +51,7 @@ class Pico2wavTtsService(MqttService):
             await self.generate_audio(site, text)
         elif topic == 'hermod/' + site + '/speaker/finished':
             message = {"id": payload.get('id')}
+            await asyncio.sleep(0.5)
             await self.client.publish(
                 'hermod/{}/tts/finished'.format(site),
                 json.dumps(message))

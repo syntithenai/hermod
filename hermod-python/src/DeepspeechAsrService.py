@@ -81,7 +81,7 @@ class DeepspeechAsrService(MqttService):
         self.last_audio = {}
         self.model_path = config['services']['DeepspeechAsrService']['model_path']
         self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop'
-        
+        self.audio_count = 0;
         this_folder = os.path.dirname(os.path.realpath(__file__))
         wav_file = os.path.join(this_folder, 'turn_off.wav')
         f = open(wav_file, "rb")
@@ -103,26 +103,27 @@ class DeepspeechAsrService(MqttService):
         stopTopic = 'hermod/'+site+'/asr/stop'
         audioTopic = 'hermod/'+site+'/microphone/audio'                
         if topic == activateTopic:
-            self.log('activate ASR '+site)
+            #self.log('activate ASR '+site)
             await self.activate(site)
         elif topic == deactivateTopic:
-            self.log('deactivate ASR '+site)
+            #self.log('deactivate ASR '+site)
             await self.deactivate(site)
         elif topic == startTopic:
-            self.log('start ASR '+site)
-            if self.active[site] and not self.started[site]:
-                self.log('start ASR active '+site)
+            # self.log('start ASR '+site)
+            if site in self.active: # and not site in self.started:
+                #self.log('start ASR active '+site)
                 self.started[site] = True
                 self.last_audio[site] =  time.time()
                 self.loop.create_task(self.startASRVAD(site))
                 #await self.startASR(site)
         elif topic == stopTopic:
-            self.log('stop ASR '+site)
+            #self.log('stop ASR '+site)
             self.started[site] = False
             #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
             
         elif topic == audioTopic :
-            #self.log('save audio message')
+            self.audio_count = self.audio_count + 1
+            #self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
             self.audio_stream[site].write(msg.payload) 
         
     async def activate(self,site):
@@ -172,7 +173,7 @@ class DeepspeechAsrService(MqttService):
                 await asyncio.sleep(0.0001)
             #padding_ms=300
             
-    async def vad_collector(self, site,padding_ms=400, ratio=0.75, frames=None):
+    async def vad_collector(self, site,padding_ms=350, ratio=0.75, frames=None):
         """Generator that yields series of consecutive audio frames comprising each utterence, separated by yielding a single None.
             Determines voice activity by ratio of frames in padding_ms. Uses a buffer to include padding_ms prior to being triggered.
             Example: (frame, ..., frame, None, frame, ..., frame, None, ...)
@@ -186,11 +187,11 @@ class DeepspeechAsrService(MqttService):
         #last_audio = time.time()           
         async for frame in self.frame_generator(site):
             now = time.time()
-            self.log('VADLOOP')
+            #self.log('VADLOOP')
             # self.log(now - last_audio)
             if (now -  self.last_audio[site]) > 10 and self.active[site] == True and self.started[site]:
-                self.log('silence TIMEOUT')
-                self.client.publish('hermod/'+site+'/asr/stop',json.dumps({}))
+                self.log('ASR silence TIMEOUT')
+                await self.client.publish('hermod/'+site+'/asr/stop',json.dumps({}))
                 break;
                             
             if len(frame) < 1:  # 640
@@ -198,13 +199,13 @@ class DeepspeechAsrService(MqttService):
                 return
             
             is_speech = self.vad.is_speech(frame, self.sample_rate)
-            self.log('is speech {}'.format(is_speech))
+            # self.log('is speech {}'.format(is_speech))
             if not triggered:
-                self.log('not triggered')
+                # self.log('not triggered')
                 ring_buffer.append((frame, is_speech))
                 num_voiced = len([f for f, speech in ring_buffer if speech])
                 if num_voiced > ratio * ring_buffer.maxlen:
-                    self.log('push trigger')
+                    # self.log('push trigger')
                 
                     triggered = True
                     for f, s in ring_buffer:
@@ -212,20 +213,20 @@ class DeepspeechAsrService(MqttService):
                     ring_buffer.clear()
 
             else:
-                self.log(' triggered')
+                # self.log(' triggered')
                 self.last_audio[site] = time.time()
                 yield frame
                 ring_buffer.append((frame, is_speech))
                 num_unvoiced = len([f for f, speech in ring_buffer if not speech])
                 if num_unvoiced > ratio * ring_buffer.maxlen:
-                    self.log(' untriggered')
+                    # self.log(' untriggered')
                     triggered = False
                     yield None
                     ring_buffer.clear()
 
     
     async def startASRVAD(self, site = ''):
-        self.log('startASRVAD ')
+        # self.log('startASRVAD ')
         # self.log(site)
         # self.log(self.started[site])
         self.empty_count[site] = 0;
@@ -233,7 +234,7 @@ class DeepspeechAsrService(MqttService):
         while self.started[site] == True:
         #while True and run_event and run_event.is_set(): 
             #await asyncio.sleep(1)
-            self.log('startASRVAD LOOP '+site)
+           # self.log('startASRVAD LOOP '+site)
             #self.started[site] = False
            # time.sleep(1)
             # self.log(site)
@@ -242,53 +243,53 @@ class DeepspeechAsrService(MqttService):
             # self.log(self.models)
             # self.log(self.stream_contexts)
             if (site in self.active and  site in self.started and site in self.models and site in self.stream_contexts and self.active[site] == True):
-                self.log('startASRVAD LOOP OK')
+                # self.log('startASRVAD LOOP OK')
                 
                 async for frame in self.vad_collector(site):
-                    await asyncio.sleep(0.001)
-                    self.log('frame {} {}'.format(site,self.empty_count[site]))
+                    #await asyncio.sleep(0.001)
+                    # self.log('frame {} {}'.format(site,self.empty_count[site]))
                     # self.log(self.started[site])
                     if self.empty_count[site] > 8 and self.started[site]:
-                        self.log('TIMEOUT EMPTY')
+                        # self.log('TIMEOUT EMPTY')
                         await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({}))
                         self.started[site] = False
                         break;
                     
                     if self.started[site] == True:
-                        self.log('is started '+site)
+                     #   self.log('is started '+site)
                         # self.started[site] == False
                         if frame is not None:
-                            self.log('feed content '+site)
-                            self.log(self.models)
-                            self.log(self.stream_contexts)
+                            # self.log('feed content '+site)
+                            # self.log(self.models)
+                            # self.log(self.stream_contexts)
                             try:
                                 self.models[site].feedAudioContent(self.stream_contexts[site], np.frombuffer(frame, np.int16))
-                                self.log('fed content')
+                                # self.log('fed content')
                             except:
                                 self.log('error feeding content')
                                 pass
                             
                         else:
                             text = self.models[site].finishStream(self.stream_contexts[site])
-                            self.log('got text [{}]'.format(text))
+                            # self.log('got text [{}]'.format(text))
                             if len(text) > 0:
-                                self.log('send content '+site)
-                                self.log(self.client)
-                                self.log('hermod/'+site+'/asr/text')
-                                self.log(json.dumps({'text':text}))
+                                # self.log('send content '+site)
+                                # self.log(self.client)
+                                # self.log('hermod/'+site+'/asr/text')
+                                # self.log(json.dumps({'text':text}))
                                 self.empty_count[site] = 0
                                 await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
-                                self.log('sent content '+text)
+                                # self.log('sent content '+text)
                                 self.started[site] = False
                                 break;
                             else:
-                                self.log('incc emtpy')
+                                # self.log('incc emtpy')
                                 self.empty_count[site] = self.empty_count[site]  + 1
                             
-                            self.log('recreate stream')
+                            # self.log('recreate stream')
                             del self.stream_contexts[site]
                             self.stream_contexts[site] = self.models[site].createStream()
-                            self.log('recreated stream')
+                            # self.log('recreated stream')
                         
                         
                         # # self.log('done started')
@@ -307,10 +308,10 @@ class DeepspeechAsrService(MqttService):
        # # self.log('waited a '+label)
     
     async def startASR(self, site):
-        self.log('start asr' +site)
+        # self.log('start asr' +site)
         empty_count = {}
         if os.path.isdir(self.model_path):
-            self.log('start task '+site)
+            # self.log('start task '+site)
             self.started[site] = True;
             # #self.thread_handler.run(self.startASRVAD,kwargs=dict(site=site))
             await self.startASRVAD(site)

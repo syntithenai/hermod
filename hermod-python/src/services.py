@@ -80,7 +80,7 @@ def start_rasa_action_server(run_event):
     cmd = ['python','-m','rasa_sdk','--actions','actions','-vv'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
     while run_event.is_set():
-        time.sleep(0.5)
+        time.sleep(1)
     p.terminate()
     p.wait()
     
@@ -94,7 +94,7 @@ def start_rasa_action_server(run_event):
     # '--debug',,'--model','models'
     p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
     while run_event.is_set():
-        time.sleep(0.1)
+        time.sleep(1)
     p2.terminate()
     p2.wait()
 
@@ -109,7 +109,7 @@ def start_mqtt_server(run_event):
     cmd = ['/app/mosquitto-1.6.9/src/mosquitto','-v','-c','/etc/mosquitto/mosquitto.conf'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
     while run_event.is_set():
-        time.sleep(0.5)
+        time.sleep(1)
     p.terminate()
     p.wait()
 
@@ -118,7 +118,7 @@ def start_secure_mqtt_server(run_event):
     cmd = ['/app/mosquitto-1.6.9/src/mosquitto','-v','-c','/etc/mosquitto/mosquitto-ssl.conf'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
     while run_event.is_set():
-        time.sleep(0.5)
+        time.sleep(1)
     p.terminate()
     p.wait()
             
@@ -128,26 +128,16 @@ def start_mqtt_auth_watcher(run_event):
     cmd = ['./mosquitto_watcher.sh'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     while run_event.is_set():
-        time.sleep(0.5)
+        time.sleep(1)
     p.terminate()
     p.wait()
 		
 if ARGS.mqttserver > 0:
-    print('MQTT')
-    print(secrets.get('SSL_CERTIFICATES_FOLDER'))
+    # print(secrets.get('SSL_CERTIFICATES_FOLDER'))
     if secrets.get('SSL_CERTIFICATES_FOLDER'):
-        print(secrets.get('SSL_CERTIFICATES_FOLDER'))
+        # print(secrets.get('SSL_CERTIFICATES_FOLDER'))
         cmd = ['./update_ssl.sh ' + secrets.get('SSL_CERTIFICATES_FOLDER')]
-        #cmd = ['pwd']
-        print('CMD')
-        print(cmd)
-        #print(os.path.join(os.path.dirname(__file__),'../mosquitto'))
         p = call(cmd, shell=True)
-        #print(p.stdout.decode('utf-8'))
-        #rint(ca(cmd, shell=True))
-        #,cwd=os.path.join(os.path.dirname(__file__),'../mosquitto')
-        print('OK')
-        
         THREAD_HANDLER.run(start_secure_mqtt_server)
     else:
         THREAD_HANDLER.run(start_mqtt_server)
@@ -201,7 +191,7 @@ def start_hermod(run_event):
 async def async_start_hermod():
     # start hermod services as asyncio events in an event loop
     SERVICES = []
-    print('START SERVER')
+    print('START HERMOD SERVICES')
     MODULE_DIR = os.getcwd()
     sys.path.append(MODULE_DIR)
     # override config with args
@@ -212,7 +202,7 @@ async def async_start_hermod():
     #		print('have args init {}'.format(ARGS.initialise))
             CONFIG['services']['AudioService']['inputdevice'] = ARGS.microphonedevice
     #print('START SERVER 2')
-    print(CONFIG)
+    # print(CONFIG)
     
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
@@ -223,25 +213,25 @@ async def async_start_hermod():
         module_name = pathlib.Path(full_path).stem
         module = importlib.import_module(module_name)
         a = getattr(module, service)(CONFIG,loop)
-        print(service)
-        print(a)
+        # print(service)
+        # print(a)
         run_services.append(a.run())
-        print('also run')
+        # print('also run')
         
         if hasattr(a,'also_run'):
-            print(a.also_run)
+            # print(a.also_run)
             for i in a.also_run:
-                print(i)
+                # print(i)
                 #print(a.also_run[i])
                 run_services.append(i())
         #THREAD_HANDLER.run(target=a.run)
-    print('starting services')
-    print(run_services)
+    # print('starting services')
+    # print(run_services)
     await asyncio.gather(*run_services)
         
-    print('started services')
+    # print('started services')
     #loop.run_until_complete()
-    print('ended services')
+    # print('ended services')
         
 if ARGS.runmode and not ARGS.skipservices:
     THREAD_HANDLER.run(start_hermod)
