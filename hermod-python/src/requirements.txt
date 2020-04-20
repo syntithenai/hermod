@@ -17,3 +17,8 @@ gunicorn
 blinker
 asyncio_mqtt
 python-dotenv
+pymediawiki
+word2number
+wikidata
+wptools
+

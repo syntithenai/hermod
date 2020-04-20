@@ -70,7 +70,7 @@ secrets = yaml.load(F.read(), Loader=yaml.FullLoader)
 if not secrets: secrets = {}
 
 if ARGS.webserver > 0:
-    THREAD_HANDLER.run(WebService.start_server)
+    THREAD_HANDLER.run(WebService.start_server,{'config':CONFIG})
 
 
 
@@ -106,6 +106,7 @@ else:
 # use recent version of mosquitto
 def start_mqtt_server(run_event):
     print('START MQTT SERVER')
+    # /app/mosquitto-1.6.9/src/
     cmd = ['/app/mosquitto-1.6.9/src/mosquitto','-v','-c','/etc/mosquitto/mosquitto.conf'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
     while run_event.is_set():
@@ -125,7 +126,7 @@ def start_secure_mqtt_server(run_event):
 # send HUP signal to mosquitto when password file is updated    
 def start_mqtt_auth_watcher(run_event):
     print('START MQTT   WATCHER')
-    cmd = ['./mosquitto_watcher.sh'] 
+    cmd = ['../src/mosquitto_watcher.sh'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     while run_event.is_set():
         time.sleep(1)
@@ -205,7 +206,7 @@ async def async_start_hermod():
     # print(CONFIG)
     
     loop = asyncio.get_event_loop()
-    loop.set_debug(True)
+    # loop.set_debug(True)
     run_services = []
     for service in CONFIG['services']:
         # force dialog initialise if argument present

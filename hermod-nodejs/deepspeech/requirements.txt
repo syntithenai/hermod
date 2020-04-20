@@ -1,8 +1,0 @@
-soundfile
-paho-mqtt
-deepspeech==0.6.1
-pyaudio~=0.2.11
-webrtcvad~=2.0.10
-numpy>=1.15.1
-scipy>=1.1.0
-

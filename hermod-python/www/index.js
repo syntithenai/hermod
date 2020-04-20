@@ -75,7 +75,7 @@ var HermodWebClient = function(config) {
         var messageFunctions = {
             // SPEAKER
             'hermod/+/speaker/play/+' : function(topic,site,payload) {
-               console.log(['speaker play',site,payload]);
+               //console.log(['speaker play',site,payload]);
                 if (site && site.length > 0) { 
                     mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({})); 
 					playSound(payload).then(function() {
@@ -103,7 +103,7 @@ var HermodWebClient = function(config) {
             },
             'hermod/+/hotword/stop' : function(topic,site,payload) {
                 stopHotword();
-            } ,
+            },
             'hermod/+/ready' : function(topic,site,payload) {
                 console.log('reload on server restart')
                 window.location.reload()
@@ -114,7 +114,7 @@ var HermodWebClient = function(config) {
             //console.log(['MESSAGE ',message,payload])
             if (waitingFor.hasOwnProperty(message)) {
                 // callback for sendAndWaitFor
-                console.log('run callback')
+                //console.log('run callback')
                 mqttClient.unsubscribe(message)
                 waitingFor[message](message,payload)
                 delete waitingFor[message]
@@ -138,7 +138,7 @@ var HermodWebClient = function(config) {
                     messageFunctions[multiSite](message,site,payload)
                 }
             }
-            if (onCallbacks.hasOwnProperty('microphoneStop')) {
+            if (onCallbacks.hasOwnProperty('message')) {
                 onCallbacks['message'](message,payload)
             }
         }
@@ -147,16 +147,19 @@ var HermodWebClient = function(config) {
             
             return new Promise(function(resolve,reject) {
                 function onConnect() {
-                    console.log('connected')
-                    console.log(config)
+                    //console.log('connected')
+                    //console.log(config)
                     if (config.subscribe && config.subscribe.length  > 0) { 
                         mqttClient.subscribe('hermod/rasa/ready',function(err) { 
                             mqttClient.unsubscribe(config.subscribe,function(err) {
                                if (err) console.log(['unSUBSCRIBE ERROR',err])
                                 mqttClient.subscribe(config.subscribe,function(err) {
                                    if (err) console.log(['SUBSCRIBE ERROR',err])
-                                   console.log(['init subscribed to '+config.subscribe])
+                                   //console.log(['init subscribed to '+config.subscribe])
                                    sendMessage('hermod/'+config.site+'/asr/activate',{})
+                                   if (onCallbacks.hasOwnProperty('connect')) {
+                                        onCallbacks['connect']()
+                                    }
                                    resolve()
                                 });
                             });
@@ -166,7 +169,7 @@ var HermodWebClient = function(config) {
                         resolve()
                     }
                 }
-                console.log('connect')
+                //console.log('connect')
                 
                 var options = {
                   clientId: 'webclient',
@@ -179,16 +182,16 @@ var HermodWebClient = function(config) {
                 }
                 
                 
-                console.log(config)
-                console.log(options)
-                console.log(config.server)
+                //console.log(config)
+                //console.log(options)
+                //console.log(config.server)
                 //mqttClient  = mqtt.connect(config.server,{username:config.username,password:config.password}) //host:server,port:port,
                 mqttClient = mqtt.connect(config.server, options);
                 
                 mqttClient.on('connect', onConnect)
                 mqttClient.on('error', console.error)
                 mqttClient.on('message',onMessageArrived);
-                console.log('connect done')
+                //console.log('connect done')
                 
 
             })
@@ -198,12 +201,30 @@ var HermodWebClient = function(config) {
         function disconnect() {
             //console.log('discon')
             //console.log(mqttClient)
+            if (onCallbacks.hasOwnProperty('disconnect')) {
+                onCallbacks['disconnect']()
+            }
             mqttClient.end()
+            setTimeout(function() {
+                connect()
+            },3000)
         }
          
         function sendMessage(topic,payload) {
             mqttClient.publish(topic,JSON.stringify(payload));    
         }
+        
+        function sendNLUMessage(site,intent,entities) {
+            if (!entities) entities = []
+            mqttClient.publish('hermod/'+site+'/nlu/intent',JSON.stringify({intent:{name:intent}, entities:entities}));    
+        }
+        
+         
+        function sendASRTextMessage(site,text) {
+            console.log('send text message '+site+text)
+            mqttClient.publish('hermod/'+site+'/asr/text',JSON.stringify({text:text}));    
+        }
+        
         
         function sendAudioMessage(topic,payload) {
             mqttClient.publish(topic,payload);    
@@ -380,12 +401,10 @@ var HermodWebClient = function(config) {
             //})
         //}
         function playSound(bytes) {
-           // console.log('PLAY SOUND BYTES')
+            // console.log('PLAY SOUND BYTES')
             return new Promise(function(resolve,reject) {
                 try {
                     if (bytes) {
-                        
-                        
                         var myAudio = document.createElement('audio');
 
                         //if (myAudio.canPlayType('audio/mpeg')) {
@@ -445,7 +464,7 @@ var HermodWebClient = function(config) {
          * Bind silence recognition events to set speaking state
          */ 
         function bindSpeakingEvents() {
-             console.log('bind speaking')
+             //console.log('bind speaking')
              if (!navigator.getUserMedia) {
                 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
              }
@@ -637,7 +656,7 @@ var HermodWebClient = function(config) {
         
         init()
              
-        return {say:say, stopAll:stopAll, bind:bind,unbind:unbind,startMicrophone: startMicrophone, stopMicrophone: stopMicrophone, sendAndWaitFor:sendAndWaitFor,sendAudioAndWaitFor:sendAudioAndWaitFor,sendMessage:sendMessage,authenticate:authenticate,connect:connect,disconnect:disconnect,startHotword:startHotword,stopHotword:stopHotword}
+        return {say:say, stopAll:stopAll, bind:bind,unbind:unbind,startMicrophone: startMicrophone, stopMicrophone: stopMicrophone, sendAndWaitFor:sendAndWaitFor,sendAudioAndWaitFor:sendAudioAndWaitFor,sendMessage:sendMessage,sendNLUMessage:sendNLUMessage,sendASRTextMessage:sendASRTextMessage,authenticate:authenticate,connect:connect,disconnect:disconnect,startHotword:startHotword,stopHotword:stopHotword}
 }
 
 module.exports=HermodWebClient 

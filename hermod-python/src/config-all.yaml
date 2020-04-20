@@ -9,6 +9,7 @@ services:
     site: hermod_server     
     inputdevice: "pulse"
     outputdevice: "pulse"
+  #GoogleAsrService:
   DeepspeechAsrService:
     model_path: "../deepspeech-models"
     vad_sensitivity: 1

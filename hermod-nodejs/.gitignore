@@ -1,8 +1,0 @@
-porcupine/lib
-npm-debug.log
-deepspeech-model
-node_modules
-package-lock.json
-testpico.sh
-tests/old
-porcupine/old2

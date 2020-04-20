@@ -5,21 +5,97 @@ version: '3'
 # rasa models and data
 # certificates nginx
 
+#docker kill duckling
+#docker rm duckling
+#docker run -p 8000:8000 --name duckling rasa/duckling &
+
+
+#docker kill hermodpython
+#docker rm hermodpython
+#MYIP=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'`
+#DUCKLING_URL="http://$MYIP:8000"
+#RASA_URL="http://$MYIP:5005"
+
+#docker run --name hermodpython -it --privileged -e RASA_URL=$RASA_URL -e DUCKLING_URL=$DUCKLING_URL
+  -e PULSE_SERVER=$MYIP -e PULSE_COOKIE=/tmp/cookie -v  -v 
+   
+volumes   
+   - /dev/snd:/dev/snd 
+   - $(cd ~ && pwd)/.config/pulse/cookie:/tmp/cookie 
+
+volumes   
+   $(pwd)/../hermod-python/rasa:/app/rasa  
+   -v $(pwd)/../hermod-python/src:/app/src  
+   -v $(pwd)/../hermod-python/mosquitto:/etc/mosquitto 
+   -v $(pwd)/../hermod-web-client:/app/web  
+   -v $(pwd)/../hermod-python/certs:/etc/certs  
+   -v /etc/letsencrypt:/etc/letsencrypt  
+   -v /etc/ssl:/etc/ssl  
+   -v $(pwd)/../hermod-python/www:/app/www    
+   -p 8080:80   -p 8443:443  -p 9001:9001 -p 5005:5005 syntithenai/hermod-python -m -a -w -r http://localhost:5005
+
+ 
+ 
 
 services:
 
+# duckling
+  duckling:
+    image: rasa/duckling
+    restart: always
+    container_name: duckling
+    ports: 
+      - 8000:8000
 # mqtt
+  mqtt:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: mqtt
+    entrypoint: ['python','/app/src/services','-ss','-m','-r','default']
+    ports:
+      - 9001:9001
+#      - 1883
 
 # hermod
-
-# hermod auth server
+  hermod:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: hermod
+    entrypoint: ['python','/app/src/services','-r','http://rasa:5005']
+    environment:
+      RASA_URL: http://rasa:5005
+      DUCKLING_URL: http://duckling:5005
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    
+# hermod web server
+  hermodweb:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: hermodweb
+    entrypoint: ['python','/app/src/services','-ss','-w','-r','default']
+    ports:
+      - 8080:8080
 
 # rasa
-
-# duckling
-
+  rasa:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: rasa
+    entrypoint: ['python','/app/src/services','-ss','-r']
+    environment:
+      DUCKLING_URL: http://duckling:5005
+    #ports:
+    #  - 5005
+      
 # rasa action server
-
+  mqtt:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: hermod
+    entrypoint: ['python','/app/src/services','-ss','-a','-r','default']
+    #ports:
+    # - 5055  
 
 
 

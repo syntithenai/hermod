@@ -69,7 +69,8 @@ if True:
             # return str(e)
             # return redirect(url_for("google.login"))
 
-def start_server(run_event):
+def start_server(config , run_event):
+   # print(config)
     if secrets.get('SSL_CERTIFICATES_FOLDER') and os.path.isfile(os.path.join(secrets.get('SSL_CERTIFICATES_FOLDER'),'cert.pem')) and os.path.isfile(os.path.join(secrets.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')):
         print('START SSL WEB SERVER')
         app.run(host='0.0.0.0',ssl_context=(os.path.join(secrets.get('SSL_CERTIFICATES_FOLDER'),'cert.pem'), os.path.join(secrets.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')), port=443, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])

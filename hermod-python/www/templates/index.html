@@ -1,64 +1,203 @@
 <html><body>
-
 <script  type="text/javascript" src="bundle.js" ></script>
 <script>
 var state = 0
 var client = null
+var bubbleTimeout = null
+var lastText = ''
+var lastIntent = ''
+var lastSpeech = ''
+var displayWindow = null;
+
+var protocol = 'ws://'
+var port = 9001
+if (window.location.protocol == "https:") {
+    protocol = 'wss://'
+}
+var config = {
+    server: protocol + window.location.hostname + ':' + port, //window.location.port, //"wss://peppertrees.asuscomm.com:9001",
+    username: "{{data.get('email_clean')}}",
+    password: "{{data.get('password')}}",
+    subscribe: "hermod/{{data.get('email_clean')}}/#",
+    hotwordsensitivity : 0.5    ,
+    site:"{{data.get('email_clean')}}"
+}
 
 
-
-
-function showStopped() {
+function showDisconnected() {
     document.getElementById('microphone_button').style.backgroundColor='grey'
     document.getElementById('microphone_button').style.borderColor='black'
-    //document.getElementById('microphone_button').onClick=function() {
-   
-    //}
+}
+function showStopped() {
+    document.getElementById('microphone_button').style.backgroundColor='lightblue'
+    document.getElementById('microphone_button').style.borderColor='grey'
 }
 function showHotword() {
     document.getElementById('microphone_button').style.backgroundColor='pink'
     document.getElementById('microphone_button').style.borderColor='red'
-    //document.getElementById('microphone_button').onClick=function() {
-        //console.log('START MIC')
-        //client.startMicrophone()
-    //}
 }
 function showListening() {
     document.getElementById('microphone_button').style.backgroundColor='green'
     document.getElementById('microphone_button').style.borderColor='darkblue'
-    //document.getElementById('microphone_button').onClick=function() {
-        ////client.stopMicrophone()
-        ////client.startHotword()
-    //}
+}
+
+function hideSpeechBubble() {
+    document.getElementById("speechbubble").innerHTML = ''
+    document.getElementById("speechbubble").style.display = 'none'
+}
+
+function showSpeechBubble() {
+    if (bubbleTimeout) clearTimeout(bubbleTimeout)
+    var wrap = document.createElement('div')
+    if (lastText.length > 0) {
+        var text = document.createElement('div')
+        text.style.fontWeight = 'bold'
+        text.innerText = lastText
+        wrap.append(text)
+    }
+    if (lastIntent.length > 0) {
+        wrap.append(document.createElement('br'))
+        var text = document.createElement('i')
+        text.innerText = lastIntent
+        wrap.append(text)
+    }
+    if (lastSpeech.length > 0) {
+        wrap.append(document.createElement('hr'))
+        var text = document.createElement('div')
+        text.innerText = lastSpeech
+        wrap.append(text)
+    }
+    
+    document.getElementById("speechbubble").innerHTML = wrap.innerHTML
+    document.getElementById("speechbubble").style.display = 'block'
+    
+    bubbleTimeout = setTimeout(hideSpeechBubble,5000)
+}
+
+function hideAllDisplays() {
+    console.log('hideaolol')
+    displays = document.getElementsByClassName('display')
+    console.log(displays)
+    for (var i = 0; i< displays.length; i++) {
+        console.log(displays[i])
+        displays[i].style.display = 'none'
+    }
+}
+
+function showImage(src) {
+    hideAllDisplays()
+    document.getElementById('show_image').src=src
+    document.getElementById('show_image').style.display='block'
+}
+// TODO NOT IMPLEMENTED
+function showImages() {
+    hideAllDisplays()
+    document.getElementById('show_image').style.display='block'
+}
+
+function showButtons(buttons) {
+    console.log('show buttons')
+    console.log(buttons.length)
+    console.log(buttons)
+    document.getElementById('dynamicbuttons').style.display='block'
+    buttonsList = document.createElement('span')
+    buttonsList.id = 'dynamicbuttons'
+    for (var i = 0; i< buttons.length; i++) {
+        button = document.createElement('button')
+        button.innerText = buttons[i].label ? buttons[i].label : 'Missing Label'
+        console.log('loop button')
+        console.log(buttons[i])
+        function appendbutton(thebutton,buttonsList) {
+            if (thebutton.text) {
+                button.onclick=function() {client.sendASRTextMessage(config.site,thebutton.text)}
+            } else if (thebutton.nlu) {
+                button.onclick=function() {client.sendNLUMessage(config.site,thebutton.nlu)}
+            } else if (thebutton.url) {
+                button.onclick=function() {showUrl(thebutton.url)}
+            }
+            button.className='btn'
+            buttonsList.append(button)
+        }
+        appendbutton(buttons[i],buttonsList)
+    }
+    console.log(buttonsList)
+    document.getElementById('dynamicbuttons').innerHTML=''
+    document.getElementById('dynamicbuttons').append(buttonsList)
+}
+
+function showUrl(url) {
+    hideAllDisplays()
+    console.log('show URL '+url)
+    if (displayWindow) {
+        displayWindow.close()
+    }
+    displayWindow = window.open(url)
+}
+
+
+function showFrame(url) {
+    // show_frame
+    hideAllDisplays()
+    console.log('show URL '+url)
+    document.getElementById('show_frame').src = url;
+    document.getElementById('show_frame').style.display='block'
+}
+
+
+function flashText(text) {
+    console.log(['FLASH',text])
+    if (text && text.length > 0) {
+        clearBubbleData()
+        lastText = text
+        showSpeechBubble()
+    }
+}
+
+function flashSpeech(text) {
+    console.log(['FLASH',text])
+    if (text && text.length > 0) {
+        lastSpeech = text
+        showSpeechBubble()
+    }
+}
+
+function flashIntent(text) {
+    console.log(['FLASH',text])
+    if (text && text.length > 0) {
+        lastIntent = text
+        showSpeechBubble()
+    }
+}
+
+function clearBubbleData() {
+    lastText = ''
+    lastIntent = ''
+    lastSpeech = '';
+}
+
+
+function startWaiting() {
+    document.getElementById('waiting-overlay').style.display = 'block';
+}
+
+function stopWaiting() {
+    document.getElementById('waiting-overlay').style.display = 'none';
 }
 
 
 
-        var protocol = 'ws://'
-        var port = 9001
-        if (window.location.protocol == "https:") {
-            protocol = 'wss://'
-        }
-        var config = {
-            server: protocol + window.location.hostname + ':' + port, //window.location.port, //"wss://peppertrees.asuscomm.com:9001",
-            username: "{{data.get('email_clean')}}",
-            password: "{{data.get('password')}}",
-            subscribe: "hermod/{{data.get('email_clean')}}/#",
-            hotwordsensitivity : 0.5    ,
-            site:"{{data.get('email_clean')}}"
-        }
-
 
         function onClick() {
-            if (state == 0) {
+            if (state == 1) {
                 client.stopMicrophone()
                 client.stopHotword()
+                // trigger dialog start through hermod
                 client.sendMessage('hermod/'+config.site+'/dialog/end',{})
-            } else if (state == 1) {
+            } else if (state == 2) {
                 client.stopMicrophone()
                 client.stopHotword()
                 client.sendMessage('hermod/'+config.site+'/hotword/detected',{})
-            } else if (state == 2) {
+            } else if (state == 3) {
                 client.stopMicrophone()
                 client.stopHotword()
                 client.sendMessage('hermod/'+config.site+'/dialog/end',{})
@@ -69,35 +208,110 @@ function showListening() {
             client.stopMicrophone()
             client.stopHotword()
         }
-        
-        
-        
-        //console.log(config)
-        //document.getElementById('microphone_button').style.display='block'
-        
         client = new window.HermodWebClient(config)
 
         var state = 0;
         client.bind('hotwordDetected',function() {
            showListening(); 
+           
         })
         client.bind('microphoneStart',function() {
            showListening(); 
-           state = 2
+           state = 3
         })
         client.bind('hotwordStart',function() {
            showHotword(); 
-           state = 1
+           state = 2
         })
         client.bind('hotwordStop',function() {
            showStopped(); 
-           state = 0
+           state = 1
         })
         client.bind('microphoneStop',function() {
+           showHotword(); 
+           state = 2
+        })
+        client.bind('disconnect',function() {
+           showDisconnected(); 
+           state = 0
+        })
+        client.bind('connect',function() {
            showStopped(); 
            state = 1
         })
-        client.bind('message',function(message,payload) {
+        client.bind('message',function(message,payloadIn) {
+            var parts = message.split("/")
+            
+            function jsonPayload() {
+                //console.log('payload')
+                //console.log(payloadIn)
+                //console.log(payloadIn && payloadIn.toString ? payloadIn.toString() : 'nostring')
+                var payload = {}
+                try {
+                    payload = JSON.parse(payloadIn.toString())
+                } catch (e) {
+                }
+                //console.log('payload')
+                console.log(payload)
+                return payload;
+            }
+            
+            
+            if (parts.length > 3 && parts[2] == "display" && parts[3] == "show" ) {
+                console.log('DISPLAYMESSAGE')
+                payload = jsonPayload()
+                if (payload.url && payload.url.length > 0) {
+                    showUrl(payload.url)
+                }
+                if (payload.frame && payload.frame.length > 0) {
+                    showFrame(payload.frame)
+                }
+                if (payload.image && payload.image.length > 0) {
+                    showImage(payload.image)
+                }
+                if (payload.images && payload.images.length > 0) {
+                    showImages(payload.images)
+                }
+                if (payload.buttons && payload.buttons.length > 0) {
+                    showButtons(payload.buttons)
+                }
+            } else if (parts.length > 3 && parts[2] == "asr"  && parts[3] == "text") {
+                console.log('asr text')
+                payload = jsonPayload()
+                text = payload.text
+                if (text && text.length > 0) {
+                    if (displayWindow) displayWindow.close()
+                    flashText(text)   
+                }
+            } else if (parts.length > 3 && parts[2] == "nlu"  && parts[3] == "intent") {
+                console.log('nlu intent')
+                var payload = jsonPayload()
+                var intentName = payload.intent && payload.intent.name ? payload.intent.name : '' 
+                var cleanEntities = {}
+                if (intentName.length > 0 && payload.entities) {
+                    for (i in payload.entities) {
+                        var entity = payload.entities[i]
+                        console.log(entity)
+                        if (entity.entity && entity.entity.length > 0 && entity.value && entity.value.length > 0 ) {
+                            cleanEntities[entity.entity] = entity.value
+                        }
+                    }
+                    flashIntent(intentName + JSON.stringify(cleanEntities))   
+                }
+            }  else if (parts.length > 3 && parts[2] == "tts"  && parts[3] == "say") {
+                console.log('say text')
+                payload = jsonPayload()
+                text = payload.text
+                if (text && text.length > 0) {
+                    flashSpeech(text)   
+                }
+            }  else if (parts.length > 3  && parts[2] == "display" && parts[3] == "startwaiting") {
+                console.log('start wait')
+                startWaiting()
+            }  else if (parts.length > 3  && parts[2] == "display" && parts[3] == "stopwaiting") {
+                console.log('stop wait')
+                stopWaiting()
+            }
            //console.log([message,payload]) 
         })
 
@@ -120,34 +334,116 @@ function showListening() {
             
     
     
-    console.log('WINDOW MESSAGE')
-    console.log(event)
+    //console.log('WINDOW MESSAGE')
+    //console.log(event)
 
 
 
 
 </script>    
-fred
-<button id='microphone_button'   onClick=onClick() style="   position: fixed; top: 10px; right: 10px; font-size: 1em; background-color:grey; border: 1px solid black; border-radius: 2em; height: 4em; width: 4em;" >
-    <!--img style="height: 2em; width: 2em; padding: 0.4em" src='microphone-slash-solid.svg' /-->
-<svg aria-hidden="true" style="height: 2.2em; width: 2.2em; padding: 0.3em"  focusable="false" data-prefix="fas" data-icon="microphone" class="svg-inline--fa fa-microphone fa-w-11" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512"><path fill="currentColor" d="M176 352c53.02 0 96-42.98 96-96V96c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96zm160-160h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16z"></path></svg>
-</button>
-sss
+<div >
+    <div id="buttons" style="float: left" >
+        <span class="fixedbuttons" >
+            <button class="btn"  onClick="client.sendNLUMessage(config.site,'ask_date',[{entity:'word',value:'glissy'}])" >Date</button>
+            <button class="btn"   onClick="client.sendMessage('hermod/'+config.site+'/display/show',{image:'https://images.unsplash.com/photo-1459682687441-7761439a709d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1110&q=80'})" >Image</button>
+            <button class="btn"   onClick="client.sendASRTextMessage(config.site,'define the word imagine')"  >Define</button>
+        </span>
+        <span class="dynamicbuttons" id="dynamicbuttons" >
+        
+        </span>
+    </div>
+    
+    <div class="speech-bubble-wrap">
+        <div id="speechbubble" class="speech-bubble">this is a bubble </div>
+    </div>
+    
+           
+    <button id='microphone_button'   onClick=onClick() style="position: fixed; top: 10px; right: 10px; font-size: 1em; background-color:grey; border: 1px solid black; border-radius: 2em; height: 4em; width: 4em" >
+        <div style="position: relative">
+        <img id="waiting-overlay" src="/waiting_small.gif" style="display: none; position: fixed; top: 12px; right: 12px; opacity: 0.2; z-index: 50" />
+            <svg aria-hidden="true" style="position: fixed; top: 14px; right: 14px; height: 2.7em; width: 2.7em; padding: 0.3em; z-index: 60"  focusable="false" data-prefix="fas" data-icon="microphone" class="svg-inline--fa fa-microphone fa-w-11" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512"><path fill="currentColor" d="M176 352c53.02 0 96-42.98 96-96V96c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96zm160-160h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16z"></path></svg>
+            <!--img style="height: 2em; width: 2em; padding: 0.4em" src='microphone-slash-solid.svg' /-->
+        <div>
+    </button>
+     
+</div>
+
 
 <script>
-    //document.getElementById("microphone_button").onmouseup = function(event) {
-        //event.preventDefault()
-        //return false;
-    //}
     document.getElementById("microphone_button").oncontextmenu = function(event) {
-            if (event.which == 3) {
-                stopAll()
-            }
-            event.preventDefault()
-            return false;
+        if (event.which == 3) {
+            stopAll()
         }
+        event.preventDefault()
+        return false;
+    }
 </script>
+<br/><br/><br/><br/>
+<img style="display: none" src="" border="0" class="display" id="show_image" />
 
-<!--iframe style="overflow-y: hidden; width: 100%; height: 100%; overflow:hidden"  src='http://localhost:5000' ></iframe--  >
+<div style="display: none" class="display" id="show_images" >IMAGES</div>
+
+
+<iframe class="display" style="display: none;  left: 0, top: 0, overflow-y: hidden; width: 100%; height: 100%; overflow:hidden, border: None"  src='' id="show_frame" ></iframe>
+
+
+
+
+<style>
+.speech-bubble-wrap {
+    position: fixed;
+    top: 0.5em;
+    right: 8em;
+    min-width: 15em;
+}
+.microphone_button:link, microphone_button:visited, microphone_button:hover, .speech-bubble:link, .speech-bubble:visited, .speech-bubble:hover {
+  border: none   
+}
+.speech-bubble {
+    display: none;
+	position: relative;
+	background: #38cedc;
+	border-radius: .4em;
+    min-height: 3em;
+    width: 100%;
+    padding: 0.5em;
+}
+
+.speech-bubble:after {
+	content: '';
+	position: absolute;
+	right: 0;
+	top: 60%;
+	width: 0;
+	height: 0;
+	border: 20px solid transparent;
+	border-left-color: #38cedc;
+	border-right: 0;
+	border-top: 0;
+	margin-top: -10px;
+	margin-right: -20px;
+}
+button.btn {
+ color:black;
+ border-radius: .6em;
+ border: 1px solid black;
+ background-color: lightblue;
+ font-weight: 560;
+ font-size: 1.1em;
+ font-family: sans-serif;
+ margin: 0 0.3em 0.3em 0;
+ padding: 0.3em 1.2em ;
+ box-sizing: border-box;
+ text-decoration: none; 
+ text-align: center;
+ transition: all 0.2s
+}
+button.btn:hover {
+  background-color: #6ac9e8;  
+}
+
+
+
+</style>
 
 </body></html>

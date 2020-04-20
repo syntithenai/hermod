@@ -64,7 +64,7 @@ class RasaService(MqttService):
         if topic == 'hermod/' + site + '/nlu/parse':
             if payload: 
                 text = payload.get('query')
-                await self.nlu_parse_request(site,text)
+                await self.nlu_parse_request(site,text,payload)
         
         elif topic == 'hermod/' + site + '/intent':
             if payload:
@@ -73,7 +73,7 @@ class RasaService(MqttService):
 
         elif topic == 'hermod/' + site + '/tts/finished':
             await self.client.unsubscribe('hermod/'+site+'/tts/finished')
-            await self.finish(site)
+            await self.finish(site,payload)
             
         elif topic == 'hermod/' + site + '/dialog/ended':
             await self.reset_tracker(site) 
@@ -109,9 +109,9 @@ class RasaService(MqttService):
                     # # await self.client.publish('hermod/'+site+'/action',json.dumps(message.action))
         else:
             # self.log('SEND finish')
-            await self.finish(site)
+            await self.finish(site,payload)
         
-    async def finish(self,site):
+    async def finish(self,site,payload):
         #self.log('finish')
         #response = requests.get(self.rasa_server+"/conversations/"+site+"/tracker",json.dumps({}))
         response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
@@ -120,17 +120,17 @@ class RasaService(MqttService):
         # end conversation
         if len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_end':
             # restart hotword
-            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({}));
+            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
         else:
             # restart asr
-            await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({}));
+            await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
     
 # event_loop = asyncio.get_event_loop()
 # Then later, inside your Thread:
 
 # asyncio.ensure_future(my_coro(), loop=event_loop)
 
-    async def nlu_parse_request(self,site,text):
+    async def nlu_parse_request(self,site,text,payload):
         # self.log('PARSE REQUEST')
         # self.log(text)
         # self.log(self.rasa_server+"/model/parse")
@@ -139,6 +139,8 @@ class RasaService(MqttService):
         #response = requests.post(self.rasa_server+"/model/parse",data = json.dumps({"text":text,"message_id":site}),headers = {'content-type': 'application/json'})
         # self.log('PARSE RESPONSE')
         # self.log(response)
+        if 'id' in payload:
+            response['id'] = payload.get('id','')
         await self.client.publish('hermod/'+site+'/nlu/intent',json.dumps(response))
 
     async def request_get(self,url,json):
@@ -149,7 +151,7 @@ class RasaService(MqttService):
                     return await resp.json()
 
     async def request_post(self,url,json):
-        with async_timeout.timeout(10):
+        with async_timeout.timeout(30):
             async with aiohttp.ClientSession() as session:
                 async with session.post(url,json=json,headers = {'content-type': 'application/json'}) as resp:
                     # print(resp.status)
