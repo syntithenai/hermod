@@ -20,5 +20,6 @@ python-dotenv
 pymediawiki
 word2number
 wikidata
+sounddevice
 wptools
-
+google-cloud-speech

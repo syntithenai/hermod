@@ -43,6 +43,8 @@ PARSER.add_argument('-md', '--microphonedevice', type=str, default='',
 
 PARSER.add_argument('-m', '--mqttserver',action='store_true',
 					help="Run MQTT server")
+PARSER.add_argument('-mh', '--mqttserver_host',default='',
+					help="Run MQTT server")
                  
 PARSER.add_argument('-r', '--rasaserver', type=str,
 					help="RASA server")
@@ -126,7 +128,7 @@ def start_secure_mqtt_server(run_event):
 # send HUP signal to mosquitto when password file is updated    
 def start_mqtt_auth_watcher(run_event):
     print('START MQTT   WATCHER')
-    cmd = ['../src/mosquitto_watcher.sh'] 
+    cmd = ['/app/src/mosquitto_watcher.sh'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     while run_event.is_set():
         time.sleep(1)
@@ -196,6 +198,8 @@ async def async_start_hermod():
     MODULE_DIR = os.getcwd()
     sys.path.append(MODULE_DIR)
     # override config with args
+    if len(ARGS.mqttserver_host) > 0 :
+        CONFIG['mqtt_hostname']= ARGS.mqttserver_host
     if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
     #		print('have args init {}'.format(ARGS.initialise))
             CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice

@@ -1,5 +1,8 @@
 <html><body>
 <script  type="text/javascript" src="bundle.js" ></script>
+<pre>
+{{data.get('output')}}
+</pre>
 <script>
 var state = 0
 var client = null
@@ -15,13 +18,14 @@ if (window.location.protocol == "https:") {
     protocol = 'wss://'
 }
 var config = {
-    server: protocol + window.location.hostname + ':' + port, //window.location.port, //"wss://peppertrees.asuscomm.com:9001",
+    server: protocol + window.location.hostname + ':' + port, 
     username: "{{data.get('email_clean')}}",
     password: "{{data.get('password')}}",
     subscribe: "hermod/{{data.get('email_clean')}}/#",
     hotwordsensitivity : 0.5    ,
     site:"{{data.get('email_clean')}}"
 }
+
 
 
 function showDisconnected() {
@@ -38,6 +42,10 @@ function showHotword() {
 }
 function showListening() {
     document.getElementById('microphone_button').style.backgroundColor='green'
+    document.getElementById('microphone_button').style.borderColor='darkblue'
+}
+function showSilentListening() {
+    document.getElementById('microphone_button').style.backgroundColor='aqua'
     document.getElementById('microphone_button').style.borderColor='darkblue'
 }
 
@@ -238,6 +246,16 @@ function stopWaiting() {
         client.bind('connect',function() {
            showStopped(); 
            state = 1
+        })
+        client.bind('speaking',function() {
+            if (state == 3) {
+                showListening(); 
+            }
+        })
+        client.bind('stopspeaking',function() {
+           if (state == 3) {
+                showSilentListening(); 
+            }
         })
         client.bind('message',function(message,payloadIn) {
             var parts = message.split("/")

@@ -57,6 +57,7 @@ class MqttService(object):
         pass
 
     def log(self, message):
+        pass
         print(message)
         sys.stdout.flush()
    

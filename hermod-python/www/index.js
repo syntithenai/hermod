@@ -48,10 +48,14 @@ var HermodWebClient = function(config) {
         var outputvolume = 1.0
         var site = null;
         var inputGainNodes=[];
+        var gainNode=null;
+        
         var porcupineManager;
         var speakingTimeout = null;     
         var speaking = false;
         var microphoneAudioBuffer = []
+        var bufferSource = null;
+        var currentVolume = null;
         var SENSITIVITIES = new Float32Array([
                 0.8 //, // "Hey Edison"
                 //0.5, // "Hot Pink"
@@ -83,9 +87,25 @@ var HermodWebClient = function(config) {
 					}); 
                 }
             },
-            'hermod/+/hotword/detected': function(topic,site,payload) {
+            'hermod/+/asr/start': function(topic,site,payload) {
                 // quarter volume for 10 seconds
+                muteVolume()
             } ,
+            'hermod/+/asr/stop': function(topic,site,payload) {
+                // quarter volume for 10 seconds
+                unmuteVolume()
+            } ,
+            'hermod/+/speaker/volume': function(topic,site,payloadIn) {
+                // quarter volume for 10 seconds
+                payload = {}
+                try {
+                    payload = JSON.parse(payloadIn)
+                    if (payload.volume) setVolume(payload.volume)
+                } catch(e) {
+                    
+                }
+            } , 
+            
             //'hermod/+/microphone/start' : function(topic,site,payload) {
                 //startMicrophone()
             //},
@@ -258,10 +278,25 @@ var HermodWebClient = function(config) {
             
         }
 
-        /**
-         * API FUNCTIONS
-         */
-         
+        function setVolume(volume) {
+            console.log('set volume '+volume)
+            gainNode.gain.value = volume/100;
+        }
+        
+        function muteVolume() {
+            console.log('mute')
+            currentVolume = gainNode.gain.value
+            gainNode.gain.value = 0.05;
+            
+        }
+        
+        function unmuteVolume() {
+            console.log('unmute to '+ currentVolume)
+            if (currentVolume != null) {
+                gainNode.gain.value = currentVolume;
+                currentVolume = gainNode.gain.value;
+            }
+        }
          
         function addInputGainNode(node) {
             inputGainNodes.push(node);
@@ -400,6 +435,15 @@ var HermodWebClient = function(config) {
                 
             //})
         //}
+        
+        function stopPlaying() {
+            console.log('STOP PLAY')
+             if (bufferSource) {
+                 console.log('STOP PLAY real')
+                 bufferSource.stop()
+             }
+        };
+        
         function playSound(bytes) {
             // console.log('PLAY SOUND BYTES')
             return new Promise(function(resolve,reject) {
@@ -416,28 +460,32 @@ var HermodWebClient = function(config) {
                         buffer.set( new Uint8Array(bytes), 0 );
                         let audioContext = window.AudioContext || window.webkitAudioContext;
                         let context = new audioContext();
-                        let gainNode = context.createGain();
+                        gainNode = context.createGain();
+                        
                         gainNode.gain.value =  outputvolume; //config.speakervolume/100 ? config.speakervolume/100 :
                         //console.log('PLAY SOUND BYTES decode')
                             context.decodeAudioData(buffer.buffer, function(audioBuffer) {
                             //console.log('PLAY SOUND BYTES decoded')
                            // console.log(audioBuffer);
-                            var source = context.createBufferSource();
-                            source.buffer = audioBuffer;
-                            source.connect(gainNode);
+                            // global bufferSource for share with stopPlaying
+                            bufferSource = context.createBufferSource();
+                            bufferSource.buffer = audioBuffer;
+                            bufferSource.connect(gainNode);
                             gainNode.connect( context.destination );
                             try {
-                                source.start(0);
+                                bufferSource.start(0);
+                                //resolve()
                             } catch (e) {
                                 console.log('play sound error starting')
                                 console.log(e)
                                 resolve()
                             }
-                            source.onended = function() {
+                            bufferSource.onended = function() {
                                 console.log('PLAY SOUND BYTES source ended')
+                                //setTimeout(stopPlaying,100)
                                 resolve();
                             };
-                            source.onerror = function() {
+                            bufferSource.onerror = function() {
                                 console.log('PLAY SOUND BYTES source error')
                                 resolve();
                             };
@@ -480,6 +528,9 @@ var HermodWebClient = function(config) {
                       //console.log('speaking');
                       sendAudioBuffer(config.site)
                       speaking = true
+                      if (onCallbacks.hasOwnProperty('speaking')) {
+                        onCallbacks['speaking']()
+                      }
                     });
 
                     speechEvents.on('stopped_speaking', function() {
@@ -488,6 +539,9 @@ var HermodWebClient = function(config) {
                              clearTimeout(speakingTimeout)
                              //console.log('stop speaking');
                              speaking = false
+                             if (onCallbacks.hasOwnProperty('stopspeaking')) {
+                                onCallbacks['stopspeaking']()
+                             }
                       },4000);
                     });    
                       
@@ -651,12 +705,11 @@ var HermodWebClient = function(config) {
         function init() {
             activateRecording(config.site)
             bindSpeakingEvents()
-            
         }
         
         init()
              
-        return {say:say, stopAll:stopAll, bind:bind,unbind:unbind,startMicrophone: startMicrophone, stopMicrophone: stopMicrophone, sendAndWaitFor:sendAndWaitFor,sendAudioAndWaitFor:sendAudioAndWaitFor,sendMessage:sendMessage,sendNLUMessage:sendNLUMessage,sendASRTextMessage:sendASRTextMessage,authenticate:authenticate,connect:connect,disconnect:disconnect,startHotword:startHotword,stopHotword:stopHotword}
+        return {setVolume: setVolume, muteVolume: muteVolume, unmuteVolume: unmuteVolume, playSound: playSound, stopPlaying: stopPlaying, say:say, stopAll:stopAll, bind:bind,unbind:unbind,startMicrophone: startMicrophone, stopMicrophone: stopMicrophone, sendAndWaitFor:sendAndWaitFor,sendAudioAndWaitFor:sendAudioAndWaitFor,sendMessage:sendMessage,sendNLUMessage:sendNLUMessage,sendASRTextMessage:sendASRTextMessage,authenticate:authenticate,connect:connect,disconnect:disconnect,startHotword:startHotword,stopHotword:stopHotword}
 }
 
 module.exports=HermodWebClient 

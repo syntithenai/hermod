@@ -31,7 +31,7 @@ import wave
 import webrtcvad
 from scipy import signal
 import asyncio
-
+from google.cloud.speech import enums
 
 
 ######################################
@@ -76,7 +76,7 @@ class GoogleAsrService(MqttService):
         self.frame_duration_ms = 1000 * self.block_size // self.sample_rate
         # self.vad = webrtcvad.Vad(config['services']['DeepspeechAsrService'].get('vad_sensitivity',0))
         # self.modelFile = 'output_graph.pbmm'
-        
+        self.transcoders = {}
         # # TFLITE model for ARM architecture
         # system,  release, version, machine, processor = os.uname()                
         # #self.log([system,  release, version, machine, processor])
@@ -128,16 +128,27 @@ class GoogleAsrService(MqttService):
                 self.started[site] = True
                 self.last_audio[site] =  time.time()
                 self.audio_stream[site] = BytesLoop()
-                #await self.client.subscribe('hermod/'+site+'/microphone/audio')
-                self.loop.create_task(self.startASRVAD(site))
+                # speech_contexts=[speech.types.SpeechContext(
+                # phrases=['hi', 'good afternoon'],
+                # )])
+                self.transcoders[site] = Transcoder(
+                    encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
+                    rate=16000,
+                    language=self.config['services']['GoogleAsrService']['language']
+                )
+                self.transcoders[site].start()
+                
+                await self.client.subscribe('hermod/'+site+'/microphone/audio')
+                #self.loop.create_task(self.startASRVAD(site))
+                #asyncio.run(self.startASRVAD(site))
                 #await self.startASR(site)
-                #self.loop.run_in_executor(None,self.startASRVAD,site)
+                #self.loop.run_in_executor(None,self.startASR,site)
                 #await self.startASRVAD(site)
             
         elif topic == stopTopic:
             self.log('stop ASR '+site)
             self.started[site] = False
-            #await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
+            await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
             #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
             
         # elif topic == hotwordDetectedTopic:
@@ -149,8 +160,29 @@ class GoogleAsrService(MqttService):
         elif topic == audioTopic :
             self.audio_count = self.audio_count + 1
             # self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
-            # self.audio_stream[site].write(msg.payload) 
-            self._buff[site].put(msg.payload)
+            #self.audio_stream[site].write(msg.payload) 
+            if site in self.transcoders:
+                self.transcoders[site].write(msg.payload)
+                self.transcoders[site].closed = False
+            
+                if self.transcoders[site].transcript:
+                    print("GOT TEXT "+self.transcoders[site].transcript)
+                    payload_text = msg.payload
+                    payload = {}
+                    try:
+                        payload = json.loads(payload_text)
+                    except Exception as e:
+                        self.log(e)
+                    await self.client.publish('hermod/'+site+'/asr/text',json.dumps({"id": payload.get('id',''), 'text':self.transcoders[site].transcript}))
+                    self.transcoders[site].transcript = None
+            # if len(text) > 0:
+                # self.log("ASR TEXT 3{}".format(text))
+                # # self.empty_count[site] = 0
+                # await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
+            # else:
+                # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({}))    
+                
+            #self._buff[site].put(msg.payload)
         
     async def activate(self,site):
         #if not self.active[site]:
@@ -158,8 +190,9 @@ class GoogleAsrService(MqttService):
             self.active[site] = True
             self.started[site] = False
             self._buff[site] = queue.Queue()
+            
             self.closed[site] = False
-            await self.client.subscribe('hermod/'+site+'/microphone/audio')
+            #await self.client.subscribe('hermod/'+site+'/microphone/audio')
               # Load DeepSpeech model
             # if os.path.isdir(self.model_path):
                 # modelPath = os.path.join(self.model_path, self.modelFile)
@@ -175,120 +208,259 @@ class GoogleAsrService(MqttService):
    
     async def deactivate(self,site):
         #if self.active[site]:
-            await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
+            #await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
             self.audio_stream.pop(site, '')
             self.active[site] = False
             self.started[site] = False
             self.closed[site] = True
-            
-    def frame_generator(self,site):
-        self.log('FG')
-        while not self.closed.get(site,False):
-            self.log('FG not closed')
-            # Use a blocking get() to ensure there's at least one chunk of
-            # data, and stop iteration if the chunk is None, indicating the
-            # end of the audio stream.
-            chunk = self._buff[site].get()
+ 
+    # async def run(self):
+        # while True:
+            # async with AuthenticatedMqttClient(self.config.get('mqtt_hostname','localhost'),self.config.get('mqtt_port',1883),self.config.get('mqtt_user',''),self.config.get('mqtt_password','')) as client:
+                # self.client = client
+                # if hasattr(self,'connect_hook'):
+                    # await self.connect_hook()
+                # for sub in self.subscribe_to.split(","):
+                    # # self.log('subscribe to {}'.format(sub))
+                    # await client.subscribe(sub)
+                
+                # async with client.unfiltered_messages() as messages:
+                    # async for message in messages:
+                        # await self.on_message(message) 
+
+    # async def audio_processor(websocket, path):
+        # """
+        # Collects audio from the stream, writes it to buffer and return the output of Google speech to text
+        # """
+        # config = await websocket.recv()
+        # if not isinstance(config, str):
+            # print("ERROR, no config")
+            # return
+        # config = json.loads(config)
+        # transcoder = Transcoder(
+            # encoding=config["format"],
+            # rate=config["rate"],
+            # language=config["language"]
+        # )
+        # transcoder.start()
+        # while True:
+            # try:
+                # data = await websocket.recv()
+            # except websockets.ConnectionClosed:
+                # print("Connection closed")
+                # break
+            # transcoder.write(data)
+            # transcoder.closed = False
+            # if transcoder.transcript:
+                # print(transcoder.transcript)
+                # await websocket.send(transcoder.transcript)
+                # transcoder.transcript = None
+
+    # start_server = websockets.serve(audio_processor, IP, PORT)
+    # asyncio.get_event_loop().run_until_complete(start_server)
+    # asyncio.get_event_loop().run_forever()
+
+
+    
+
+class Transcoder(object):
+    """
+    Converts audio chunks to text
+    """
+    def __init__(self, encoding, rate, language):
+        self.buff = queue.Queue()
+        self.encoding = encoding
+        self.language = language
+        self.rate = rate
+        self.closed = True
+        self.transcript = None
+
+    def start(self):
+        """Start up streaming speech call"""
+        threading.Thread(target=self.process).start()
+
+    def response_loop(self, responses):
+        """
+        Pick up the final result of Speech to text conversion
+        """
+        for response in responses:
+            if not response.results:
+                continue
+            result = response.results[0]
+            if not result.alternatives:
+                continue
+            transcript = result.alternatives[0].transcript
+            if result.is_final:
+                self.transcript = transcript
+
+    def process(self):
+        """
+        Audio stream recognition and result parsing
+        """
+        #You can add speech contexts for better recognition
+        cap_speech_context = types.SpeechContext(phrases=["Add your phrases here"])
+        client = speech.SpeechClient()
+        config = types.RecognitionConfig(
+            encoding=self.encoding,
+            sample_rate_hertz=self.rate,
+            language_code=self.language
+            # speech_contexts=[cap_speech_context,],
+            # model='command_and_search'
+        )
+        streaming_config = types.StreamingRecognitionConfig(
+            config=config,
+            interim_results=False,
+            single_utterance=False)
+        audio_generator = self.stream_generator()
+        requests = (types.StreamingRecognizeRequest(audio_content=content)
+                    for content in audio_generator)
+
+        responses = client.streaming_recognize(streaming_config, requests)
+        try:
+            self.response_loop(responses)
+        except:
+            self.start()
+
+    def stream_generator(self):
+        while not self.closed:
+            chunk = self.buff.get()
             if chunk is None:
                 return
             data = [chunk]
-
-            # Now consume whatever other data's still buffered.
             while True:
-                # self.log('FG loop')
                 try:
-                    chunk = self._buff[site].get(block=False)
+                    chunk = self.buff.get(block=False)
                     if chunk is None:
                         return
                     data.append(chunk)
                 except queue.Empty:
                     break
-            self.log('FG yield')
             yield b''.join(data)
-    
-    # def read(self,site):
-        # a = None
-        # if site in self.audio_stream:
-            # a = self.audio_stream[site].read(self.block_size*2);
-        # else:
-            # self.log('read without activate')
-        # return a
-        
-    # coroutine
-    def oldframe_generator(self,site):
-        """Generator that yields all audio frames."""
-        silence_count = 0;
-        while True:
-            if silence_count > 100:
-                self.log('no voice packets timeout  ddddd')
-                break
-                
-            if site in self.audio_stream and self.audio_stream[site].has_bytes(self.block_size*2):
-                self.log('have audiuo rame')
-                silence_count = 0;
-                yield self.audio_stream[site].read(self.block_size*2)
-            else:
-                # hand off control to other frame generators without yielding a value
-                self.log('NO have audiuo rame')
-                silence_count = silence_count + 1;
-                time.sleep(0.1)
+
+    def write(self, data):
+        """
+        Writes data to the buffer
+        """
+        self.buff.put(data)
+
+
+
+
+ 
+ 
             
-                #await asyncio.sleep(0.0001)
-            #padding_ms=300
+    # def dframe_generator(self,site):
+        # self.log('FG')
+        # while not self.closed.get(site,False):
+            # self.log('FG not closed')
+            # # Use a blocking get() to ensure there's at least one chunk of
+            # # data, and stop iteration if the chunk is None, indicating the
+            # # end of the audio stream.
+            # chunk = self._buff[site].get()
+            # if chunk is None:
+                # return
+            # yield chunk;
+            # # data = [chunk]
+
+            # # # Now consume whatever other data's still buffered.
+            # # while True:
+                # # # self.log('FG loop')
+                # # try:
+                    # # chunk = self._buff[site].get(block=False)
+                    # # if chunk is None:
+                        # # return
+                    # # data.append(chunk)
+                # # except queue.Empty:
+                    # # break
+            # # self.log('FG yield')
+            # # yield b''.join(data)
+    
+    # # def read(self,site):
+        # # a = None
+        # # if site in self.audio_stream:
+            # # a = self.audio_stream[site].read(self.block_size*2);
+        # # else:
+            # # self.log('read without activate')
+        # # return a
+        
+    # # coroutine
+    # def frame_generator(self,site):
+        # """Generator that yields all audio frames."""
+        # silence_count = 0;
+        # while True:
+            # if silence_count > 100:
+                # self.log('no voice packets timeout  ddddd')
+                # break
+                
+            # if site in self.audio_stream and self.audio_stream[site].has_bytes(self.block_size*2):
+                # self.log('have audiuo rame')
+                # silence_count = 0;
+                # yield self.audio_stream[site].read(self.block_size*2)
+            # else:
+                # # hand off control to other frame generators without yielding a value
+                # self.log('NO have audiuo rame')
+                # silence_count = silence_count + 1;
+                # time.sleep(0.1)
+            
+                # #await asyncio.sleep(0.0001)
+            # #padding_ms=300
             
  
-    
-    async def startASRVAD(self, site = ''):
-        # while True:
-            # self.log('startASRVAD ')
-            # await asyncio.sleep(1)
-            # self.log('midASRVAD ')
-            # await asyncio.sleep(1)
-            # self.log('endASRVAD ')
-            # i = 0
-            # for frame in self.frame_generator(site):
-                # if (i > 10):
-                    # self.closed[site] = True
-                    # break
-                # i = i + 1
-                # self.log(i)
-                # self.log(frame)
+    # def startASR(self,site):
+        # self.startASRVAD(site)
         
-        # self.log(site)
-        # self.log(self.started[site])
-        # self.empty_count[site] = 0;
-        # self.stream_contexts[site] = self.models[site].createStream()
         
-        # See http://g.co/cloud/speech/docs/languages
-        # for a list of supported languages.
-        language_code = 'en-US'  # a BCP-47 language tag
+    # async def startASRVAD(self, site = ''):
+        # # while True:
+            # # self.log('startASRVAD ')
+            # # await asyncio.sleep(1)
+            # # self.log('midASRVAD ')
+            # # await asyncio.sleep(1)
+            # # self.log('endASRVAD ')
+            # # i = 0
+            # # for frame in self.frame_generator(site):
+                # # if (i > 10):
+                    # # self.closed[site] = True
+                    # # break
+                # # i = i + 1
+                # # self.log(i)
+                # # self.log(frame)
+        
+        # # self.log(site)
+        # # self.log(self.started[site])
+        # # self.empty_count[site] = 0;
+        # # self.stream_contexts[site] = self.models[site].createStream()
+        
+        # # See http://g.co/cloud/speech/docs/languages
+        # # for a list of supported languages.
+        # language_code = 'en-US'  # a BCP-47 language tag
 
-        client = speech.SpeechClient()
-        config = types.RecognitionConfig(
-            encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
-            language_code=language_code)
-        streaming_config = types.StreamingRecognitionConfig(
-            config=config,
-            single_utterance=True)
-        requests = (types.StreamingRecognizeRequest(audio_content=content)
-            for content in self.frame_generator(site))
+        # client = speech.SpeechClient()
+        # config = types.RecognitionConfig(
+            # encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
+            # sample_rate_hertz=16000,
+            # language_code=language_code)
+        # streaming_config = types.StreamingRecognitionConfig(
+            # config=config,
+            # single_utterance=True)
+        # requests = (types.StreamingRecognizeRequest(audio_content=content)
+            # for content in self.frame_generator(site))
 
-        responses = client.streaming_recognize(streaming_config, requests)
-        text = ''
-        for response in responses:
-            if not response.results:
-                break
-            self.log("ASR TEXT1 {}".format(response.results))
-            self.log("ASR TEXT2 {}".format(response))
-            res = response.results[0]
-            text = res.alternatives[0].transcript
-        if len(text) > 0:
-            self.log("ASR TEXT 3{}".format(text))
-            # self.empty_count[site] = 0
-            await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
-        else:
-            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({}))
+        # responses = client.streaming_recognize(streaming_config, requests)
+        # text = ''
+        # for response in responses:
+            # if not response.results:
+                # break
+            # self.log("ASR TEXT1 {}".format(response.results))
+            # self.log("ASR TEXT2 {}".format(response))
+            # res = response.results[0]
+            # text = res.alternatives[0].transcript
+        # if len(text) > 0:
+            # self.log("ASR TEXT 3{}".format(text))
+            # # self.empty_count[site] = 0
+            # await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text}))
+        # else:
+            # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({}))
        
        
        

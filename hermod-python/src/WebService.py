@@ -33,7 +33,7 @@ def get_mosquitto_user(email):
     print(email_clean)
     print('get mosq user')
     password = get_password()
-    cmd = ['mosquitto_passwd','-b','/etc/mosquitto/password',email_clean,password] 
+    cmd = ['/usr/bin/mosquitto_passwd','-b','/etc/mosquitto/password',email_clean,password] 
     p = call(cmd)
     time.sleep(0.5)
     return {"email":email,"email_clean":email_clean,"password":password}

@@ -10,6 +10,7 @@ services:
     inputdevice: "pulse"
     outputdevice: "pulse"
   #GoogleAsrService:
+    #language: en-AU
   DeepspeechAsrService:
     model_path: "../deepspeech-models"
     vad_sensitivity: 1
@@ -23,4 +24,9 @@ services:
   RasaService:
     rasa_server: "http://localhost:5005/"
   DialogManagerService:  
+  # capture conversations to file
+  #DataLoggerService:
+    #record_nlu: True
+    #record_stories: True
+    #capture_path: /app/rasa/data/logger/
     

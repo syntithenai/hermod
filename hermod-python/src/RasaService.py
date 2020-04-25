@@ -115,15 +115,18 @@ class RasaService(MqttService):
         #self.log('finish')
         #response = requests.get(self.rasa_server+"/conversations/"+site+"/tracker",json.dumps({}))
         response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
+        # self.log('TRAKER')
         # self.log(response)
         events = response.get('events',[])
         # end conversation
+        
+        response['id'] = payload.get("id","")
         if len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_end':
             # restart hotword
-            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
+            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps(response));
         else:
             # restart asr
-            await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
+            await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps(response));
     
 # event_loop = asyncio.get_event_loop()
 # Then later, inside your Thread:

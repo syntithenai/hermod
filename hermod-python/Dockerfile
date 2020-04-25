@@ -2,7 +2,7 @@ FROM python:3.7.7-buster
 USER root
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y  mosquitto entr libc-ares-dev libwebsockets-dev libssl-dev  xsltproc docbook-xsl wget curl pulseaudio python3-dev nano libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y  mosquitto-clients mosquitto entr libc-ares-dev libwebsockets-dev libssl-dev  xsltproc docbook-xsl wget curl pulseaudio python3-dev nano libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
 
 # for pi4 need 
 # RUN apt install libatlas-base-dev libatlas3-base libjlapack-java liblapack-dev liblapack3 liblapacke liblapacke-dev libopenblas-base libopenblas-base-dev liblapack-dev liblapack3 liblapacke liblapacke-dev libtmglib3 libjlapack-java gfortran liblapack-dev musl musl-dev libgfortran4 libgcc1
@@ -34,7 +34,6 @@ COPY ./rasa /app/rasa
 COPY ./src /app/src
 COPY ./www /app/www
 COPY ./porcupine /app/porcupine
-COPY ./certs /etc/certs
 COPY ./mosquitto/ /etc/mosquitto
 COPY ./pulseaudio/asound-pulse.conf /etc/asound.conf
 COPY ./pulseaudio/client.conf /etc/pulse/client.conf
