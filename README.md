@@ -1,56 +1,38 @@
-
 This repository provides a framework for building voice based applications. 
+
 It can be used to build standalone alexa like devices that do not need the Internet. 
 It can also be used to build web services that use a suite of machine learning technologies to integrate speech recognition into web pages.
 
 
-!! This repository has recently been ported from nodejs to python.
-In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
-Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
-
-!! At this time i haven't been able to install RASA on ARM (although I have in the past) due to missing libraries.
-
-Access the historic nodejs version remains available via the [nodejs branch](https://github.com/syntithenai/hermod/tree/nodejs)
+> **This repository has recently been ported from nodejs to python.**
+> In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
+> Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
+> Access the historic nodejs version remains available via the [nodejs branch](https://github.com/syntithenai/hermod/tree/nodejs)
 
 
 The software is provided as a suite of microservices that collaborate using a shared MQTT server.
 Services include
 - audio capture and playback services for local hardware
-- audio to text - automated speech recognition(ASR)
+- audio to text - automated speech recognition(ASR)  using streaming for fastest transcriptions
 - hotword optimised audio to text 
 - text to speech (TTS)
 - RASA based Natural Language Understanding (NLU) to determine intents and slots from text
 - RASA routing using machine learning of stories to translate a history of intents and slots into a choice about the next action.
 
 
-A detailed description of the messaging protocol between the services is provided HERE
+The software also provides a vanilla javascript library and example for integrating a hotword and visual microphone into a web page as a client of the suite.
 
-The software also provides a vanilla javascript library and example for integrating a hotword and visual microphone into a web page.
-
-The server software is built to allow many concurrent users. Local deepspeech ASR and RASA are processor and memory intensive. 
+The server software is built to allow many concurrent users however local deepspeech ASR and RASA are processor and memory intensive. 
 A pi4 can transcribe with deepspeech streaming returning results within a couple of seconds for a single user. 
 Google online ASR is close to instant.
-
-Services can be distributed across hardware.
 
 The hermod services run in a single threaded asyncio loop to allow for scalability however each active google ASR stream starts a new multiprocessing thread (because
 the Google ASR python library doesn't play well with asyncio).
 
-
-!!! Compatibility
-
-The software has been developed on Linux Desktop and relies on pyaudio and (optionally) pulseaudio for local microphone capture and playback. 
-Cross platform audio on python is challenging. In particular streaming with asyncio. 
-Implementation on Windows or OSX would require the use of an alternate python sound library that works for those platforms.
-I am unclear about OS portability of other key libraries including deepspeech, picovoice and rasa.
-
-For strictly web based services, audio is handled by the browser so no problems with audio.
-
-The TTS service uses a Linux binary pico2wav to generate audio from text. An alternative would need to be found on other platforms.
+Services can be distributed across hardware connected by a shared MQTT server.
 
 
-
-!!! Quickstart
+## Quickstart
 
 The suite provides a Dockerfile to build an image with all os and python dependancies.
 The resulting image is available on docker hub as syntithenai/hermod-python.
@@ -58,12 +40,15 @@ The resulting image is available on docker hub as syntithenai/hermod-python.
 By default, the image runs all the software required for the suite in a single container.
 The image also provides a default set of RASA model files defining configuration, domain, intents, stories and actions for an agent that searches wikipedia.
 
-It also provides a docker-compose.yml file to start the suite with services split into many containers.
+The repository also provides a docker-compose.yml file to start the suite with services split into many containers.
 
 
 ```
 # install docker
 curl -fsSL https://get.docker.com -o get-docker.sh | sh
+# clone this repository and cd into it
+git clone https://github.com/syntithenai/hermod.git
+cd hermod
 # start services
 docker-compose up
 # open http://localhost
@@ -72,19 +57,44 @@ docker-compose up
 Say "Hey Edison" or click the microphone button to enable speech and then ask a question.
 
 
-!!! Installation
+## Compatibility
+
+The suite was developed on using Ubuntu Desktop. It should work on most Linux systems.
+It is largely written in python and requires at least python 3.7
+
+As per the notes below, cross platform shouldn't be too much of a stretch.
+
+The TTS service uses a Linux binary pico2wav to generate audio from text. An alternative would need to be found on other platforms.
+Many web based services offer text to speech.
+
+For strictly web based services, audio is handled by the client browser so no problems with audio.
+
+The local Audio Service relies on pyaudio and (optionally) pulseaudio for local microphone capture and playback. 
+Cross platform audio on python is challenging. In particular streaming with asyncio. 
+Implementation on Windows or OSX would require the use of an alternate python sound library that works for those platforms.
+
+I am unclear about OS portability of other key libraries including deepspeech, picovoice and rasa.
+
+Raspberry pi4  with ARM runs deepspeech, picovoice and the rest of the hermod suite.
+However, at this time i haven't been able to install RASA on ARM (although I have in the past) due to missing libraries. 
+
+
+
+## Installation
 
 The software package has python dependencies that can be installed with 
 ```pip install -r requirements.txt```
 
 There are also operating system requirements including 
+
 - installation of a recent version of mosquitto that supports authentication
 - pico2wav binary install for the TTS service
 - portaudio
 - pulseaudio
 - download and install deep speech model
 - ...
-See the Dockerfile for install instructions.
+
+*See the Dockerfile for install instructions.**
 
 The folder hermod-python contains a number of shell scripts for various development tasks using hermod as a docker image.
 
@@ -95,56 +105,74 @@ The folder hermod-python contains a number of shell scripts for various developm
 The folder hermod-python/src contains all the source code.
 
 The entrypoint for the source code is the file services.py which has a number of command line arguments to enable and disable various features of the software suite.
-See the source code for details.
+*See the source code for details.*
 
-For example
+For example to start the mosquitto, web and action servers as well as the main hermod services.
 ```python services.py -wam```
 
-starts the mosquitto, web and action servers as well as the main hermod services.
+
+To start just the RASA server
+```python services.py -ss```
 
 
-!!! Secrets
+## Secrets
 
-To enable google login (and allow many users to access the website concurrently), you need to create a credentials for a service account.
+To enable google ASR and/or login (and allow many users to access the website concurrently), you need to create 
 
+- credentials for a service account with the Speech to Text API enabled.
+- oauth client and secret for google login.
 
-
-To enable google ASR
-
-
-
+Edit the file hermod-python/src/.env ensuring contents similar to
 
 
-
-
-Mosquitto admin user 
-mosquitto_passwd
-
-
-kill -HUP mosquitto  * mosquitto container watches /etc/mosquitto/password
-
-
-
-
-
-
-
-!!! Monitoring
-
-All communication between services is via mqtt so you can monitor by listening for messages
-
-```apt install mosquitto-clients```
-
-To track the conversation progress, use the admin login details and subscribe to a bunch of topics.
 ```
-mqtt_sub -h localhost -u hermod -P -hermod_server  -v -t 'hermod/+/asr/+' -t 'hermod/+/nlu/+' -t 'hermod/+/dialog/+' -t 'hermod/+/hotword/+' -t 'hermod/+/intent' -t 'hermod/+/action' -t 'hermod/+/action/#' -t 'hermod/+/core/#' -t 'hermod/+/tts/#' -t 'hermod/+/speaker/started' -t 'hermod/+/speaker/finished'
+OAUTHLIB_RELAX_TOKEN_SCOPE=true
+OAUTHLIB_INSECURE_TRANSPORT=true
+TEMPLATES_AUTO_RELOAD = True
+
+GOOGLE_OAUTH_CLIENT_ID=11111111111-kjhlskjdfhglskjdf.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=secret
+
+GOOGLE_APPLICATION_CREDENTIALS=google-asr-credentials.json
+
+SSL_CERTIFICATES_FOLDER=/etc/letsencrypt/live/myhost.asuscomm.com
+ 
 ```
 
 
 
 
+## Authentication
 
-!!! Developing with Hermod
+The hermod suite exposes two ports
+
+- mqtt server websockets on 9001
+- web server on 80 or 443
+
+The web service currently only offers a google based login for authentication.
+
+Access to the mqtt server is partitioned by sites. A site corresponds to a mosquitto login user.
+The mqtt service has access rules so that an authenticated user can read and write to any topic underneath hermod/theirsiteid/
+
+For example if the user logs in as fred@gmail.com they can connect and subscribe to hermod/fred__gmail_com/asr/text
+
+In the example, the web service generates a password when the user logs in and then uses mosquitto_password to update the mosquitto password file via a shared volume with the mosquitto server.
+The mosquitto server runs an additional thread to watch for changes to its password file and send a HUP signal to mosquitto to trigger a reload when the passwords change.
+The web server delivers the generated password to the browser client via a templated HTML content.
+
+There is also a global admin user configured in the mosquitto sample files 
+- username hermod_server
+- password hermod
+
+The admin user credentials are used by the hermod services which listen and respond to messages from many sites (all topics under hermod/)
+The admin credentials are configured for the services in hermod-python/config-all.yml
+
+
+
+
+
+
+## Developing with Hermod
 
 It should be straight forward to build a model into the folder hermod-python/rasa/models and use either the local or web versions to speak to the model.
 
@@ -155,7 +183,7 @@ By default, dynamic actions are implemented using a local RASA action server. An
 Because hermod runs in the context of an mqtt server, actions can communicate with the client in real time by sending messages. For example, the action can send an mqtt message 
 to the topic hermod/myhsite/tts/say to have speech generated and spoken immediately (eg looking now) while the action continues to collate and process data before giving a final response.
 
-Any text messages returned by RASA are collated and spoken automatically.
+Any text messages returned by RASA are collated and a hermod/siteid/tts/say message is sent by the dialog manager.
 
 In a speech dialog, a conversation can end and switch the microphone back to hotword mode OR it can continue and leave the microphone active for a response from a user.
 By default, the microphone will remain active. 
@@ -167,9 +195,9 @@ Two possible approaches to ending a dialog immediately
 After a period of silence or failed recognition attempts, the microphone will turn itself back to hotword mode.
 
 
-!!! Web Service
+### Example Web Service
 
-Web service hosts sample page with oauth login via google. When a user logs in, a password is generated and the mosquitto server password file is updated and reloaded.
+The web service hosts a sample page with oauth login via google. When a user logs in, a password is generated and the mosquitto server password file is updated and reloaded.
 
 If environment variables are set for google oauth, users can login using google to identify themselves.
 If not set, the user defaults to no_user_login and all browsers accessing the page will share messages.
@@ -178,40 +206,61 @@ The sample web application provides a microphone and UI elements including butto
 The sample actions send MQTT hermod/mysite/display messages with parameters for url, image and buttons.
 The microphone shows a dialog when the user speaks and when hermod replies.
 
+Recent web browsers will not allow access to the microphone unless the connection is made over SSL.
+Localhost is an exception so the web site works fine from a browser on the same machine but exposing it to the Internet takes more work.
 
-!!! Web Client
+The docker-compose file includes an example using nginx-proxy-sslgen with letsencrypt to host SSL.
+Certificates can also be configured manually.
 
-The web client in hermod-python/www/static/bundle.js provides a vanilla javascript library for starting and stopping hotword and speech recognition/audio streaming.
-An example web page showing a microphone and supporting 
 
-To make changes to the library you will need to run browserify to repack.
+# TODO
+#### SSL
 
-```browserify index.js > static/bundle.js```
+Both the mosquitto mqtt server as well as the web service seek for certificate files in /etc/hermod/certificates.
+Three files must be present
+/etc/hermod/certificates/cert.pem
+/etc/hermod/certificates/fullchain.pem
+/etc/hermod/certificates/privkey.pem
 
-The client exposes methods including
-- setVolume
-- muteVolume
-- unmuteVolume
-- playSound
-- stopPlaying
-- say
-- stopAll
-- bind
-- unbind
-- startMicrophone
-- stopMicrophone
-- sendAndWaitFor
-- sendAudioAndWaitFor
-- sendMessage
-- sendNLUMessage
-- sendASRTextMessage
-- authenticate
-- connect
-- disconnect
-- startHotword
-- stopHotword
+If the files are present, the mosquitto server is started in secure mode and the web server serves https on 443.
+If the files are absent SSL is disabled and the webserver is on port 80.
+ 
 
-eg
+
+Edit the file hermod-python/src/.env ensuring it contains a line defining the SSL certificates folder
+
+```
+SSL_CERTIFICATES_FOLDER=/etc/letsencrypt/live/myhost.asuscomm.com 
+```
+
+Inside this folder
+
+
+
+
+### Web Client
+
+The hermod web client in hermod-python/www/static/bundle.js provides a vanilla javascript library for starting and stopping hotword and speech recognition/audio streaming.
+
+>To make changes to the library you will need to run browserify to repack.
+>```browserify index.js > static/bundle.js```
+
+*See the example hermod-python/www/index.html  for usage.**
+
+
+First construct a client with configuration as follows. In the following example, email, password and site are generated from server template variables in python.
+```
+var config = {
+    server: protocol + window.location.hostname + ':' + port, 
+    username: "{{data.get('email_clean')}}",
+    password: "{{data.get('password')}}",
+    subscribe: "hermod/{{data.get('email_clean')}}/#",
+    hotwordsensitivity : 0.5    ,
+    site:"{{data.get('email_clean')}}"
+}
+```
+then connect and start the hotword service
+
 ```
 client = new window.HermodWebClient(config)
 client.connect().then(function() {
@@ -219,124 +268,72 @@ client.connect().then(function() {
 })
 ```
 
+Once connected the client listens for all messages in its site ie hermod/mysite/#
+
+The client responds to the following messages
+
+- hermod/mysite/asr/text
+- 
+
+All messages in the subtopic are available by binding to the message event using the client bind method.
+`client.bind('message',function(message,payloadIn) {})`
+
+The client exposes methods including
+# TODO
+**volume management**
+- setVolume
+- muteVolume
+- unmuteVolume
+ 
+- playSound
+- stopPlaying
+
+- stopAll
+- say
+
+**Bind and unbind events including microphoneStart,microphoneStop,hotwordStart,hotwordStop,disconnect,connect,speaking,stopspeaking,message**
+- bind
+- unbind
+
+- sendAndWaitFor
+- sendAudioAndWaitFor
+- sendMessage
+- sendNLUMessage
+- sendASRTextMessage
+
+- connect
+- disconnect
 
 
-## Dialog Manager Overview
-
-The dialog manager is the glue between the services.
-
-Service output messages are consumed by the dialog manager which then sends another message to the next service in the stack.
-
-Because mediation by the dialog manager is required at each step in the dialog flow, it is able to track and control the state of each dialog to ensure valid dialog flow and manage asynchronous collation of dialog components before some stages in the dialog.
-
-In general, a service should send message to let the dialog manager know when it starts and stops.
+- startHotword
+- stopHotword
+- startMicrophone
+- stopMicrophone
 
 
-### Typical Dialog Flow
+eg
 
 
+### Monitoring
 
-<img src='message-flow-hermod.svg.png' style="background-color:white" />
+All communication between services is via mqtt so you can monitor by listening for messages
 
+```apt install mosquitto-clients```
 
+To track the conversation progress, use the admin login details and subscribe to a bunch of topics.
+```
+mqtt_sub -h localhost -u hermod -P -hermod_server  -v -t 'hermod/+/asr/+' -t 'hermod/+/nlu/+' -t 'hermod/+/dialog/+' -t 'hermod/+/hotword/+' -t 'hermod/+/intent' -t 'hermod/+/action' -t 'hermod/+/action/#' -t 'hermod/+/core/#' -t 'hermod/+/tts/#' -t 'hermod/+/speaker/started' -t 'hermod/+/speaker/finished'
+```
 
-
-When the dialog manager starts, it sends
-
-- `hermod/<siteId>/microphone/start`
-- `hermod/<siteId>/hotword/start`
-
-When a session is initiated by one of 
-
-- `hermod/<siteId>/hotword/detected`
-- `hermod/<siteId>/dialog/start`
-
-The dialog manager creates a new dialogId, then sends a series of MQTT messages to further the dialog.
-
-- `hermod/<siteId>/microphone/start`
-- `hermod/<siteId>/dialog>/asr/start`
-- `hermod/<siteId>/dialog/started`
-
-The ASR sends `hermod/<siteId>/asr/started` and when the ASR finishes detecting text it sends `hermod/<siteId>/text` with a JSON payload. 
-
-The dialog manager hears this message and sends 
- with a text message to speak in the JSON body (For example asking a question)
-- `hermod/<siteId>/asr/stop`
-- `hermod/<siteId>/nlu/parse`
-
-The NLU service hears the parse request and sends 
-
-- `hermod/<siteId>/nlu/started`
-- `hermod/<siteId>/nlu/intent` or `hermod/<siteId>/nlu/fail`.
-
-The dialog manager hears the nlu intent message and sends 
-
-- `hermod/<siteId>/intent`
-
-The core application router hears the intent message and starts an action processing loop by asking rasa core to determine the next action recursively until the next action is either `action_listen` or `action_end`. At each step the core routing service sends a `hermod/<siteId>/action` message with a JSON body including the action and currently tracked slots.
-
-The application service hears each action message and runs. When finished it sends `hermod/<siteId>/action/finished`.
-
-The core routing service processes each action sequentially (by waiting for action/finished Message) and when the loop finishes, it sends messages to hand the dialog back to the user. When the final action is action_listen, the service sends `hermod/<siteId>/dialog/continue`. If the last action is action_end, the service sends `hermod/<siteId>/dialog/end`
-
-The dialog manager hears the continue message and sends
-
-- `hermod/<siteId>/microphone/start`
-- `hermod/<siteId>/asr/start`
-
-to restart voice recognition
-
-OR
-
-The dialog manager hears the end message. (This can be issued at any time). It clears the audio buffer and sends
-
-- `hermod/<siteId>/microphone/start`
-- `hermod/<siteId>/dialog/ended`
-- `hermod/<siteId>/hotword/start`
-
-to finish the dialog and enable the hotword detector.
-
-
-### Dialog Extensions (TODO)
-
-The dialog manager tracks when multiple ASR or NLU services of the same type indicate that they have started. It waits for all final responses and selects the highest confidence before sending the next message.
-
-For example, when two ASR services on the same bus share a model key and respond to `hermod/<siteId>/asr/start` sending two `hermod/<siteId>/asr/started` messages,  the dialog manager waits for both to respond with `hermod/<siteId>/asr/text` before sending `hermod/<siteId>/nlu/parse`.
-
-When two NLU services indicate they have started , the dialog manager waits before sending `hermod/<siteId>/intent`.
-
-When Voice ID is enabled, the dialog manager waits for `hermod/<siteId>/voiceid/detected/<userId>`  before sending  `hermod/<siteId>/intent`.
-
-When multiple devices in a room hear an utterance, they all respond at the same time. This affects Google Home, Alexa, Snips and Mycroft. 
-Google has elements of a solution because an Android phone will show a notification saying "Answering on another device". Two Google Home devices in a room will both answer.
-
-The hermod protocol with many satellites sharing a dialog service allows the solution that the  hotword server could be debounced. 
-
-When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<siteId>/dialog/start', it waits for a fraction of a second to see if there are any more messages with the same topic, where there are multiple messages, the one with the highest confidence/volume  is selected and the others are ignored.
-
-?? The debounce introduces a short delay between hearing a hotword and starting transcription. To avoid requiring the user pause after the hotword, the ASR needs audio from immediately after the hotword is detected and before transcription is started. To support this, the media server maintains a short ring buffer of audio that is sent before audio data from the hardware. The length of audio that is sent can be controlled by a parameter prependAudio in the JSON body of a message to hermod/<siteId>/microphone/start
+### Tests
+# TODO
 
 
 
 
+## Hermod MQTT Services
 
 
-## Security
-
-Where a device offers services over a network to other devices, the MQTT server must be exposed to network requests so MQTT authentication is required.
-
-The mosquitto MQTT server includes an authentication plugin that allows configuration of users and access controls in various backend systems including postgres, myql, files, redis and mongodb. The default authentication plugin allows configuration of read and/or write access to any topic or wildcard topic by updating the access control field in the user collection of a mongodb database.
-
-When using the authentication plugin, the client must provide username and password as part of the initial CONNECT message. Subscription to a topic is only allowed if the siteId matches the username and password.
-
-The MQTT server authentication plugin can be initialised with a list of allowed sites or sites can be added on the fly by authenticated users.
-
-To secure messages in transit, it is possible to configure the MQTT server to encrypt messages or perhaps easier to only allow access via secure websockets.
-
-For a standalone device, network access to the MQTT server is prevented by a firewall or virtual private network and authentication is not required.
-
-
-## Hermod Protocol Reference
 
 
 ### Media Streaming
@@ -396,30 +393,7 @@ The hotword service listens for audio via the MQTT bus. When the hotword is dete
 
 If the service is enabled for the site, hermod/<siteId>/hotword/detected is sent. 
 
-On low power satellite devices, to save the overhead of a local MQTT server, the hotword service can be configured to listen for audio through local hardware. In this configuration, the dialog manager must be configured to only start the microphone for ASR requests.
 
-The service may respond to multiple different utterances. The messages indicating that the hotword has been detected include a hotword identifier in the JSON body to indicate which hotword was heard.
-
-Commercial systems like Google Home and Alexa discriminate between applications by asking for the application by name after the hotword. This can lead to some very long incantations.
-
-For example "Hey Google Ask Meeka Music to play some blues by JL Hooker".
-
-To minimise this problem, the hotword system can be configured to use different ASR and NLU models based on which hotword is detected. With this configuration, each hotword has a different personality and optimised suite of intents.
-
-There are a number of semi open source implementations of hotword services including picovoice porcupine, snowboy and pocketSphinx. The Snips hotword detector is closed source but free to use.
-
-[Mycroft Precise](https://github.com/MycroftAI/mycroft-precise/wiki/Software-Comparison) is the fully open source and accurate. 
-
-It is also possible to use the ASR engine to do keyword spotting against a minimal word model.
-https://discourse.mozilla.org/t/feature-request-spotting-keywords/36042
-
-#### Configuration
-
-- models - array of objects specifying audio models
-- hotwords - array of objects mapping hotword ids to asr and nlu  models
-- detector - shared configuration for detector
-
-See example configuration file for details.
 
 #### Message Reference
 
@@ -434,10 +408,6 @@ See example configuration file for details.
 	- Sent when service is enabled and hotword is detected.
 	- JSON message body
 		- hotword - identifier for the hotword that was heard.
-		- asrModel - (optional) key to identify which ASR model should be used for the rest of the dialog.
-		- nluModel - (optional) key to identify which NLU model should be used for the rest of the dialog.
-
-
 
 
 
@@ -448,38 +418,45 @@ The ASR service converts audio data into text strings. The service listens on th
 
 When the ASR detects a long silence (XX sec) in the audio stream, the final transcript is sent and the ASR service clears it's audio transcription buffer for the site.
 
-(TODO) Optionally (depending on the service implementation),  when the ASR detects a short silence in the audio data (word gap xx ms ), a partial transcript is sent.
+The software provides two alternate ASR services
+-  deepspeech local. Less accurate, slower. No Internet required.
+-  Google ASR. Faster, more accurate. Requires Internet.
 
-ASR is the most computationally expensive element of the protocol. Some of the implementations described below require more processing power and memory than is available on a Raspberry Pi. In particular running multiple offline models is likely to be unresponsive on low power machines.
+TODO Explore the possibilities of running both concurrently in 'economy mode'  where HD ASR from google is activated after a misunderstanding or explicitly for filling text slots.
 
-Open source implementations of ASR include Kaldi, Mozilla DeepSpeech and PocketSphinx.
 
-Closed source implementations include Snips, Google and Amazon Transcribe. 
-
-Snips has the advantage being optimised minimum hardware and for of providing a downloadable model so transcription requests can be run on local devices (including Raspberry Pi). 
-
-The ASR service allows the use of a suite of ASR processor implementations where each model is customised. The `asrModel` parameter of an ASR start message allows switching between models on the fly. 
-
--   Snips provides a reasonable quality general model but works best when the using the web UI to create a specific ASR model. 
--   Google or Amazon offer the best recognition accuracy because of access to large voice data sets and would be more appropriate for arbitrary transcription.
--   The open source solutions are not quite as accurate as the commercial offerings [citing WER under 10%](https://hacks.mozilla.org/2017/11/a-journey-to-10-word-error-rate/)  which approaches the human error rate of 5.83 and works very well when combined with NLU.
-
-Some implementations perform recognition once off on an audio fragment. Other implementations allow for streaming audio and sending intermediate recognition results.
-
-ASR implementations from Google and Amazon provide punctuation in results.
-
-Google also implements automatic language(en/fr/jp) detection and provides a request parameter to select background noise environment.
-
-As at 28/12/18, Amazon and Google charge $0.006 AUD / 15 second chunk of audio.
-
-Depending on the implementation, the ASR model can be fine tuned to the set of words you want to recognise. 
-
--   Snips provides a web UI to build and download models
--   Google allows phraseHints to be sent with a recognition request.
--   Amazon offers an API or web UI to develop vocabularies in addition to the general vocabulary.
--   The open source implementations Deepspeech and Kaldi offer examples of training the ASR model.
-
-For some implementations, a pool of ASR processors is managed by the service to support multiple concurrent requests. In particular, implementation using Kaldi provides this feature using [gstreamer](https://github.com/alumae/kaldi-gstreamer-server).
+From the previous version which included more ASR engines
+> 
+> ASR is the most computationally expensive element of the protocol. Some of the implementations described below require more processing power and memory than is available on a Raspberry Pi. In particular running multiple offline models is likely to be unresponsive on low power machines.
+> 
+> Open source implementations of ASR include Kaldi, Mozilla DeepSpeech and PocketSphinx.
+> 
+> Closed source implementations include Snips, Google and Amazon Transcribe. 
+> 
+> Snips has the advantage being optimised minimum hardware and for of providing a downloadable model so transcription requests can be run on local devices (including Raspberry Pi). 
+> 
+> The ASR service allows the use of a suite of ASR processor implementations where each model is customised. The `asrModel` parameter of an ASR start message allows switching between models on the fly. 
+> 
+> -   Snips provides a reasonable quality general model but works best when the using the web UI to create a specific ASR model. 
+> -   Google or Amazon offer the best recognition accuracy because of access to large voice data sets and would be more appropriate for arbitrary transcription.
+> -   The open source solutions are not quite as accurate as the commercial offerings [citing WER under 10%](https://hacks.mozilla.org/2017/11/a-journey-to-10-word-error-rate/)  which approaches the human error rate of 5.83 and works very well when combined with NLU.
+> 
+> Some implementations perform recognition once off on an audio fragment. Other implementations allow for streaming audio and sending intermediate recognition results.
+> 
+> ASR implementations from Google and Amazon provide punctuation in results.
+> 
+> Google also implements automatic language(en/fr/jp) detection and provides a request parameter to select background noise environment.
+> 
+> As at 28/12/18, Amazon and Google charge $0.006 AUD / 15 second chunk of audio.
+> 
+> Depending on the implementation, the ASR model can be fine tuned to the set of words you want to recognise. 
+> 
+> -   Snips provides a web UI to build and download models
+> -   Google allows phraseHints to be sent with a recognition request.
+> -   Amazon offers an API or web UI to develop vocabularies in addition to the general vocabulary.
+> -   The open source implementations Deepspeech and Kaldi offer examples of training the ASR model.
+> 
+> For some implementations, a pool of ASR processors is managed by the service to support multiple concurrent requests. In particular, implementation using Kaldi provides this feature using [gstreamer](https://github.com/alumae/kaldi-gstreamer-server).
 
 #### Message Reference
 
@@ -488,8 +465,7 @@ For some implementations, a pool of ASR processors is managed by the service to 
 - `hermod/<siteId>/asr/start`
     - Start listening for audio to convert to text.
     - JSON body with 
-        - model - ASR service/model to use in capturing text (optional default value - _default_)
-        - requestId - (optional) unique id sent forwarded with results to help client connect result with original request
+        - id - (optional) unique id sent forwarded with results to help client connect result with original request
 
 - `hermod/<siteId>/asr/stop`
     - Stop listening for audio to convert to text.
@@ -502,25 +478,21 @@ For some implementations, a pool of ASR processors is managed by the service to 
 - `hermod/<siteId>/asr/partial`
     - Send partial text results
     - JSON body with
-        - requestId
+        - id
         - text - transcribed text
-        - confidence - ASR transcription confidence
-
+  
 - `hermod/<siteId>/asr/text`  
     - Send final text results
     - JSON body with 
-        -  requestId 
+        -  id 
         -  text - transcribed text
-        -  confidence - ASR transcription confidence
-
+  
     
 
 
 ### Natural Language Understanding (NLU)
 
 The NLU service parses text to intents and variable slots.
-
-Parsing can be configured by specifying a model, allowed intents, allowed slots and confidence.
 
 Custom models can be developed and trained using a web user interface (based on [rasa-nlu-trainer](https://github.com/aasaHQ/rasa-nlu-trainer)) or text files.
 
@@ -592,6 +564,8 @@ The NLU service is implemented using RASA. RASA configuration allows for a pipel
 
 ### Dialog Manager 
 
+# TODO doc id
+
 The dialog manager coordinates the services by listening for MQTT messages and responding with MQTT messages to further the dialog.
 
 The dialog manager tracks the state of all active sessions so that it can
@@ -626,9 +600,6 @@ Outgoing messages are shown with => under the related incoming message.
     - Sent by an action to continue a dialog and seek user input.
     - JSON body 
         -   text - text to speak before waiting for more user input
-        - ASR Model - ASR model to request
-        - NLU Model - NLU model to request
-        - Intents - Allowed Intents
     - => hermod/<siteId>/microphone/stop
     - => hermod/<siteId>/tts/say
     -    After hermod/<siteId>/tts/finished
@@ -640,10 +611,7 @@ Outgoing messages are shown with => under the related incoming message.
 
 - `hermod/<siteId>/nlu/intent`
     - => hermod/<siteId>/intent
-    - OR
-    - => hermod/<siteId>/nlu/fail 
-        - Sent when entity recognition fails because there are no results of sufficient confidence value.
-
+  
 
 - `hermod/<siteId>/dialog/end`
     - The application that is listening for the intent, should send `hermod/<siteId>/dialog/end` when it's action is complete so the dialog manager can garbage collect dialog resources.
@@ -651,6 +619,82 @@ Outgoing messages are shown with => under the related incoming message.
         -   `hermod/<siteId>/dialog/ended`
         -   `hermod/<siteId>/microphone/start`
         -   `hermod/<siteId>/hotword/start`
+
+
+### Dialog Manager Overview
+
+The dialog manager is the glue between the services.
+
+Service output messages are consumed by the dialog manager which then sends another message to the next service in the stack.
+
+Because mediation by the dialog manager is required at each step in the dialog flow, it is able to track and control the state of each dialog to ensure valid dialog flow and manage asynchronous collation of dialog components before some stages in the dialog.
+
+In general, a service should send message to let the dialog manager know when it starts and stops.
+
+
+#### Typical Dialog Flow
+
+
+
+<img src='message-flow-hermod.svg.png' style="background-color:white" />
+
+
+
+
+When the dialog manager starts, it sends
+
+- `hermod/<siteId>/microphone/start`
+- `hermod/<siteId>/hotword/start`
+
+When a session is initiated by one of 
+
+- `hermod/<siteId>/hotword/detected`
+- `hermod/<siteId>/dialog/start`
+
+The dialog manager creates a new dialogId, then sends a series of MQTT messages to further the dialog.
+
+- `hermod/<siteId>/microphone/start`
+- `hermod/<siteId>/dialog>/asr/start`
+- `hermod/<siteId>/dialog/started`
+
+The ASR sends `hermod/<siteId>/asr/started` and when the ASR finishes detecting text it sends `hermod/<siteId>/text` with a JSON payload. 
+
+The dialog manager hears this message and sends 
+ with a text message to speak in the JSON body (For example asking a question)
+- `hermod/<siteId>/asr/stop`
+- `hermod/<siteId>/nlu/parse`
+
+The NLU service hears the parse request and sends 
+
+- `hermod/<siteId>/nlu/started`
+- `hermod/<siteId>/nlu/intent` or `hermod/<siteId>/nlu/fail`.
+
+The dialog manager hears the nlu intent message and sends 
+
+- `hermod/<siteId>/intent`
+
+The core application router hears the intent message and starts an action processing loop by asking rasa core to determine the next action recursively until the next action is either `action_listen` or `action_end`. At each step the core routing service sends a `hermod/<siteId>/action` message with a JSON body including the action and currently tracked slots.
+
+The application service hears each action message and runs. When finished it sends `hermod/<siteId>/action/finished`.
+
+The core routing service processes each action sequentially (by waiting for action/finished Message) and when the loop finishes, it sends messages to hand the dialog back to the user. When the final action is action_listen, the service sends `hermod/<siteId>/dialog/continue`. If the last action is action_end, the service sends `hermod/<siteId>/dialog/end`
+
+The dialog manager hears the continue message and sends
+
+- `hermod/<siteId>/microphone/start`
+- `hermod/<siteId>/asr/start`
+
+to restart voice recognition
+
+OR
+
+The dialog manager hears the end message. (This can be issued at any time). It clears the audio buffer and sends
+
+- `hermod/<siteId>/microphone/start`
+- `hermod/<siteId>/dialog/ended`
+- `hermod/<siteId>/hotword/start`
+
+to finish the dialog and enable the hotword detector.
 
 
 
@@ -737,4 +781,24 @@ Services are considered unresponsive in the following circumstances
 *   For the core routing service, If the time between nlu/intent and hermod/intent exceeds the configured coreTimeout
 *   For the TTS service, if the time between tts/say and tts/finished
 *   For the media streaming service, if the time between speaker/play and speaker/finished
+
+
+### Dialog Extensions (TODO)???
+
+The dialog manager tracks when multiple ASR or NLU services of the same type indicate that they have started. It waits for all final responses and selects the highest confidence before sending the next message.
+
+For example, when two ASR services on the same bus share a model key and respond to `hermod/<siteId>/asr/start` sending two `hermod/<siteId>/asr/started` messages,  the dialog manager waits for both to respond with `hermod/<siteId>/asr/text` before sending `hermod/<siteId>/nlu/parse`.
+
+When two NLU services indicate they have started , the dialog manager waits before sending `hermod/<siteId>/intent`.
+
+When Voice ID is enabled, the dialog manager waits for `hermod/<siteId>/voiceid/detected/<userId>`  before sending  `hermod/<siteId>/intent`.
+
+When multiple devices in a room hear an utterance, they all respond at the same time. This affects Google Home, Alexa, Snips and Mycroft. 
+Google has elements of a solution because an Android phone will show a notification saying "Answering on another device". Two Google Home devices in a room will both answer.
+
+The hermod protocol with many satellites sharing a dialog service allows the solution that the  hotword server could be debounced. 
+
+When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<siteId>/dialog/start', it waits for a fraction of a second to see if there are any more messages with the same topic, where there are multiple messages, the one with the highest confidence/volume  is selected and the others are ignored.
+
+?? The debounce introduces a short delay between hearing a hotword and starting transcription. To avoid requiring the user pause after the hotword, the ASR needs audio from immediately after the hotword is detected and before transcription is started. To support this, the media server maintains a short ring buffer of audio that is sent before audio data from the hardware. The length of audio that is sent can be controlled by a parameter prependAudio in the JSON body of a message to hermod/<siteId>/microphone/start
 
