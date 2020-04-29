@@ -4,6 +4,10 @@ It can be used to build standalone alexa like devices that do not need the Inter
 It can also be used to build web services that use a suite of machine learning technologies to integrate speech recognition into web pages.
 
 
+>** This repository is not quite finished. I'll remove this message when the source complies with the following docs.
+
+
+
 > **This repository has recently been ported from nodejs to python.**
 > In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
 > Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
@@ -87,7 +91,7 @@ The software package has python dependencies that can be installed with
 
 There are also operating system requirements including 
 
-- installation of a recent version of mosquitto that supports authentication
+- installation of a recent version of mosquitto(1.6.9+) that allows packet size limits to avoid crash with Flask cookies.
 - pico2wav binary install for the TTS service
 - portaudio
 - pulseaudio
