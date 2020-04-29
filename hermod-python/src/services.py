@@ -32,8 +32,7 @@ THREAD_HANDLER = ThreadHandler()
 
 PARSER = argparse.ArgumentParser(description="Stream from microphone to DeepSpeech using VAD")
 
-PARSER.add_argument('-rm', '--runmode', type=str, default='all',
-					help="Run mode - all|server|client")
+
 
 PARSER.add_argument('-sd', '--speakerdevice', type=str, default='',
 					help="Alsa device name for speaker")
