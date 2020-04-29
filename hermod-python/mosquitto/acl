@@ -1,0 +1,8 @@
+# admin user for server can sub/pub everywhere
+user hermod_server
+topic readwrite #
+
+# general users can only sub/pub to hermod/%u(sername)
+pattern readwrite hermod/%u/#
+
+

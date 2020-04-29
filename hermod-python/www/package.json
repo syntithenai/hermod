@@ -1,0 +1,46 @@
+{
+  "name": "hermod-web-client",
+  "version": "1.0.0",
+  "description": "npm module to assist in building clients for hermod",
+  "main": "index.js",
+  "author": "Steve Ryan <syntithenai@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "brfs": "^2.0.2",
+    "browser-get": "^0.2.0",
+    "browser-request": "^0.3.3",
+    "crunker": "^0.2.0",
+    "express": "^4.17.1",
+    "getusermedia": "^2.0.1",
+    "hark": "^1.2.3",
+    "merge": "^1.2.1",
+    "mqtt": "^2.18.8",
+    "stream-chunker": "^1.2.8",
+    "wav": "^1.0.2",
+    "wav-dummy": "^2.7.1",
+    "webworkify": "^1.5.0"
+  },
+  "devDependencies": {
+    "tape": "^2.13.1",
+    "testling": "^1.6.1"
+  },
+  "scripts": {
+    "test-basic": "tape test/*.js",
+    "tests": "browserify test/*.js | tape-run",
+    "test": "browserify -t brfs test/test.js | testling -x /snap/bin/chromium"
+  },
+  "testling": {
+    "files": "test/*.js",
+    "browsers": [
+      "ie/6..latest",
+      "chrome/22..latest",
+      "firefox/16..latest",
+      "safari/latest",
+      "opera/11.0..latest",
+      "iphone/6",
+      "ipad/6",
+      "android-browser/latest"
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+pcm.array
+{
+    type hw
+    card CameraB409241
+    format S16_LE
+    rate 16000
+}
+
+pcm.usb
+{
+    type hw
+    card 1
+}
+
+pcm.internal
+{
+    type hw
+    card 0
+}
+
+pcm.array_gain {
+  type softvol
+  slave {
+    pcm "array"
+  }
+  control {
+    name "Mic Gain"
+    count 2
+  }
+  min_dB -10.0
+  max_dB 5.0
+}
+
+pcm.cap {
+  type plug
+  slave {
+    pcm "array_gain"
+    channels 4
+  }
+  route_policy sum
+}
+
+
+
+pcm.output {
+	type hw
+	card 0
+}
+
+
+
+pcm.!default
+{
+    type asym
+    playback.pcm
+    {
+        type plug
+        slave.pcm "output"
+    }
+    capture.pcm
+    {
+        type plug
+        slave.pcm "usb"
+    }
+}
+
+ctl.!default
+{
+    type asym
+    playback.pcm
+    {
+        type plug
+        slave.pcm "output"
+    }
+    capture.pcm 
+    {
+        type plug
+        slave.pcm "usb"
+    }
+}
+
+

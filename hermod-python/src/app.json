@@ -1,0 +1,27 @@
+{
+  "name": "Flask-Dance with Google",
+  "description": "Testing Flask-Dance's OAuth integration with Google",
+  "keywords": [
+    "oauth"
+  ],
+  "website": "https://github.com/singingwolfboy/flask-dance-google",
+  "repository": "https://github.com/singingwolfboy/flask-dance-google",
+  "env": {
+    "FLASK_SECRET_KEY": {
+      "description": "A secret key for verifying the integrity of signed cookies.",
+      "generator": "secret"
+    },
+    "OAUTHLIB_RELAX_TOKEN_SCOPE": {
+      "description": "Indicates that it's OK for Google to return different OAuth scopes than requested.",
+      "value": "true"
+    },
+    "GOOGLE_OAUTH_CLIENT_ID": {
+      "description": "The OAuth client ID for your application, assigned by Google",
+      "value": "client-id-goes-here"
+    },
+    "GOOGLE_OAUTH_CLIENT_SECRET": {
+      "description": "The OAuth client secret for your application, assigned by Google",
+      "value": "client-secret-goes-here"
+    }
+  }
+}

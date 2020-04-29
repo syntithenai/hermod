@@ -1,0 +1,64 @@
+version: "3.4"
+# expose on localhost for external hermod
+# and enable api
+    
+services:
+  rasa-production:
+    ports:
+        - 5005:5005
+    command: >
+        x
+        --no-prompt
+        --enable-api
+        --production
+        --config-endpoint http://rasa-x:5002/api/config?token=${RASA_X_TOKEN}
+        --port 5005
+        --jwt-method HS256
+        --jwt-secret ${JWT_SECRET}
+        --auth-token '${RASA_TOKEN}'
+        --cors "*"
+    
+  #app:
+    #restart: always
+    #image: "rasa/rasa-x-demo:${RASA_X_DEMO_VERSION}"
+    #expose:
+      #- "5055"
+    #depends_on:
+      #- rasa-production
+      
+          
+  #hermod:
+    #restart: always
+    #image: "syntithenai/hermod-python"
+    #expose:
+      #- "9001:9001"
+      #- "8080:8080"
+      ##- "8443:8443"
+    ##volumes:
+    ##- ./models:/app/models
+    ##- ./environments.yml:/app/environments.yml
+    ##- ./credentials.yml:/app/credentials.yml
+    ##- ./endpoints.yml:/app/endpoints.yml
+    ##- ./logs:/logs
+    ##- ./auth:/app/auth
+    ##environment:
+#docker run --name hermodpython --privileged 
+ #-e RASA_URL=$RASA_URL
+  #-e DUCKLING_URL=$DUCKLING_URL
+   #-e PULSE_SERVER=$MYIP
+    #-e PULSE_COOKIE=/tmp/cookie
+     #-v $(pwd)/../pulseaudio/asound-pulse.conf
+     #:/etc/asound.conf -v $(pwd)/../pulseaudio/client.conf:/etc/pulse/client.conf 
+     #-v $(cd ~ && pwd)/.config/pulse/cookie:/tmp/cookie 
+     #-v $(pwd)/../hermod-python/rasa:/app/rasa 
+     #-v $(pwd)/../hermod-python/www:/app/www 
+     #-v /dev/snd:/dev/snd 
+     #-v $(pwd)/../hermod-python/src:/app/src
+      #-v $(pwd)/../hermod-python/mosquitto:/etc/mosquitto
+       #-v $(pwd)/../hermod-python/certs:/etc/certs
+         #-v /etc/letsencrypt:/etc/letsencrypt
+           #-v /etc/ssl:/etc/ssl  
+           #-p 1883:1883   -p 8080:80   -p 8443:443  -p 9001:9001  
+           #-w /app/rasa  
+           
+           #--entrypoint bash -it syntithenai/hermod-python 

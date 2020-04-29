@@ -1,0 +1,32 @@
+mqtt_hostname: "127.0.0.1"
+mqtt_port: 1883
+mqtt_protocol: "311"
+mqtt_user: hermod_server
+mqtt_password: hermod
+
+services:
+  AudioService:
+    site: hermod_server     
+    inputdevice: "pulse"
+    outputdevice: "pulse"
+  #GoogleAsrService:
+    #language: en-AU
+  DeepspeechAsrService:
+    model_path: "../deepspeech-models"
+    vad_sensitivity: 1
+  PicovoiceHotwordService:
+    hotwords: "picovoice"
+    #,bumblebee,porcupine"
+    sensitivity: 0.9
+  Pico2wavTtsService:
+    binary_path: /usr/bin/pico2wave
+    cache_path: /tmp/
+  RasaService:
+    rasa_server: "http://localhost:5005/"
+  DialogManagerService:  
+  # capture conversations to file
+  #DataLoggerService:
+    #record_nlu: True
+    #record_stories: True
+    #capture_path: /app/rasa/data/logger/
+    

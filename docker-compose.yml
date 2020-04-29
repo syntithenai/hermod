@@ -1,5 +1,117 @@
-version: '2'
+version: '3'
+
+#volumes
+# mosquitto passwords
+# rasa models and data
+# certificates nginx
+
+#docker kill duckling
+#docker rm duckling
+#docker run -p 8000:8000 --name duckling rasa/duckling &
+
+
+#docker kill hermodpython
+#docker rm hermodpython
+#MYIP=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'`
+#DUCKLING_URL="http://$MYIP:8000"
+#RASA_URL="http://$MYIP:5005"
+
+
+#volumes   
+   #$(pwd)/../hermod-python/rasa:/app/rasa  
+   #-v $(pwd)/../hermod-python/src:/app/src  
+   #-v $(pwd)/../hermod-python/mosquitto:/etc/mosquitto 
+   #-v $(pwd)/../hermod-web-client:/app/web  
+   #-v $(pwd)/../hermod-python/certs:/etc/certs  
+   #-v /etc/letsencrypt:/etc/letsencrypt  
+   #-v /etc/ssl:/etc/ssl  
+   #-v $(pwd)/../hermod-python/www:/app/www    
+   #-p 8080:80   -p 8443:443  -p 9001:9001 -p 5005:5005 syntithenai/hermod-python -m -a -w -r http://localhost:5005
+
+
 services:
+
+# duckling
+  duckling:
+    image: rasa/duckling
+    restart: always
+    container_name: duckling
+    ports: 
+      - 8000:8000
+# mqtt
+  mqtt:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: mqtt
+    entrypoint: ['python','/app/src/services.py','-ss','-m','-r','default']
+    ports:
+      - 9001:9001
+#      - 1883   
+    volumes:
+      # dev mount src
+      - ./hermod-python/src:/app/src 
+      - ./hermod-python/mosquitto:/etc/mosquitto 
+     
+# hermod
+  hermod:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: hermod
+    entrypoint: ['python','/app/src/services.py','-r','http://rasa:5005','-mh','mqtt']
+    environment:
+      RASA_URL: http://rasa:5005
+      DUCKLING_URL: http://duckling:5005
+      PULSE_SERVER: ${MYIP}
+      PULSE_COOKIE: /tmp/cookie
+      MQTT_SERVER: mqtt
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /dev/snd:/dev/snd 
+      - ${HOME}/.config/pulse/cookie:/tmp/cookie 
+      # dev mount src
+      - ./hermod-python/src:/app/src  
+   
+# hermod web server
+  hermodweb:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: hermodweb
+    entrypoint: ['python','/app/src/services.py','-ss','-w','-r','http://rasa:5005']
+    ports:
+      - 80:80
+    volumes:
+      # dev mount src
+      - ./hermod-python/src:/app/src  
+      - ./hermod-python/www:/app/www  
+      # allow web service to updated mosquitto passwords
+      - ./hermod-python/mosquitto:/etc/mosquitto 
+# rasa
+  rasa:
+    image: syntithenai/hermod-python
+    build: ./hermod-python/
+    container_name: rasa
+    entrypoint: ['python','/app/src/services.py','-ss']
+    environment:
+      DUCKLING_URL: http://duckling:5005
+    volumes:
+      - ./hermod-python/src:/app/src 
+      - ./hermod-python/rasa:/app/rasa  
+    #ports:
+    #  - 5005
+      
+# rasa action server
+  rasa_actions:
+    image: syntithenai/hermod-python
+    build: ./hermod-python
+    container_name: rasa_actions
+    entrypoint: ['python','/app/src/services.py','-ss','-a','-r','default']
+    volumes:
+      - ./hermod-python/src:/app/src 
+      - ./hermod-python/rasa:/app/rasa  
+      
+    #ports:
+    # - 5055  
+
   #nginxproxy:
     #image: jwilder/nginx-proxy
     #container_name: nginx-proxy
@@ -18,7 +130,8 @@ services:
       #- /var/docker/htpasswd:/etc/nginx/htpasswd
     #environment:
      #HTTPS_METHOD: noredirect
-     #DEFAULT_HOST: hermod.syntithenai.com
+     #DEFAULT_HOST: peppertrees.asuscomm.com
+     
   #nginxproxysslgen:
     ##image: alastaircoote/docker-letsencrypt-nginx-proxy-companion
     #image: jrcs/letsencrypt-nginx-proxy-companion:latest
@@ -32,44 +145,42 @@ services:
       #- /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
       #- /var/www:/usr/share/nginx/html
 
-#VIRTUAL_HOST: hermod.syntithenai.com
-          #VIRTUAL_PORT: 3000
-          #LETSENCRYPT_HOST: hermod.syntithenai.com
-          #LETSENCRYPT_EMAIL: stever@syntithenai.com
-          
-   
+
     ## ===========================================================================================   
     ## HERMOD VOICE SERVICES SUITE
     ## ===========================================================================================   
   
-  hermod:
-        #build: ./
-        image: syntithenai/hermod
-        restart: always
-        #privileged: true
-        entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
-        environment:
-          PULSE_SERVER: 192.168.1.200
-          PULSE_COOKIE: /tmp/cookie
-        ports:
-           # web
-          - "80:80"
-          - "443:443"
-            # mqtt (debug) - disable for production
+  #hermod:
+        ##build: ./
+        #image: syntithenai/hermod
+        #restart: always
+        ##privileged: true
+        #entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
+        #environment:
+          ##PULSE_SERVER: 192.168.1.200
+          ##PULSE_COOKIE: /tmp/cookie
+        #ports:
+           ## web
+          ##- "80:80"
+          ##- "443:443"
+          ## mqtt 
           #- "1883:1883"
-            # mqtt web sockets 
+          ## mqtt web sockets 
           #- "9001:9001"
-        # on your linux desktop install paprefs and enable network access to local sound devices 
-        # update IP below to your machine
-        volumes:
+        ## on your linux desktop install paprefs and enable network access to local sound devices 
+        ## update IP below to your machine
+        #volumes:
+            ## without pulseaudio, just allow access to sound device
             #- /dev/snd:/dev/snd
-            # HOST MOUNTS FOR DEVELOPMENT
-            - ./hermod-nodejs/config.js:/usr/src/app/hermod-nodejs/config.js
-            #- ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
-            #- ./browser-example:/usr/src/app/browser-example
-            # Use PULSE
-            - ./pulseaudio/asound-pulse.conf:/etc/asound.conf
-            - ./pulseaudio/client.conf:/etc/pulse/client.conf
-            # PULSE COOKIE FROM HOST
-            - /home/stever/.config/pulse/cookie:/tmp/cookie
+            ## HOST MOUNTS FOR DEVELOPMENT
+            #- ./hermod-nodejs:/usr/src/app/hermod-nodejs
+            ## ATTACH DEEPSPEECH MODEL
+            #- ./deepspeech-model:/usr/src/app/hermod-nodejs/deepspeech-model
+            ##- ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
+            ##- ./browser-example:/usr/src/app/browser-example
+            ## Use PULSE
+            ##- ./pulseaudio/asound-pulse.conf:/etc/asound.conf
+            ##- ./pulseaudio/client.conf:/etc/pulse/client.conf
+            ## PULSE COOKIE FROM HOST
+            ##- /home/stever/.config/pulse/cookie:/tmp/cookie
     
