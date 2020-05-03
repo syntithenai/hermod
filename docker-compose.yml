@@ -1,37 +1,7 @@
 version: '3'
 
-#volumes
-# mosquitto passwords
-# rasa models and data
-# certificates nginx
-
-#docker kill duckling
-#docker rm duckling
-#docker run -p 8000:8000 --name duckling rasa/duckling &
-
-
-#docker kill hermodpython
-#docker rm hermodpython
-#MYIP=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'`
-#DUCKLING_URL="http://$MYIP:8000"
-#RASA_URL="http://$MYIP:5005"
-
-
-#volumes   
-   #$(pwd)/../hermod-python/rasa:/app/rasa  
-   #-v $(pwd)/../hermod-python/src:/app/src  
-   #-v $(pwd)/../hermod-python/mosquitto:/etc/mosquitto 
-   #-v $(pwd)/../hermod-web-client:/app/web  
-   #-v $(pwd)/../hermod-python/certs:/etc/certs  
-   #-v /etc/letsencrypt:/etc/letsencrypt  
-   #-v /etc/ssl:/etc/ssl  
-   #-v $(pwd)/../hermod-python/www:/app/www    
-   #-p 8080:80   -p 8443:443  -p 9001:9001 -p 5005:5005 syntithenai/hermod-python -m -a -w -r http://localhost:5005
-
-
 services:
-
-# duckling
+  # duckling
   duckling:
     image: rasa/duckling
     restart: always
@@ -44,33 +14,62 @@ services:
     build: ./hermod-python/
     container_name: mqtt
     entrypoint: ['python','/app/src/services.py','-ss','-m','-r','default']
+    #environment:
+      # see volume mount below
+      #SSL_CERTIFICATES_FOLDER: /app/certs
     ports:
       - 9001:9001
-#      - 1883   
+      # expose for logging
+      - 1883:1883
     volumes:
+      # mount certificates folder
+      # - /etc/letsencrypt/live/peppertrees.asuscomm.com:/app/certs
       # dev mount src
       - ./hermod-python/src:/app/src 
+      # share mosquitto files via host mount for password updates
       - ./hermod-python/mosquitto:/etc/mosquitto 
+      
      
 # hermod
   hermod:
     image: syntithenai/hermod-python
     build: ./hermod-python/
     container_name: hermod
-    entrypoint: ['python','/app/src/services.py','-r','http://rasa:5005','-mh','mqtt']
+    # to enable local audio, restore the following line and uncomment pulse environment variables and host mount
+    #entrypoint: ['python','/app/src/services.py','-r','http://rasa:5005']
+    entrypoint: ['python','/app/src/services.py','-r','http://rasa:5005','-nl']
     environment:
       RASA_URL: http://rasa:5005
-      DUCKLING_URL: http://duckling:5005
-      PULSE_SERVER: ${MYIP}
-      PULSE_COOKIE: /tmp/cookie
       MQTT_SERVER: mqtt
+      # defaults. to change, use mosquitto_password to edit hermod-python/mosquitto/password and mosquitto/acl
+      # MQTT_PORT: hermod_server
+      # MQTT_USER: hermod_server
+      # MQTT_PASSWORD: hermod
+      
+      # BY DEFAULT LOCAL AUDIO IS DISABLED, SEE entrypoint, environment and volumes to enable
+      # ENABLE PULSE AUDIO
+      PULSE_HOST: ${PULSE_HOST}
+      PULSE_COOKIE: /tmp/cookie
+      
+      # if pulse is not available, it is possible to set the sound devices directly
+      # note that the microphone device needs to deliver 16K 1channel audio
+      # MICROPHONE_DEVICE: dmix
+      # SPEAKER_DEVICE: dmix
+      
+      # to enable google high quality ASR create and download service account credentials for a project with speech to text enabled
+      #GOOGLE_APPLICATION_CREDENTIALS: /app/src/google-asr-credentials.json
+      #GOOGLE_APPLICATION_LANGUAGE: en-AU
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - /dev/snd:/dev/snd 
-      - ${HOME}/.config/pulse/cookie:/tmp/cookie 
       # dev mount src
       - ./hermod-python/src:/app/src  
    
+      # access to pulse audio cookie from the host
+      - ${HOME}/.config/pulse/cookie:/tmp/cookie 
+   
+      # if not using pulse, you need to set environment variables MICROPHONE_DEVICE and SPEAKER_DEVICE
+      # and uncomment the following
+      # - /dev/snd:/dev/snd 
+      
 # hermod web server
   hermodweb:
     image: syntithenai/hermod-python
@@ -79,7 +78,15 @@ services:
     entrypoint: ['python','/app/src/services.py','-ss','-w','-r','http://rasa:5005']
     ports:
       - 80:80
+    environment:
+      MQTT_SERVER: mqtt
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      # enable SSL for Flask (not useful in combination with nginx-proxy)
+      # SSL_CERTIFICATES_FOLDER: /app/certs
     volumes:
+      # volume mount certificates folder
+      #- /etc/letsencrypt/live/peppertrees.asuscomm.com:/app/certs
       # dev mount src
       - ./hermod-python/src:/app/src  
       - ./hermod-python/www:/app/www  
@@ -105,6 +112,8 @@ services:
     build: ./hermod-python
     container_name: rasa_actions
     entrypoint: ['python','/app/src/services.py','-ss','-a','-r','default']
+    environment:
+      MQTT_SERVER: mqtt
     volumes:
       - ./hermod-python/src:/app/src 
       - ./hermod-python/rasa:/app/rasa  

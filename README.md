@@ -4,10 +4,6 @@ It can be used to build standalone alexa like devices that do not need the Inter
 It can also be used to build web services that use a suite of machine learning technologies to integrate speech recognition into web pages.
 
 
->** This repository is not quite finished. I'll remove this message when the source complies with the following docs.
-
-
-
 > **This repository has recently been ported from nodejs to python.**
 > In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
 > Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
@@ -39,26 +35,39 @@ Services can be distributed across hardware connected by a shared MQTT server.
 ## Quickstart
 
 The suite provides a Dockerfile to build an image with all os and python dependancies.
-The resulting image is available on docker hub as syntithenai/hermod-python.
+The resulting image is available on docker hub as syntithenai/hermod-python. 
 
 By default, the image runs all the software required for the suite in a single container.
-The image also provides a default set of RASA model files defining configuration, domain, intents, stories and actions for an agent that searches wikipedia.
 
-The repository also provides a docker-compose.yml file to start the suite with services split into many containers.
+This repository also provides a docker-compose.yml file to start the suite with services split into many containers.
+
+The image also provides a default set of RASA model files defining configuration, domain, intents, stories and actions for an agent that searches wikipedia.
 
 
 ```
 # install docker
 curl -fsSL https://get.docker.com -o get-docker.sh | sh
-# clone this repository and cd into it
+
+# clone this repository
 git clone https://github.com/syntithenai/hermod.git
+
+# change directory into it so relative paths in docker-compose.yml to host mounts work correctly
 cd hermod
+
 # start services
 docker-compose up
+# OR (with pulseaudio on host)  to enable local audio
+# PULSE_HOST=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'` ; docker-compose up
+
 # open http://localhost
 ```
 
 Say "Hey Edison" or click the microphone button to enable speech and then ask a question.
+
+If local audio is enabled, you can use the hotword "Picovoice" to activate a local dialog session.
+
+**This will only work if you are running the server software on localhost. To serve hermod over a network, SSL must be enabled.**
+
 
 
 ## Compatibility
@@ -91,7 +100,7 @@ The software package has python dependencies that can be installed with
 
 There are also operating system requirements including 
 
-- installation of a recent version of mosquitto(1.6.9+) that allows packet size limits to avoid crash with Flask cookies.
+- installation of a recent version of mosquitto that supports authentication
 - pico2wav binary install for the TTS service
 - portaudio
 - pulseaudio
@@ -100,16 +109,44 @@ There are also operating system requirements including
 
 *See the Dockerfile for install instructions.**
 
+
 The folder hermod-python contains a number of shell scripts for various development tasks using hermod as a docker image.
 
 - run.sh - start hermod with all the related services in a single docker container
 - bash.sh - start duckling then run bash inside the hermod container to allow CLI access
 - ....
 
-The folder hermod-python/src contains all the source code.
+
+*See the source code for details.*
+
+
+
+
+
+## Configuration
 
 The entrypoint for the source code is the file services.py which has a number of command line arguments to enable and disable various features of the software suite.
-*See the source code for details.*
+
+Environment variables are also used to configure the hermod services.
+
+The file hermod-python/src/config-all.yml provides base configuration which is modified by the services file to account for arguments and environment variables and passed on to the hermod services.
+
+
+### Arguments
+
+Arguments to services.py are mainly used to specify which services should be activated.
+
+Arguments include
+
+- **m (--mqttserver)**  if present, run local mqtt server
+- **mh (--mqttserver_host)**   set external mqtt server  
+- **r (--rasaserver) <host>**  set external rasa server to host (if absent runs local rasa server)
+- **w (--webserver)** if present, run local web server
+- **a (--actionserver)** if present, run local rasa action server
+- **ss (--skipservices)** if present,  don't run the hermod services
+- **sm (--satellite)**  if present, only run audio and hotword hermod services (for low power devices eg pi0 acting as a satellite that rely on central hermod server)
+- **nl (--nolocalaudio)**  if present, skip local audio and hotword services (instead use browser client)
+
 
 For example to start the mosquitto, web and action servers as well as the main hermod services.
 ```python services.py -wam```
@@ -118,42 +155,61 @@ For example to start the mosquitto, web and action servers as well as the main h
 To start just the RASA server
 ```python services.py -ss```
 
+### Environment
 
-## Secrets
+When using docker-compose, add environment variables to each services by editing the docker-compose.yml file OR using a .env file in the same folder. 
 
-To enable google ASR and/or login (and allow many users to access the website concurrently), you need to create 
+The .env file is excluded from git and is a good place to store secrets.  To enable the sample file
 
-- credentials for a service account with the Speech to Text API enabled.
-- oauth client and secret for google login.
+```cp .env-sample  .env```
 
-Edit the file hermod-python/src/.env ensuring contents similar to
+Without docker compose, environment variables should be present in the shell that runs ```python services.py```
 
 
+
+### Deepspeech Model
+
+The deepspeech model files required for speech recognition are not part of this repository.
+
+**They are included in the docker image syntithenai/hermod-python available on docker hub.**
+
+If you need to download them, 
+```wget  -qO- -c https://github.com/mozilla/DeepSpeech/releases/download/v0.6.1/deepspeech-0.6.1-models.tar.gz ```
+
+By default, the model files are expected to be found in in ../deepspeech-models  relative to the source directory.
+
+The environment variable DEEPSPEECH_MODELS can be used to set an alternate path.
+
+
+
+
+### Google HD ASR
+
+To enable high quality google speech recognition use console.developers.google.com to create and download credentials for a service account
+with google speech recognition API enabled. This will require that you enable billing in your google project.
+
+Set environment variables to enable
+- GOOGLE_APPLICATION_CREDENTIALS=path to downloaded creds file
+- optionally GOOGLE_APPLICATION_LANGUAGE=optimise recognition for specified language. default en-AU
+
+If google credentials are provided, the DeepSpeechASR service will be automatically disabled.
+
+
+
+
+### Authentication
+
+A standalone server with local audio does not require authentication and uses the admin password preconfigured in the sample mosquitto file.
+
+When using the web server, a user must uniquely identify themselves. When a user logs in, the authentication details for the mosquitto server are provided to the web client.
+
+It is possible to run without authentication in which case the user is automatically assigned the username no_login_user.
+
+Currently authentication with google is the only option. To setup, ensure that the web service has access to the environment variables
 ```
-OAUTHLIB_RELAX_TOKEN_SCOPE=true
-OAUTHLIB_INSECURE_TRANSPORT=true
-TEMPLATES_AUTO_RELOAD = True
-
 GOOGLE_OAUTH_CLIENT_ID=11111111111-kjhlskjdfhglskjdf.apps.googleusercontent.com
 GOOGLE_OAUTH_CLIENT_SECRET=secret
-
-GOOGLE_APPLICATION_CREDENTIALS=google-asr-credentials.json
-
-SSL_CERTIFICATES_FOLDER=/etc/letsencrypt/live/myhost.asuscomm.com
- 
 ```
-
-
-
-
-## Authentication
-
-The hermod suite exposes two ports
-
-- mqtt server websockets on 9001
-- web server on 80 or 443
-
-The web service currently only offers a google based login for authentication.
 
 Access to the mqtt server is partitioned by sites. A site corresponds to a mosquitto login user.
 The mqtt service has access rules so that an authenticated user can read and write to any topic underneath hermod/theirsiteid/
@@ -173,6 +229,77 @@ The admin credentials are configured for the services in hermod-python/config-al
 
 
 
+### SSL
+
+Recent web browsers will not allow access to the microphone unless the connection is made over SSL.
+Localhost is an exception so the web site works fine from a browser on the same machine but exposing it to the Internet takes more work.
+
+The docker-compose file includes an example using nginx-proxy-sslgen with letsencrypt to host SSL.
+Certificates can also be configured manually.
+
+To enable SSL for both the web service and the mqtt service set
+
+```SSL_CERTIFICATES_FOLDER=/path/to/cert/files```
+
+Three files must be present
+/SSL_CERTIFICATES_FOLDER/cert.pem
+/SSL_CERTIFICATES_FOLDER/fullchain.pem
+/SSL_CERTIFICATES_FOLDER/privkey.pem
+
+
+certbot can be used to make free certificates if your host is exposed to the Internet.
+
+
+If the files are present, the mosquitto server is started in secure mode and the web server serves https on 443.
+If the files are absent SSL is disabled and the webserver is on port 80.
+ 
+
+
+### Local Audio
+
+#### Pulse Audio
+
+To enable local audio and hotword services is easiest using the default setup requiring pulse audio.
+
+Depending on your host, you may need to use paprefs or some other method to allow network access to your host pulse audio installation.
+
+To use pulse, the hermod services.py file needs to run with 
+- environment variables PULSE_HOST and PULSE_COOKIE
+- access (? volume mount) to cookie file from host
+
+To populate PULSE_HOST 
+``` export PULSE_HOST=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'`   ```
+
+Because this environment variable is the dynamic result of a command, it cannot be placed in the shared .env file but needs to be set in the host shell that runs docker-compose (and pulse)
+(Unless the ip is truly static)
+
+The docker file includes a host volume mount to /$HOME/.pulse/cookie as /tmp/cookie and sets PULSE_COOKIE=/tmp/cookie
+``` ${HOME}/.config/pulse/cookie:/tmp/cookie ````
+
+
+#### PyAudio
+
+It is possible to configure hermod to use any ALSA hardware device rather than the default pulse device.
+
+Use environment variables to specify which ALSA hardware device to use.
+
+eg
+```
+- MICROPHONE_DEVICE=dmix
+- SPEAKER_DEVICE=dmix
+```
+
+Depending on your ALSA configuration (/etc/asound.conf), different devices may be available.
+
+Hermod requires microphone audio to be delivered as 16000, 1channel. ALSA config allows for virtual remixed devices.
+
+The speaker channel needs to be able to convert from any sound format.
+
+Depending on your configuration, access to the sound card may be restricted to one process (dmix can help)
+
+Using pulse audio is STRONGLY RECOMMENDED.
+
+
 
 
 
@@ -184,10 +311,11 @@ Developing with hermod is mainly developing with RASA. Building/training a model
 
 By default, dynamic actions are implemented using a local RASA action server. An actions.py file in the rasa folder includes classes that satisfy the Action api.
 
-Because hermod runs in the context of an mqtt server, actions can communicate with the client in real time by sending messages. For example, the action can send an mqtt message 
+Any text messages returned by RASA are collated and a hermod/siteid/tts/say message is sent by the dialog manager.
+
+Because hermod runs in the context of an mqtt server, actions can also communicate with the client in real time by sending messages. For example, the action can send an mqtt message 
 to the topic hermod/myhsite/tts/say to have speech generated and spoken immediately (eg looking now) while the action continues to collate and process data before giving a final response.
 
-Any text messages returned by RASA are collated and a hermod/siteid/tts/say message is sent by the dialog manager.
 
 In a speech dialog, a conversation can end and switch the microphone back to hotword mode OR it can continue and leave the microphone active for a response from a user.
 By default, the microphone will remain active. 
@@ -209,36 +337,6 @@ If not set, the user defaults to no_user_login and all browsers accessing the pa
 The sample web application provides a microphone and UI elements including buttons an iframe and an image.
 The sample actions send MQTT hermod/mysite/display messages with parameters for url, image and buttons.
 The microphone shows a dialog when the user speaks and when hermod replies.
-
-Recent web browsers will not allow access to the microphone unless the connection is made over SSL.
-Localhost is an exception so the web site works fine from a browser on the same machine but exposing it to the Internet takes more work.
-
-The docker-compose file includes an example using nginx-proxy-sslgen with letsencrypt to host SSL.
-Certificates can also be configured manually.
-
-
-# TODO
-#### SSL
-
-Both the mosquitto mqtt server as well as the web service seek for certificate files in /etc/hermod/certificates.
-Three files must be present
-/etc/hermod/certificates/cert.pem
-/etc/hermod/certificates/fullchain.pem
-/etc/hermod/certificates/privkey.pem
-
-If the files are present, the mosquitto server is started in secure mode and the web server serves https on 443.
-If the files are absent SSL is disabled and the webserver is on port 80.
- 
-
-
-Edit the file hermod-python/src/.env ensuring it contains a line defining the SSL certificates folder
-
-```
-SSL_CERTIFICATES_FOLDER=/etc/letsencrypt/live/myhost.asuscomm.com 
-```
-
-Inside this folder
-
 
 
 
@@ -330,13 +428,22 @@ mqtt_sub -h localhost -u hermod -P -hermod_server  -v -t 'hermod/+/asr/+' -t 'he
 ```
 
 ### Tests
-# TODO
 
+The test suite was developed with nodejs and npm. jest is used as a testing library for hermod-nodejs.
+
+The test suite was then used to facilitate development of the python version. 
+
+The tests require a docker image syntithenai/hermod-python to provide hermod in a python 3.7 environment with os dependancies installed and default models installed.
+
+```
+cd hermod/tests
+npm install
+npm test
+```
 
 
 
 ## Hermod MQTT Services
-
 
 
 
@@ -744,9 +851,7 @@ Online TTS implementation include Amazon Polly and Google. These services suppor
 ## Links
 
 
-
-
-## TODO
+## Wishlist
 
 - build all skills script
 - generate domain from config and skills folders  	
@@ -805,4 +910,52 @@ The hermod protocol with many satellites sharing a dialog service allows the sol
 When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<siteId>/dialog/start', it waits for a fraction of a second to see if there are any more messages with the same topic, where there are multiple messages, the one with the highest confidence/volume  is selected and the others are ignored.
 
 ?? The debounce introduces a short delay between hearing a hotword and starting transcription. To avoid requiring the user pause after the hotword, the ASR needs audio from immediately after the hotword is detected and before transcription is started. To support this, the media server maintains a short ring buffer of audio that is sent before audio data from the hardware. The length of audio that is sent can be controlled by a parameter prependAudio in the JSON body of a message to hermod/<siteId>/microphone/start
+
+
+
+
+
+## Todo
+
+- unify config
+  - env, config.yml, args, secrets
+  - docker compose
+  - SSL
+  
+- Dockerfile load rasa training data from external repository. 
+   
+- load testing. ?? mem leak, subjectively slower after a while ?
+
+- asyncio restart all threads if one dies 
+
+- chomecast web client
+
+- capture training data
+    - NLU
+    - stories
+    - integrate into base training data
+
+- wikipedia example 
+    - refine chatito data and rebuild model
+    - topic disambiguation
+        -  ? wiki disambiguation pages?
+    -  rasa two stage fallback with proactive suggest next intent at stage 2.            
+    -  example using rasa forms
+    -  extend available wikidata attributes
+    -  show me (failing display mode ... fallback to wiki lookup page/attribute). eg show me the flag of peru
+
+
+- local storage of facts. See RASA knowledgebasebot
+
+- HDASR
+    - single service that switches between google and deepspeech
+        - explicitly triggered by actions for a single following utterance. Useful for capturing arbitrary text to a slot.
+        - triggered when NLU fails and calls action_default (or 2 stage fallback)
+    - enable Google with daily limits
+
+- auto adjust to ambient volume (per mycroft)
+
+- ? Extend ASR dictation timeout
+    - collate ASR text messages until silence timeout.
+
 
