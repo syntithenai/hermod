@@ -89,7 +89,8 @@ class DeepspeechAsrService(MqttService):
         self.turn_off_wav = f.read();
         # self.eventloop = asyncio.new_event_loop()
         # asyncio.set_event_loop(self.eventloop)
-        # self.log('have loop')
+        self.log('START DS ASR')
+        self.log(this_folder)
             
         #self.startASR()
         
@@ -105,10 +106,10 @@ class DeepspeechAsrService(MqttService):
         audioTopic = 'hermod/'+site+'/microphone/audio'       
         hotwordDetectedTopic = 'hermod/'+site+'/hotword/detected' 
         if topic == activateTopic:
-            #self.log('activate ASR '+site)
+            self.log('activate ASR '+site)
             await self.activate(site)
         elif topic == deactivateTopic:
-            #self.log('deactivate ASR '+site)
+            self.log('deactivate ASR '+site)
             await self.deactivate(site)
         elif topic == startTopic:
             self.log('start ASR '+site)
@@ -141,13 +142,16 @@ class DeepspeechAsrService(MqttService):
             self.audio_stream[site].write(msg.payload) 
         
     async def activate(self,site):
+        self.log('activate')
         #if not self.active[site]:
             self.audio_stream[site] = BytesLoop()
             self.active[site] = True
             self.started[site] = False
             await self.client.subscribe('hermod/'+site+'/microphone/audio')
               # Load DeepSpeech model
+            self.log('START DS ASR ACTIVATE '+self.model_path)
             if os.path.isdir(self.model_path):
+                self.log('START DS ASR')
                 modelPath = os.path.join(self.model_path, self.modelFile)
                 lm = os.path.join(self.model_path, 'lm.binary')
                 trie = os.path.join(self.model_path, 'trie')
@@ -332,7 +336,7 @@ class DeepspeechAsrService(MqttService):
        # # self.log('waited a '+label)
     
     async def startASR(self, site):
-        # self.log('start asr' +site)
+        self.log('start asr' +site)
         empty_count = {}
         if os.path.isdir(self.model_path):
             # self.log('start task '+site)
@@ -367,7 +371,7 @@ class DeepspeechAsrService(MqttService):
                 # except Exception as e:
                     # self.log(e)
         else:
-            print('missing model files at '+self.model_path) 
+            self.log('missing model files at '+self.model_path) 
     
   
 

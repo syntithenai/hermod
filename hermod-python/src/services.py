@@ -30,20 +30,21 @@ import WebService
 from ThreadHandler import ThreadHandler
 THREAD_HANDLER = ThreadHandler()
 
-PARSER = argparse.ArgumentParser(description="Stream from microphone to DeepSpeech using VAD")
+PARSER = argparse.ArgumentParser(description="Run Hermod voice suite")
 
 
 
-PARSER.add_argument('-sd', '--speakerdevice', type=str, default='',
-					help="Alsa device name for speaker")
+# PARSER.add_argument('-sd', '--speakerdevice', type=str, default='',
+					# help="Alsa device name for speaker")
                     
-PARSER.add_argument('-md', '--microphonedevice', type=str, default='',
-					help="Alsa device name for microphone")
+# PARSER.add_argument('-md', '--microphonedevice', type=str, default='',
+					# help="Alsa device name for microphone")
 
 PARSER.add_argument('-m', '--mqttserver',action='store_true',
 					help="Run MQTT server")
+                    
 PARSER.add_argument('-mh', '--mqttserver_host',default='',
-					help="Run MQTT server")
+					help="Set external MQTT server")
                  
 PARSER.add_argument('-r', '--rasaserver', type=str,
 					help="RASA server")
@@ -56,19 +57,25 @@ PARSER.add_argument('-a', '--actionserver', action='store_true',
                     
 PARSER.add_argument('-ss', '--skipservices', action='store_true', default=False,
 					help="Do not start hermod services")
+                    
+PARSER.add_argument('-sm', '--satellite', action='store_true', default=False,
+					help="Only start hermod local audio and hotword services")                   
+
+PARSER.add_argument('-nl', '--nolocalaudio', action='store_true', default=False,
+					help="Dont start hermod local audio or hotword service")                     
 
 #cli.load_dotenv(path=os.path.dirname(__file__))
 
 ARGS = PARSER.parse_args()
 #print(ARGS) 
-print("RUN MODE {} ".format(ARGS.runmode))
 
-F = open(os.path.join(os.path.dirname(__file__), 'config-'+ARGS.runmode+'.yaml'), "r")
+
+F = open(os.path.join(os.path.dirname(__file__), 'config-all.yaml'), "r")
 CONFIG = yaml.load(F.read(), Loader=yaml.FullLoader)
 
-F = open(os.path.join(os.path.dirname(__file__), 'secrets.yaml'), "r")
-secrets = yaml.load(F.read(), Loader=yaml.FullLoader)
-if not secrets: secrets = {}
+# F = open(os.path.join(os.path.dirname(__file__), 'secrets.yaml'), "r")
+# secrets = yaml.load(F.read(), Loader=yaml.FullLoader)
+# if not secrets: secrets = {}
 
 if ARGS.webserver > 0:
     THREAD_HANDLER.run(WebService.start_server,{'config':CONFIG})
@@ -108,7 +115,7 @@ else:
 def start_mqtt_server(run_event):
     print('START MQTT SERVER')
     # /app/mosquitto-1.6.9/src/
-    cmd = ['/app/mosquitto-1.6.9/src/mosquitto','-v','-c','/etc/mosquitto/mosquitto.conf'] 
+    cmd = ['mosquitto','-v','-c','/etc/mosquitto/mosquitto.conf'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
     while run_event.is_set():
         time.sleep(1)
@@ -117,7 +124,7 @@ def start_mqtt_server(run_event):
 
 def start_secure_mqtt_server(run_event):
     print('START SECURE MQTT SERVER')
-    cmd = ['/app/mosquitto-1.6.9/src/mosquitto','-v','-c','/etc/mosquitto/mosquitto-ssl.conf'] 
+    cmd = ['mosquitto','-v','-c','/etc/mosquitto/mosquitto-ssl.conf'] 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
     while run_event.is_set():
         time.sleep(1)
@@ -127,19 +134,24 @@ def start_secure_mqtt_server(run_event):
 # send HUP signal to mosquitto when password file is updated    
 def start_mqtt_auth_watcher(run_event):
     print('START MQTT   WATCHER')
+    #os.path.join(os.path.dirname(__file__),
     cmd = ['/app/src/mosquitto_watcher.sh'] 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, cwd=os.path.join(os.path.dirname(__file__)))
     while run_event.is_set():
         time.sleep(1)
     p.terminate()
     p.wait()
-		
-if ARGS.mqttserver > 0:
-    # print(secrets.get('SSL_CERTIFICATES_FOLDER'))
-    if secrets.get('SSL_CERTIFICATES_FOLDER'):
-        # print(secrets.get('SSL_CERTIFICATES_FOLDER'))
-        cmd = ['./update_ssl.sh ' + secrets.get('SSL_CERTIFICATES_FOLDER')]
-        p = call(cmd, shell=True)
+
+
+# MQTT  host from args
+if len(ARGS.mqttserver_host) > 0 :
+    CONFIG['mqtt_hostname']= ARGS.mqttserver_host
+        
+elif ARGS.mqttserver > 0:
+    if os.environ.get('SSL_CERTIFICATES_FOLDER'):
+        # use mosquitto conf template to rewrite mosquitto conf file including env SSL_CERTIFICATES_FOLDER
+        cmd = ['/app/src/update_ssl.sh' + ' ' + os.environ.get('SSL_CERTIFICATES_FOLDER')]
+        p = call(cmd, shell=True, cwd=os.path.join(os.path.dirname(__file__)))
         THREAD_HANDLER.run(start_secure_mqtt_server)
     else:
         THREAD_HANDLER.run(start_mqtt_server)
@@ -196,15 +208,49 @@ async def async_start_hermod():
     print('START HERMOD SERVICES')
     MODULE_DIR = os.getcwd()
     sys.path.append(MODULE_DIR)
-    # override config with args
-    if len(ARGS.mqttserver_host) > 0 :
-        CONFIG['mqtt_hostname']= ARGS.mqttserver_host
-    if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
-    #		print('have args init {}'.format(ARGS.initialise))
-            CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice
-    if len(ARGS.microphonedevice) > 0 and 'AudioService' in CONFIG['services']:
-    #		print('have args init {}'.format(ARGS.initialise))
-            CONFIG['services']['AudioService']['inputdevice'] = ARGS.microphonedevice
+    
+    # OVERRIDE CONFIG
+    # admin mqtt connection
+    if os.getenv('MQTT_SERVER') is not None:
+            CONFIG['mqtt_server'] = os.getenv('MQTT_SERVER')
+    if os.getenv('MQTT_PORT') is not None:
+            CONFIG['mqtt_port'] = os.getenv('MQTT_PORT')
+    if os.getenv('MQTT_USER') is not None:
+            CONFIG['mqtt_user'] = os.getenv('MQTT_USER')
+    if os.getenv('MQTT_PASSWORD') is not None:
+            CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD')
+    
+    if os.getenv('DEEPSPEECH_MODELS') is not None and 'DeepSpeechAsrService' in CONFIG['services']:
+        CONFIG['services']['DeepSpeechAsrService']['model_path'] = os.getenv('DEEPSPEECH_MODELS')
+    
+    # disable deepspeech and enable google ASR
+    # if os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
+            # CONFIG['services'].pop('DeepSpeechAsrService',None)
+            # CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+    
+    
+        
+    # SET SOUND DEVICES FROM ENVIRONMENT VARS
+    if os.getenv('SPEAKER_DEVICE') is not None and 'AudioService' in CONFIG['services']:
+            CONFIG['services']['AudioService']['outputdevice'] = os.getenv('SPEAKER_DEVICE')
+    if os.getenv('MICROPHONE_DEVICE') is not None and 'AudioService' in CONFIG['services']:
+            CONFIG['services']['AudioService']['inputdevice'] = os.getenv('MICROPHONE_DEVICE')
+    
+    # # OVERRIDE SOUND DEVICES FROM  CLI ARGS
+    # if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
+            # CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice
+    # if len(ARGS.microphonedevice) > 0 and 'AudioService' in CONFIG['services']:
+            # CONFIG['services']['AudioService']['inputdevice'] = ARGS.microphonedevice
+    
+    # satellite mode
+    if ARGS.satellite:
+        services = {'AudioService': CONFIG['services']['AudioService'], 'PicovoiceHotwordService':CONFIG['services']['PicovoiceHotwordService']}
+        CONFIG['services']= services
+    # no local audio/hotword
+    if ARGS.nolocalaudio:
+        if 'AudioService' in CONFIG['services']: del CONFIG['services']['AudioService']
+        if 'PicovoiceHotwordService' in CONFIG['services']: del CONFIG['services']['PicovoiceHotwordService']
+        
     #print('START SERVER 2')
     # print(CONFIG)
     
@@ -217,18 +263,12 @@ async def async_start_hermod():
         module_name = pathlib.Path(full_path).stem
         module = importlib.import_module(module_name)
         a = getattr(module, service)(CONFIG,loop)
-        # print(service)
-        # print(a)
         run_services.append(a.run())
-        # print('also run')
-        
+        # extra event loop threads on init
         if hasattr(a,'also_run'):
             # print(a.also_run)
             for i in a.also_run:
-                # print(i)
-                #print(a.also_run[i])
                 run_services.append(i())
-        #THREAD_HANDLER.run(target=a.run)
     # print('starting services')
     # print(run_services)
     await asyncio.gather(*run_services)
@@ -237,7 +277,7 @@ async def async_start_hermod():
     #loop.run_until_complete()
     # print('ended services')
         
-if ARGS.runmode and not ARGS.skipservices:
+if not ARGS.skipservices:
     THREAD_HANDLER.run(start_hermod)
     
 # start all threads
