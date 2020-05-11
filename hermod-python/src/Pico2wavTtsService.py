@@ -48,8 +48,12 @@ class Pico2wavTtsService(MqttService):
         text = payload.get('text')
         #self.log(text)
         if topic == 'hermod/' + site + '/tts/say':
-            await self.generate_audio(site, text)
+            await self.generate_audio(site, text, payload)
         elif topic == 'hermod/' + site + '/speaker/finished':
+            self.log('SPEAKER FINISHED')
+            self.log(payload)
+            #self.play_requests[payload.get('id')] = value;
+            
             message = {"id": payload.get('id')}
             await asyncio.sleep(0.5)
             await self.client.publish(
@@ -58,14 +62,16 @@ class Pico2wavTtsService(MqttService):
             await self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
 
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
-    async def generate_audio(self, site, text):
+    async def generate_audio(self, site, text, payload):
         # self.log('gen audio')
         # self.log(text)
         
-        await self.client.publish('hermod/{}/speaker/started'.format(site), None)
+        #await self.client.publish('hermod/{}/speaker/started'.format(site), None)
         cache_path = self.config['services']['Pico2wavTtsService']['cache_path']
-
-        value = randint(0, 1000000)
+        value = payload.get('id','no_id')
+        #randint(0, 1000000)
+        # if payload.get('id',False) and len(payload.get('id')) > 0:
+            # self.play_requests[payload.get('id')] = value;
         file_name = os.path.join(cache_path, 'tts-' + str(value) + '.wav')
         
         if len(text) > 0:

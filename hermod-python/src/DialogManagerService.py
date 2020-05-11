@@ -104,6 +104,10 @@ class DialogManagerService(MqttService):
 
     async def callback_hotword_dialog_ended(self, prep, topic, message):
         uid = uuid.uuid4().hex
+        parts = topic.split("/")
+        site = parts[1]
+        self.log('START DIALOG hw '+uid)
+        self.dialogs[site] = uid;
         await self.client.publish(prep + 'dialog/started', json.dumps({"id":uid}))
         await self.client.publish(prep + 'asr/start', json.dumps({"id":uid}))
         await self.client.publish(prep + 'microphone/start', json.dumps({}))
@@ -116,7 +120,8 @@ class DialogManagerService(MqttService):
     async def start_dialog(self, site, text):
         prep = 'hermod/' + site + '/'
         uid = uuid.uuid4().hex
-
+        # self.log('START DIALOG '+uid)
+        self.dialogs[site] = uid;
         # if starting with text, dive straight into nlu/parse
         if len(text) > 0:
             await self.client.publish(prep + 'dialog/started', json.dumps({"id":uid}))
@@ -129,6 +134,36 @@ class DialogManagerService(MqttService):
             await self.client.publish(prep + 'microphone/start', json.dumps({}))
             await self.client.publish(prep + 'asr/start', json.dumps({"id":uid}))
 
+    def check_dialog_id(self, topic, payload):
+        # self.log('check dialog')
+        # self.log(payload)
+        # self.log(self.dialogs)
+        parts = topic.split("/")
+        site = parts[1]
+        
+        # only continue processing most recent dialog for this site
+        # if id in payload, check it matches the most recent dialog id set in start_dialog() 
+        ok = False
+        if payload.get('id',False) and len(payload.get('id')) > 0 and site in self.dialogs:
+            if payload.get('id') == self.dialogs[site]:
+                ok = True
+        else:
+            ok = True
+        return ok
+        
+    def ensure_dialog_id(self, topic, payload):
+        uid = None
+        parts = topic.split("/")
+        site = parts[1]
+        # if there is an id, ensure that we have met it before 
+        if payload.get('id',False):
+            if len(payload.get('id')) > 0 and site in self.dialogs and payload.get('id') == self.dialogs[site]:
+                uid = payload.get('id')
+        # otherwise create one
+        else:
+            uid = uuid.uuid4().hex
+        return uid
+        
     async def on_message(self, msg):
         # self.log("DM start message")
         # self.log(msg)
@@ -156,12 +191,14 @@ class DialogManagerService(MqttService):
         await self.handle_waiters(prep, topic, payload)
         # now handle main subscription bindings
         if topic == prep + 'hotword/detected':
-            # self.log("HW MESSAGE")
+            self.log("HW MESSAGE")
             await self.client.publish(prep + 'speaker/stop', json.dumps({}))
             await self.client.publish(prep + 'microphone/stop', json.dumps({}))
+            self.log("HW MESSAGE")
             await self.send_and_wait(
                 prep + 'dialog/end',
-                payload,
+                # id from last dialog started
+                {"id":self.dialogs.get(site,'')},
                 prep + 'dialog/ended',
                 self.callback_hotword_dialog_ended)
 
@@ -170,11 +207,12 @@ class DialogManagerService(MqttService):
             if text:
                 await self.send_and_wait(
                     prep + 'tts/say',
-                    payload,
+                    # id from last dialog started
+                    {"id":payload.get('id','no_id')},
                     prep + 'tts/finished',
                     self.callback_dmcontinue_ttsfinished)
             else:
-                await self.client.publish(prep + 'asr/start', json.dumps({"id":payload.get("id","")}))
+                await self.client.publish(prep + 'asr/start', json.dumps({"id":payload.get("id","no_id")}))
                 await self.client.publish(prep + 'microphone/start', json.dumps({}))
                 
         elif topic == prep + 'dialog/start':
@@ -183,22 +221,30 @@ class DialogManagerService(MqttService):
 
         elif topic == prep + 'asr/text':
             text = payload.get('text','')
-            await self.client.publish(prep + 'asr/stop', json.dumps({}))
-            #self.client.publish(prep + 'hotword/stop', json.dumps({}))
-            await self.client.publish(prep + 'microphone/stop', json.dumps({}))
-            await self.client.publish(prep + 'nlu/parse', json.dumps({"query": text,"id":payload.get("id","")}))
+            uid = self.ensure_dialog_id(topic,payload)
+            if uid:
+                await self.client.publish(prep + 'asr/stop', json.dumps({"id":uid}))
+                #self.client.publish(prep + 'hotword/stop', json.dumps({}))
+                await self.client.publish(prep + 'microphone/stop', json.dumps({}))
+                await self.client.publish(prep + 'nlu/parse', json.dumps({"query": text,"id":uid}))
             
         elif topic == prep + 'nlu/intent':
-            await self.client.publish(prep + 'intent', json.dumps(payload))
+            uid = self.ensure_dialog_id(topic,payload)
+            if uid:
+                payload['id'] = uid
+                await self.client.publish(prep + 'intent', json.dumps(payload))
 
-        elif topic == prep + 'nlu/fail':
-            await self.client.publish(prep + 'dialog/end', json.dumps(payload))
+        # elif topic == prep + 'nlu/fail':
+            # await self.client.publish(prep + 'dialog/end', json.dumps(payload))
 
         elif topic == prep + 'dialog/end':
             # self.log("DM end")
-            await self.client.publish(prep + 'dialog/ended', json.dumps({}))
-            await self.client.publish(prep + 'asr/stop', json.dumps({}))
-            await self.client.publish(prep + 'microphone/start', json.dumps({}))
-            await self.client.publish(prep + 'hotword/start', json.dumps({}))
+            if self.check_dialog_id(topic,payload):
+                await self.client.publish(prep + 'dialog/ended', json.dumps({"id":payload.get("id","no_id")}))
+                await self.client.publish(prep + 'asr/stop', json.dumps({"id":payload.get("id","no_id")}))
+                await self.client.publish(prep + 'microphone/start', json.dumps({}))
+                if site in self.dialogs: 
+                    del self.dialogs[site]
+                await self.client.publish(prep + 'hotword/start', json.dumps({}))
 
      

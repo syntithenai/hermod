@@ -105,6 +105,8 @@ class GoogleAsrService(MqttService):
         #self.startASR()
         
     async def on_message(self, msg):
+        # DISABLE GOOGLE ASR
+        return
         topic = "{}".format(msg.topic)
         #self.log("ASR MESSAGE {}".format(topic))
         parts = topic.split("/")

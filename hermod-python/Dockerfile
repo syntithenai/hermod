@@ -2,7 +2,7 @@ FROM python:3.7.7-buster
 USER root
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y  mosquitto-clients mosquitto entr libc-ares-dev libwebsockets-dev libssl-dev  xsltproc docbook-xsl wget curl pulseaudio python3-dev nano libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y  nodejs mosquitto-clients mosquitto entr libc-ares-dev libwebsockets-dev libssl-dev  xsltproc docbook-xsl wget curl pulseaudio python3-dev nano libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
 
 # for pi4 need 
 # RUN apt install libatlas-base-dev libatlas3-base libjlapack-java liblapack-dev liblapack3 liblapacke liblapacke-dev libopenblas-base libopenblas-base-dev liblapack-dev liblapack3 liblapacke liblapacke-dev libtmglib3 libjlapack-java gfortran liblapack-dev musl musl-dev libgfortran4 libgcc1
@@ -16,7 +16,7 @@ COPY ./src/requirements.txt /app
 
 RUN pip install -r requirements.txt
 
-# mosquitto build to get version > 1.6 [which supports websocket max header size settings and avoids connection error bug]
+# mosquitto build to get version > 1.6 [which supports websocket max header size settings and avoids connection error bug caused by Flask cookies]
 RUN wget -q -O tmpfile https://mosquitto.org/files/source/mosquitto-1.6.9.tar.gz ; tar xzf tmpfile; rm tmpfile;  cd mosquitto-1.6.9; make WITH_WEBSOCKETS=yes; cp ./src/mosquitto /usr/sbin/mosquitto; 
 # cd ..; rm -rf mosquitto-1.6.9
 
@@ -38,5 +38,5 @@ COPY ./mosquitto/ /etc/mosquitto
 COPY ./pulseaudio/asound-pulse.conf /etc/asound.conf
 COPY ./pulseaudio/client.conf /etc/pulse/client.conf
 
-ENTRYPOINT [ "python", "./src/services.py", "-maw" ]
+ENTRYPOINT [ "python", "./src/services.py" ]
 

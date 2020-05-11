@@ -43,18 +43,11 @@ class DataLoggerService(MqttService):
         self.config = config
         self.subscribe_to = 'hermod/+/asr/text,hermod/+/nlu/intent,hermod/+/dialog/end,hermod/+/dialog/started' 
         self.dialogs = {}
-        self.nlu_log_file = config.get('services').get('DataLoggerService').get('capture_path')+'nlu'
-        self.stories_log_file = config.get('services').get('DataLoggerService').get('capture_path')+'stories'
-
-    async def callback_hotword_dialog_ended(self, prep, topic, message):
-        uid = uuid.uuid4().hex
-        await self.client.publish(prep + 'dialog/started', json.dumps({"id":uid}))
-        await self.client.publish(prep + 'asr/start', json.dumps({"id":uid}))
-        await self.client.publish(prep + 'microphone/start', json.dumps({}))
-        
-   
+        self.nlu_log_path = config.get('services').get('DataLoggerService').get('capture_path')+'nlu/'
+        self.stories_log_path = config.get('services').get('DataLoggerService').get('capture_path')+'stories/'
+ 
     async def on_message(self, msg):
-        # self.log("DM start message")
+        self.log("DLogger  message")
         # self.log(msg)
         topic = "{}".format(msg.topic)
         parts = topic.split("/")
@@ -88,9 +81,11 @@ class DataLoggerService(MqttService):
             response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
             # self.log(response)
             events = response.get('events',[])    
-       
-            self.write_stories(self.dialogs[payload.get("id")])
+            await self.write_stories(self.dialogs[payload.get("id")])
             
+    async def write_stories(self,dialog):
+        self.log('FINISH LOG')
+        self.log(dialog)
 
     async def request_get(self,url,json):
         with async_timeout.timeout(10):
@@ -98,3 +93,5 @@ class DataLoggerService(MqttService):
                 async with session.get(url,json = json, headers = {'content-type': 'application/json'}) as resp:
                     # print(resp.status)
                     return await resp.json()     
+
+

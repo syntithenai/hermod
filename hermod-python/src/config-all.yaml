@@ -21,7 +21,7 @@ services:
     binary_path: /usr/bin/pico2wave
     cache_path: /tmp/
   RasaService:
-    rasa_server: "http://localhost:5005/"
+    rasa_server: "http://localhost:5005"
   DialogManagerService:  
   # capture conversations to file
   #DataLoggerService:

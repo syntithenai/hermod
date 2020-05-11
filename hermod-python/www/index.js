@@ -80,10 +80,15 @@ var HermodWebClient = function(config) {
             // SPEAKER
             'hermod/+/speaker/play/+' : function(topic,site,payload) {
                //console.log(['speaker play',site,payload]);
+                var parts = topic.split("/")
+                var uid = 'no_id'
+                if (parts.length > 4)  {
+                    uid = parts[4]
+                }
                 if (site && site.length > 0) { 
-                    mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({})); 
+                    mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({"id":uid})); 
 					playSound(payload).then(function() {
-                        mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({})); 
+                        mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
 					}); 
                 }
             },

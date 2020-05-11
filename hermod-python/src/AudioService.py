@@ -46,7 +46,7 @@ class AudioService(MqttService):
         self.speaking = False
         self.force_stop_play = False
         self.current_volume = None
-       
+        
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
         #self.log('AUDIO SERVice {}'.format(topic))
@@ -63,15 +63,16 @@ class AudioService(MqttService):
     
             
         elif topic.startswith('hermod/' + self.site + '/speaker/play'):
+            ptl = len('hermod/' + self.site + '/speaker/play') + 1
+            playId = topic[ptl:]
+            if not len(playId) > 0:
+                playId='no_id'
             payload = {}
             try:
                 payload = json.loads(msg.payload)
             except Exception as e:
                 self.log(e)
-            self.log("payload")
             self.log(payload)
-            ptl = len('hermod/' + self.site + '/speaker/play') + 1
-            playId = topic[ptl:]
             if 'url' in payload:
                 await self.start_playing_url(payload.get('url'), playId)
             else:
@@ -109,18 +110,20 @@ class AudioService(MqttService):
             # await self.client.publish('hermod/'+self.site+'/speaker/play',wav)
             
     async def send_microphone_buffer(self):
-        if hasattr(self,'client'):
-            for a in self.microphone_buffer:
-                topic = 'hermod/' + self.site + '/microphone/audio'
-                await self.client.publish(
-                    topic, payload=a, qos=0)
-            self.microphone_buffer = []
+        pass
+        # if hasattr(self,'client'):
+            # for a in self.microphone_buffer:
+                # topic = 'hermod/' + self.site + '/microphone/audio'
+                # await self.client.publish(
+                    # topic, payload=a, qos=0)
+            # self.microphone_buffer = []
         
     def save_microphone_buffer(self,frame):
-        self.microphone_buffer.append(frame)
-        # ring buffer
-        if len(self.microphone_buffer) > 2:
-            self.microphone_buffer.pop(0)
+        pass
+        # self.microphone_buffer.append(frame)
+        # # ring buffer
+        # if len(self.microphone_buffer) > 2:
+            # self.microphone_buffer.pop(0)
 
     async def send_audio_frames(self):
         # determine which audio device
@@ -222,10 +225,10 @@ class AudioService(MqttService):
         with stream:
             await event.wait()
 
-    async def start_playing_url(self, url, playId = ''):
+    async def start_playing_url(self, url, playId):
         self.log('start playing')
         # self.force_stop_play = False;
-        await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"play_id": playId}))
+        await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         with sf.SoundFile(io.BytesIO(urlopen(url).read()),'r+') as f:
             # try slow read
             # while f.tell() < f.__len__():
@@ -248,13 +251,13 @@ class AudioService(MqttService):
             
                
         await self.client.publish("hermod/" + self.site +
-                                 "/speaker/finished", json.dumps({"play_id": playId}))
+                                 "/speaker/finished", json.dumps({"id": playId}))
         self.log('sent  p started')
                     
     async def start_playing(self, wav, playId = ''):
         self.log('start playing')
         # self.force_stop_play = False;
-        await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"play_id": playId}))
+        await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         with sf.SoundFile(io.BytesIO(bytes(wav))) as f:
             # slow read
             # while f.tell() < f.__len__():
@@ -276,7 +279,7 @@ class AudioService(MqttService):
             
                
         await self.client.publish("hermod/" + self.site +
-                                 "/speaker/finished", json.dumps({"play_id": playId}))
+                                 "/speaker/finished", json.dumps({"id": playId}))
         self.log('sent  p started')
   
                 
@@ -297,7 +300,7 @@ class AudioService(MqttService):
             # simpleaudio.stop_all()
         #p.terminate()
         await self.client.publish("hermod/" + self.site +
-                            "/speaker/finished", json.dumps({"play_id": playId}))       
+                            "/speaker/finished", json.dumps({"id": playId}))       
 
     # PULSE BASED VOLUME FUNCTIONS SET MASTER VOLUME
     # TODO - extract output device detection and run on init so device name can be used here to replace pulse

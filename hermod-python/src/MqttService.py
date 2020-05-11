@@ -51,6 +51,8 @@ class MqttService(object):
         super(MqttService, self).__init__()
         self.loop = loop
         self.subscribe_to = ''
+        # self.log('construct ')
+        # self.log(self)
   
     async def on_message(self, message):
         self.log('PARENT ONMESSAGE {} {} ', message.topic, message.payload)
@@ -65,6 +67,7 @@ class MqttService(object):
     async def run(self):
         while True:
             async with AuthenticatedMqttClient(self.config.get('mqtt_hostname','localhost'),self.config.get('mqtt_port',1883),self.config.get('mqtt_user',''),self.config.get('mqtt_password','')) as client:
+                # self.log('connected')
                 self.client = client
                 if hasattr(self,'connect_hook'):
                     await self.connect_hook()

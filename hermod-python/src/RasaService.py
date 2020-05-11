@@ -100,7 +100,7 @@ class RasaService(MqttService):
             # self.log(message)
             await self.client.subscribe('hermod/'+site+'/tts/finished')
             # self.log('SEND MESSAGES sub finish')
-            await self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message}))
+            await self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message, "id":payload.get('id','')}))
             # self.log('SEND MESSAGES sent text')
             # send action messages from server actions to client action
             # for message in messages:

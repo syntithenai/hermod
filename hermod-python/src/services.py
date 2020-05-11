@@ -25,6 +25,8 @@ from flask_dance.contrib.google import make_google_blueprint, google
 from subprocess import call, run
 import AuthService
 import WebService
+from dotenv import load_dotenv
+load_dotenv()
 
 # threads are used for external processes - mqtt, rasa, rasa action server, web server
 from ThreadHandler import ThreadHandler
@@ -43,11 +45,12 @@ PARSER = argparse.ArgumentParser(description="Run Hermod voice suite")
 PARSER.add_argument('-m', '--mqttserver',action='store_true',
 					help="Run MQTT server")
                     
-PARSER.add_argument('-mh', '--mqttserver_host',default='',
-					help="Set external MQTT server")
                  
-PARSER.add_argument('-r', '--rasaserver', type=str,
-					help="RASA server")
+PARSER.add_argument('-r', '--rasaserver', action='store_true',
+					help="Run RASA server")
+                    
+PARSER.add_argument('-t', '--train', action='store_true',
+					help="Train RASA models when starting local RASA server")
                     
 PARSER.add_argument('-w', '--webserver', action='store_true',
 					help="Run hermod web server")
@@ -55,8 +58,8 @@ PARSER.add_argument('-w', '--webserver', action='store_true',
 PARSER.add_argument('-a', '--actionserver', action='store_true',
 					help="Run local rasa_sdk action server")
                     
-PARSER.add_argument('-ss', '--skipservices', action='store_true', default=False,
-					help="Do not start hermod services")
+PARSER.add_argument('-d', '--hermod', action='store_true', default=False,
+					help="Start hermod services")
                     
 PARSER.add_argument('-sm', '--satellite', action='store_true', default=False,
 					help="Only start hermod local audio and hotword services")                   
@@ -96,20 +99,49 @@ if ARGS.actionserver > 0:
     THREAD_HANDLER.run(start_rasa_action_server)
 
 # start rasa  server
-def start_rasa_action_server(run_event):
+def start_rasa_server(run_event):
     print('START RASA SERVER')
+    if os.getenv('RASA_ACTIONS_URL') and len(os.getenv('RASA_ACTIONS_URL')) > 0:
+        # ensure rasa endpoints file matches RASA_ACTIONS_URL env var
+        endpoints_file = open(os.path.join(os.path.dirname(__file__), '../rasa/endpoints.yml'), "r")
+        endpoints = yaml.load(endpoints_file.read(), Loader=yaml.FullLoader)
+        print('ENDPOINTS')
+        print(endpoints)
+        endpoints['action_endpoint']={"url":os.getenv('RASA_ACTIONS_URL')}
+        # write updates
+        with open(os.path.join(os.path.dirname(__file__), '../rasa/endpoints.yml'),'w') as outfile:
+            yaml.dump(endpoints,outfile, default_flow_style = False)
+        print('ENDPOINTS WRITTEN')
+        
     cmd = ['rasa','run','--enable-api']  
     # '--debug',,'--model','models'
+    # p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, cwd=os.path.join(os.path.dirname(__file__),'../rasa'), env={'RASA_ACTIONS_URL':os.getenv('RASA_ACTIONS_URL')})
+    
     p2 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
     while run_event.is_set():
         time.sleep(1)
     p2.terminate()
     p2.wait()
 
+def train_rasa(run_event):
+    cmd = ['rasa','train',' --data','data/nlu.md','data/stories.md','chatito/nlu.md']  
+    # '--debug',,'--model','models'
+    p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
+    while run_event.is_set():
+        time.sleep(1)
+    p1.terminate()
+    p1.wait()
+    
+if not os.environ.get('RASA_ACTIONS_URL'):
+    os.environ['RASA_ACTIONS_URL'] = 'http://localhost:5055/webhook'
+if not os.environ.get('DUCKLING_URL'):
+    os.environ['DUCKLING_URL'] = 'http://localhost:8000'
+    
+if ARGS.train:
+    THREAD_HANDLER.run(train_rasa)    
+    
 if ARGS.rasaserver and CONFIG['services'].get('RasaService',False):
-    CONFIG['services']['RasaService']['rasa_server'] = ARGS.rasaserver
-else:
-    THREAD_HANDLER.run(start_rasa_action_server)
+    THREAD_HANDLER.run(start_rasa_server)
     
 # use recent version of mosquitto
 def start_mqtt_server(run_event):
@@ -135,20 +167,16 @@ def start_secure_mqtt_server(run_event):
 def start_mqtt_auth_watcher(run_event):
     print('START MQTT   WATCHER')
     #os.path.join(os.path.dirname(__file__),
-    cmd = ['/app/src/mosquitto_watcher.sh'] 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, cwd=os.path.join(os.path.dirname(__file__)))
+    cmd = ['/app/src/mosquitto_watcher.sh']
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) # , cwd=os.path.join(os.path.dirname(__file__))
     while run_event.is_set():
         time.sleep(1)
     p.terminate()
     p.wait()
 
-
-# MQTT  host from args
-if len(ARGS.mqttserver_host) > 0 :
-    CONFIG['mqtt_hostname']= ARGS.mqttserver_host
         
-elif ARGS.mqttserver > 0:
-    if os.environ.get('SSL_CERTIFICATES_FOLDER'):
+if ARGS.mqttserver > 0:
+    if os.environ.get('SSL_CERTIFICATES_FOLDER') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/cert.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/fullchain.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/privkey.pem'):
         # use mosquitto conf template to rewrite mosquitto conf file including env SSL_CERTIFICATES_FOLDER
         cmd = ['/app/src/update_ssl.sh' + ' ' + os.environ.get('SSL_CERTIFICATES_FOLDER')]
         p = call(cmd, shell=True, cwd=os.path.join(os.path.dirname(__file__)))
@@ -211,8 +239,12 @@ async def async_start_hermod():
     
     # OVERRIDE CONFIG
     # admin mqtt connection
-    if os.getenv('MQTT_SERVER') is not None:
-            CONFIG['mqtt_server'] = os.getenv('MQTT_SERVER')
+    if os.getenv('MQTT_HOSTNAME') is not None:
+        CONFIG['mqtt_hostname'] = os.getenv('MQTT_HOSTNAME')
+    # MQTT  host from args
+    # if len(ARGS.mqttserver_host) > 0 :
+        # CONFIG['mqtt_hostname']= ARGS.mqttserver_host
+
     if os.getenv('MQTT_PORT') is not None:
             CONFIG['mqtt_port'] = os.getenv('MQTT_PORT')
     if os.getenv('MQTT_USER') is not None:
@@ -223,19 +255,35 @@ async def async_start_hermod():
     if os.getenv('DEEPSPEECH_MODELS') is not None and 'DeepSpeechAsrService' in CONFIG['services']:
         CONFIG['services']['DeepSpeechAsrService']['model_path'] = os.getenv('DEEPSPEECH_MODELS')
     
+
+    # disable deepspeech and enable IBM ASR
+    
+    if os.getenv('IBM_SPEECH_TO_TEXT_APIKEY',None) is not None:
+            print('EENABLE ibm ASR')
+            #del CONFIG['services']['DeepspeechAsrService']
+            CONFIG['services'].pop('DeepspeechAsrService',None)
+            CONFIG['services']['IbmAsrService'] = {'vad_sensitivity':1 } #'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+            print(CONFIG['services'])
+            
+            
     # disable deepspeech and enable google ASR
-    # if os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
-            # CONFIG['services'].pop('DeepSpeechAsrService',None)
-            # CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+    if os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
+            print('EENABLE GOOGLE ASR')
+            CONFIG['services'].pop('DeepspeechAsrService',None)
+            #del CONFIG['services']['DeepspeechAsrService']
+            #print(CONFIG)
+            CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
     
-    
+    if os.getenv('RASA_URL') and len(os.getenv('RASA_URL')) > 0:
+        CONFIG['services']['RasaService']['rasa_server'] = os.getenv('RASA_URL')
         
     # SET SOUND DEVICES FROM ENVIRONMENT VARS
     if os.getenv('SPEAKER_DEVICE') is not None and 'AudioService' in CONFIG['services']:
             CONFIG['services']['AudioService']['outputdevice'] = os.getenv('SPEAKER_DEVICE')
     if os.getenv('MICROPHONE_DEVICE') is not None and 'AudioService' in CONFIG['services']:
             CONFIG['services']['AudioService']['inputdevice'] = os.getenv('MICROPHONE_DEVICE')
-    
+    print('audio override')
+    print(CONFIG['services']['AudioService'])
     # # OVERRIDE SOUND DEVICES FROM  CLI ARGS
     # if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
             # CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice
@@ -251,8 +299,8 @@ async def async_start_hermod():
         if 'AudioService' in CONFIG['services']: del CONFIG['services']['AudioService']
         if 'PicovoiceHotwordService' in CONFIG['services']: del CONFIG['services']['PicovoiceHotwordService']
         
-    #print('START SERVER 2')
-    # print(CONFIG)
+    print('START SERVER 2')
+    print(CONFIG)
     
     loop = asyncio.get_event_loop()
     # loop.set_debug(True)
@@ -269,15 +317,15 @@ async def async_start_hermod():
             # print(a.also_run)
             for i in a.also_run:
                 run_services.append(i())
-    # print('starting services')
-    # print(run_services)
+    print('starting services')
+    print(run_services)
     await asyncio.gather(*run_services)
         
     # print('started services')
     #loop.run_until_complete()
     # print('ended services')
         
-if not ARGS.skipservices:
+if ARGS.hermod:
     THREAD_HANDLER.run(start_hermod)
     
 # start all threads

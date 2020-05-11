@@ -1,3 +1,5 @@
+# hermod image doesn't have the installation requirements duckling so we use the duckling docker image
+# note the need to pass the DUCKLING_URL to hermod
 docker kill duckling
 docker rm duckling
 docker run -p 8000:8000 --name duckling rasa/duckling &
@@ -5,6 +7,7 @@ docker run -p 8000:8000 --name duckling rasa/duckling &
 
 docker kill hermodpython
 docker rm hermodpython
+# pass docker host ip to container for duckling url and pulse server
 MYIP=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'`
 DUCKLING_URL="http://$MYIP:8000"
 RASA_URL="http://$MYIP:5005"

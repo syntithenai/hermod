@@ -64,12 +64,13 @@ class DeepspeechAsrService(MqttService):
         self.block_size = int(self.RATE_PROCESS / float(self.BLOCKS_PER_SECOND))
         self.frame_duration_ms = 1000 * self.block_size // self.sample_rate
         self.vad = webrtcvad.Vad(config['services']['DeepspeechAsrService'].get('vad_sensitivity',0))
-        self.modelFile = 'output_graph.pbmm'
+        
+        self.modelFile = 'deepspeech-0.7.0-models.pbmm'
         
         # TFLITE model for ARM architecture
         system,  release, version, machine, processor = os.uname()                
         #self.log([system,  release, version, machine, processor])
-        if processor == 'armv7l': self.modelFile = 'output_graph.tflite'
+        if processor == 'armv7l': self.modelFile = 'deepspeech-0.7.0-models.tflite'
         
         self.last_start_id = {}
         self.audio_stream = {} #BytesLoop()
@@ -144,23 +145,31 @@ class DeepspeechAsrService(MqttService):
     async def activate(self,site):
         self.log('activate')
         #if not self.active[site]:
+        if os.path.isdir(self.model_path):
+            self.log('START DS ASR')
+        
             self.audio_stream[site] = BytesLoop()
             self.active[site] = True
             self.started[site] = False
             await self.client.subscribe('hermod/'+site+'/microphone/audio')
               # Load DeepSpeech model
             self.log('START DS ASR ACTIVATE '+self.model_path)
-            if os.path.isdir(self.model_path):
-                self.log('START DS ASR')
-                modelPath = os.path.join(self.model_path, self.modelFile)
-                lm = os.path.join(self.model_path, 'lm.binary')
-                trie = os.path.join(self.model_path, 'trie')
-
-                self.models[site] = deepspeech.Model(modelPath, 500)
-                if lm and trie:
-                    self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
             
-                self.stream_contexts[site] = self.models[site].createStream()
+        #deepspeech-0.7.0-models.pbmm
+        
+            modelPath = os.path.join(self.model_path, self.modelFile)
+            scorerPath = os.path.join(self.model_path, 'deepspeech-0.7.0-models.scorer')
+            # lm = os.path.join(self.model_path, 'lm.binary')
+            # trie = os.path.join(self.model_path, 'trie')
+            
+            self.log('START DS ASR ACTIVATE '+modelPath)
+
+            # self.models[site] = deepspeech.Model(modelPath, 500)
+            # if lm and trie:
+                # self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
+            self.models[site] = deepspeech.Model(modelPath)
+            self.models[site].enableExternalScorer(scorerPath)
+            self.stream_contexts[site] = self.models[site].createStream()
             
    
     async def deactivate(self,site):
@@ -256,6 +265,9 @@ class DeepspeechAsrService(MqttService):
         # self.log('startASRVAD ')
         # self.log(site)
         # self.log(self.started[site])
+        if not site in self.active or not self.active[site]:
+            await self.activate(site)
+            
         self.empty_count[site] = 0;
         self.stream_contexts[site] = self.models[site].createStream()
         while self.started[site] == True:
@@ -291,14 +303,14 @@ class DeepspeechAsrService(MqttService):
                             # self.log(self.models)
                             # self.log(self.stream_contexts)
                             try:
-                                self.models[site].feedAudioContent(self.stream_contexts[site], np.frombuffer(frame, np.int16))
+                                self.stream_contexts[site].feedAudioContent(np.frombuffer(frame, np.int16))
                                 # self.log('fed content')
                             except:
                                 self.log('error feeding content')
                                 pass
                             
                         else:
-                            text = self.models[site].finishStream(self.stream_contexts[site])
+                            text = self.stream_contexts[site].finishStream()
                             self.log('got text [{}]'.format(text))
                             if len(text) > 0:
                                 # self.log('send content '+site)

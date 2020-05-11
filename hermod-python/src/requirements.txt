@@ -1,6 +1,6 @@
 soundfile
 paho-mqtt
-deepspeech
+deepspeech==0.7.0
 pyaudio
 webrtcvad
 numpy
@@ -23,3 +23,5 @@ wikidata
 sounddevice
 wptools
 google-cloud-speech
+websocket
+

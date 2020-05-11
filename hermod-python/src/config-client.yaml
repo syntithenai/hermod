@@ -1,8 +1,0 @@
-mqtt_hostname: "localhost"
-mqtt_port: 1883
-services:
-  AudioService:
-    site: jest
-    inputdevice: "default"
-    outputdevice: "default"
-  
