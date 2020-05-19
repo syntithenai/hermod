@@ -33,7 +33,7 @@ Services can be distributed across hardware connected by a shared MQTT server.
 
 The suite provides a Dockerfile to build an image with all os and python dependancies.
 
-The resulting image is available on docker hub as syntithenai/hermod-python.  [TODO PENDING]
+The resulting image is available on docker hub as syntithenai/hermod-python.
 
 By default, the image runs all the software required for the suite in a single container.
 
