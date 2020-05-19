@@ -1,6 +1,4 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-
-},{}],2:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -510,7 +508,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"object-assign":15,"util/":5}],3:[function(require,module,exports){
+},{"object-assign":15,"util/":4}],2:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -535,14 +533,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],4:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],5:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -1132,7 +1130,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":4,"_process":17,"inherits":3}],6:[function(require,module,exports){
+},{"./support/isBuffer":3,"_process":17,"inherits":2}],5:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -1286,9 +1284,11 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
+},{}],6:[function(require,module,exports){
+
 },{}],7:[function(require,module,exports){
-arguments[4][1][0].apply(exports,arguments)
-},{"dup":1}],8:[function(require,module,exports){
+arguments[4][6][0].apply(exports,arguments)
+},{"dup":6}],8:[function(require,module,exports){
 (function (Buffer){
 /*!
  * The buffer module from node.js, for the browser.
@@ -3097,7 +3097,7 @@ var hexSliceLookupTable = (function () {
 })()
 
 }).call(this,require("buffer").Buffer)
-},{"base64-js":6,"buffer":8,"ieee754":11}],9:[function(require,module,exports){
+},{"base64-js":5,"buffer":8,"ieee754":11}],9:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -6126,7 +6126,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":23,"./internal/streams/BufferList":28,"./internal/streams/destroy":29,"./internal/streams/stream":30,"_process":17,"core-util-is":9,"events":10,"inherits":12,"isarray":14,"process-nextick-args":16,"safe-buffer":31,"string_decoder/":32,"util":7}],26:[function(require,module,exports){
+},{"./_stream_duplex":23,"./internal/streams/BufferList":28,"./internal/streams/destroy":29,"./internal/streams/stream":30,"_process":17,"core-util-is":9,"events":10,"inherits":12,"isarray":14,"process-nextick-args":16,"safe-buffer":31,"string_decoder/":32,"util":6}],26:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7111,7 +7111,7 @@ if (util && util.inspect && util.inspect.custom) {
     return this.constructor.name + ' ' + obj;
   };
 }
-},{"safe-buffer":31,"util":7}],29:[function(require,module,exports){
+},{"safe-buffer":31,"util":6}],29:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -8600,12 +8600,12 @@ function config (name) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],42:[function(require,module,exports){
+arguments[4][2][0].apply(exports,arguments)
+},{"dup":2}],43:[function(require,module,exports){
 arguments[4][3][0].apply(exports,arguments)
-},{"dup":3}],43:[function(require,module,exports){
+},{"dup":3}],44:[function(require,module,exports){
 arguments[4][4][0].apply(exports,arguments)
-},{"dup":4}],44:[function(require,module,exports){
-arguments[4][5][0].apply(exports,arguments)
-},{"./support/isBuffer":43,"_process":17,"dup":5,"inherits":42}],45:[function(require,module,exports){
+},{"./support/isBuffer":43,"_process":17,"dup":4,"inherits":42}],45:[function(require,module,exports){
 (function (Buffer){
 /* global window */
 
@@ -8781,7 +8781,7 @@ var HermodWebClient = function(config) {
             
             return new Promise(function(resolve,reject) {
                 function onConnect() {
-                    //console.log('connected')
+                    console.log('connected')
                     //console.log(config)
                     if (config.subscribe && config.subscribe.length  > 0) { 
                         mqttClient.subscribe('hermod/rasa/ready',function(err) { 
@@ -8823,7 +8823,28 @@ var HermodWebClient = function(config) {
                 mqttClient = mqtt.connect(config.server, options);
                 
                 mqttClient.on('connect', onConnect)
-                mqttClient.on('error', console.error)
+                mqttClient.on('error', function(e) {
+                    console.log('error')
+                    console.log(e)
+                    if (onCallbacks.hasOwnProperty('disconnect')) {
+                        onCallbacks['disconnect']()
+                    }
+                })
+                mqttClient.on('disconnect', function(e) {
+                    console.log('disconnect')
+                    console.log(e)
+                    if (onCallbacks.hasOwnProperty('disconnect')) {
+                        onCallbacks['disconnect']()
+                    }
+                })
+                mqttClient.on('reconnect', function(e) {
+                    console.log('reconnect')
+                    console.log(e)
+                    if (onCallbacks.hasOwnProperty('disconnect')) {
+                        onCallbacks['disconnect']()
+                    }
+                })
+
                 mqttClient.on('message',onMessageArrived);
                 //console.log('connect done')
                 
@@ -8894,21 +8915,25 @@ var HermodWebClient = function(config) {
 
         function setVolume(volume) {
             console.log('set volume '+volume)
-            gainNode.gain.value = volume/100;
+            if (gainNode && gainNode.gain) gainNode.gain.value = volume/100;
         }
         
         function muteVolume() {
             console.log('mute')
-            currentVolume = gainNode.gain.value
-            gainNode.gain.value = 0.05;
+            if (gainNode && gainNode.gain) {
+                currentVolume = gainNode.gain.value
+                gainNode.gain.value = 0.05;
+            }
             
         }
         
         function unmuteVolume() {
             console.log('unmute to '+ currentVolume)
             if (currentVolume != null) {
-                gainNode.gain.value = currentVolume;
-                currentVolume = gainNode.gain.value;
+                if (gainNode && gainNode.gain) {
+                    gainNode.gain.value = currentVolume;
+                    currentVolume = gainNode.gain.value;
+                }
             }
         }
          
@@ -9156,7 +9181,7 @@ var HermodWebClient = function(config) {
                              if (onCallbacks.hasOwnProperty('stopspeaking')) {
                                 onCallbacks['stopspeaking']()
                              }
-                      },4000);
+                      },3000);
                     });    
                       
                   }, function(e) {
@@ -9193,9 +9218,10 @@ var HermodWebClient = function(config) {
         
         
         function startMicrophone() {
-            //console.log('start rec -'+config.site)
+            console.log('start rec -'+config.site)
             isSending = true;
-           
+            //stopPlaying()
+            muteVolume()
             if (onCallbacks.hasOwnProperty('microphoneStart')) {
                 onCallbacks['microphoneStart']()
             }
@@ -9203,13 +9229,41 @@ var HermodWebClient = function(config) {
             
         }
         
-        function activateRecording(site) {
-            //console.log('activate rec'+site)
+            
+        function gotDevices(deviceInfos,site) {
+          // Handles being called several times to update labels. Preserve values.
+          console.log(['GOT DEV',site,deviceInfos])
+          device = 'default'
+          devices={}
+          for (let i = 0; i !== deviceInfos.length; ++i) {
+            const deviceInfo = deviceInfos[i];
+            if (deviceInfo.kind === 'audioinput') {
+                console.log(deviceInfo.label)
+                console.log(deviceInfo.deviceId)
+                devices[deviceInfo.label] = deviceInfo.deviceId
+                if (deviceInfo.label && deviceInfo.label.toLowerCase().indexOf('speakerphone') !== -1) {
+                    console.log('found speakerphone')
+                    device = deviceInfo.deviceId
+                }
+            }
+            devices['FINAL'] = device
+            showSlots(devices)
+          }
+          activateRecording(site,device)
+        }
+
+        function handleError(error) {
+          console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
+        }
+        
+        
+        function activateRecording(site,deviceId) {
+            console.log('activate rec'+site + deviceId)
             //this.setState({sending:true});
             //if (onCallbacks.hasOwnProperty('microphoneStart')) {
                 //onCallbacks['microphoneStart']()
             //}
-            //bindSpeakingEvents()
+            //bindSpeakingEvents()z
             if (isRecording) return;
             isRecording = true;
             
@@ -9217,10 +9271,15 @@ var HermodWebClient = function(config) {
                 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
             navigator.mozGetUserMedia || navigator.msGetUserMedia;
             }
-             try {
+            
+            try {
                 if (navigator.getUserMedia) {
+                    // TODO https://github.com/webrtc/samples/blob/gh-pages/src/content/devices/input-output/js/main.js
+                    // SELECT AUDIO INPUT DEVICE, PREFER SPEAKERPHONE IF AVAILABLE TO HELP MOBILE
+                    // NOTE CAN SET GAIN VOLUME > 1 
+                    //{deviceId: {exact: deviceId}}
                   navigator.getUserMedia({audio:true}, success, function(e) {
-                    console.log(['MIC Error capturing audio.',e]);
+                    console.log(['dMIC Error capturing audio.',e]);
                   });
                 } else {
                     console.log('MIC getUserMedia not supported in this browser.');
@@ -9229,7 +9288,7 @@ var HermodWebClient = function(config) {
                  console.log(e);
              }
             function success(e) {
-                 // console.log('got navigator')
+                  console.log('got navigator')
                   var audioContext = window.AudioContext || window.webkitAudioContext;
                   var context = new audioContext();
                   var gainNode = context.createGain();
@@ -9237,7 +9296,7 @@ var HermodWebClient = function(config) {
                   var audioInput = context.createMediaStreamSource(e);
                   
                   
-                  var bufferSize = 2048;
+                  var bufferSize = 4096;
                   
                     function convertFloat32ToInt16(buffer) {
                       if (buffer) {
@@ -9284,10 +9343,10 @@ var HermodWebClient = function(config) {
                           //console.log(['REC'])
                           resample(e.inputBuffer,16000,function(res) {
                             if (speaking) {
-                                //console.log(['SEND'])
+                                console.log(['SEND '+'hermod/'+site+'/microphone/audio'])
                                 sendAudioMessage('hermod/'+site+'/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
                             } else {
-                                //console.log(['BUFFER'])
+                                console.log(['BUFFER'])
                                 bufferAudio(Buffer.from(convertFloat32ToInt16(res)));
                             }
                           });
@@ -9304,11 +9363,12 @@ var HermodWebClient = function(config) {
         }
         function stopMicrophone() {
             isSending = false;
+            
             if (onCallbacks.hasOwnProperty('microphoneStop')) {
                 onCallbacks['microphoneStop']()
             }
             //sendMessage('hermod/'+config.site+'/asr/stop',{})
-            
+            unmuteVolume()
         }
         function stopAll() {
             stopHotword()
@@ -9317,7 +9377,8 @@ var HermodWebClient = function(config) {
         }   
         
         function init() {
-            activateRecording(config.site)
+            navigator.mediaDevices.enumerateDevices().then(function(info){ gotDevices(info,config.site)} ).catch(handleError);
+            //activateRecording(config.site)
             bindSpeakingEvents()
         }
         
@@ -9975,8 +10036,8 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-}).call(this,{"isBuffer":require("../../../../../../../../../../home/stever/.local/node-v12.16.1-linux-x64/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../../../../../../home/stever/.local/node-v12.16.1-linux-x64/lib/node_modules/browserify/node_modules/is-buffer/index.js":13}],52:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../../home/stever/.local/node-v12.16.1-linux-x64/lib/node_modules/watchify/node_modules/is-buffer/index.js")})
+},{"../../../../../../../../../../home/stever/.local/node-v12.16.1-linux-x64/lib/node_modules/watchify/node_modules/is-buffer/index.js":13}],52:[function(require,module,exports){
 "use strict";
 
 var isValue             = require("type/value/is")
@@ -14693,7 +14754,7 @@ function buildBuilder (client, opts) {
 
 module.exports = buildBuilder
 
-},{"net":7}],135:[function(require,module,exports){
+},{"net":6}],135:[function(require,module,exports){
 'use strict'
 var tls = require('tls')
 
@@ -14736,7 +14797,7 @@ function buildBuilder (mqttClient, opts) {
 
 module.exports = buildBuilder
 
-},{"tls":7}],136:[function(require,module,exports){
+},{"tls":6}],136:[function(require,module,exports){
 (function (process){
 'use strict'
 
@@ -15350,13 +15411,13 @@ arguments[4][23][0].apply(exports,arguments)
 arguments[4][24][0].apply(exports,arguments)
 },{"./_stream_transform":147,"core-util-is":51,"dup":24,"inherits":123}],146:[function(require,module,exports){
 arguments[4][25][0].apply(exports,arguments)
-},{"./_stream_duplex":144,"./internal/streams/BufferList":149,"./internal/streams/destroy":150,"./internal/streams/stream":151,"_process":17,"core-util-is":51,"dup":25,"events":10,"inherits":123,"isarray":124,"process-nextick-args":142,"safe-buffer":154,"string_decoder/":161,"util":7}],147:[function(require,module,exports){
+},{"./_stream_duplex":144,"./internal/streams/BufferList":149,"./internal/streams/destroy":150,"./internal/streams/stream":151,"_process":17,"core-util-is":51,"dup":25,"events":10,"inherits":123,"isarray":124,"process-nextick-args":142,"safe-buffer":154,"string_decoder/":161,"util":6}],147:[function(require,module,exports){
 arguments[4][26][0].apply(exports,arguments)
 },{"./_stream_duplex":144,"core-util-is":51,"dup":26,"inherits":123}],148:[function(require,module,exports){
 arguments[4][27][0].apply(exports,arguments)
 },{"./_stream_duplex":144,"./internal/streams/destroy":150,"./internal/streams/stream":151,"_process":17,"core-util-is":51,"dup":27,"inherits":123,"process-nextick-args":142,"safe-buffer":154,"timers":38,"util-deprecate":174}],149:[function(require,module,exports){
 arguments[4][28][0].apply(exports,arguments)
-},{"dup":28,"safe-buffer":154,"util":7}],150:[function(require,module,exports){
+},{"dup":28,"safe-buffer":154,"util":6}],150:[function(require,module,exports){
 arguments[4][29][0].apply(exports,arguments)
 },{"dup":29,"process-nextick-args":142}],151:[function(require,module,exports){
 arguments[4][30][0].apply(exports,arguments)
@@ -16400,7 +16461,7 @@ function trampoline (fn) {
 }
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":17,"assert":2,"buffer":8,"debug":158}],158:[function(require,module,exports){
+},{"_process":17,"assert":1,"buffer":8,"debug":158}],158:[function(require,module,exports){
 (function (process){
 /**
  * This is the web browser implementation of `debug()`.
@@ -17208,7 +17269,7 @@ FileWriter.prototype._onHeader = function (header) {
   fs.open(self.path, 'r+', onOpen);
 };
 
-},{"./writer":178,"fs":1,"util":44}],177:[function(require,module,exports){
+},{"./writer":178,"fs":7,"util":44}],177:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -18749,7 +18810,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":182,"_process":17,"buffer":8,"core-util-is":51,"events":10,"inherits":123,"isarray":181,"stream":37,"string_decoder/":187,"util":7}],184:[function(require,module,exports){
+},{"./_stream_duplex":182,"_process":17,"buffer":8,"core-util-is":51,"events":10,"inherits":123,"isarray":181,"stream":37,"string_decoder/":187,"util":6}],184:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -26208,4 +26269,4 @@ function stopRecording(siteId) {
 
 module.exports = {start : start, stop:stopRecording}
 
-},{"fs":1,"stream":37,"stream-chunker":156,"wav":175}]},{},[45]);
+},{"fs":7,"stream":37,"stream-chunker":156,"wav":175}]},{},[45]);

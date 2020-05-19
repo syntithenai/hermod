@@ -100,13 +100,11 @@ class GoogleAsrService(MqttService):
         self.turn_off_wav = f.read();
         # self.eventloop = asyncio.new_event_loop()
         # asyncio.set_event_loop(self.eventloop)
-        # self.log('have loop')
+        self.log('START GOOGLE ASR')
             
         #self.startASR()
         
     async def on_message(self, msg):
-        # DISABLE GOOGLE ASR
-        return
         topic = "{}".format(msg.topic)
         #self.log("ASR MESSAGE {}".format(topic))
         parts = topic.split("/")

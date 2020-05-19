@@ -3,6 +3,7 @@ This script starts all the service classes from config.yml
 Complete configuration is passed through to each service
 """
 #https://pythonspot.com/login-to-flask-app-with-google/
+import signal
 import importlib
 import subprocess
 import time
@@ -81,6 +82,8 @@ CONFIG = yaml.load(F.read(), Loader=yaml.FullLoader)
 # if not secrets: secrets = {}
 
 if ARGS.webserver > 0:
+    # TODO dev mode rebuild web - (NEED docker rebuild with npm global watchify)
+    # watchify index.js -v -o   static/bundle.js
     THREAD_HANDLER.run(WebService.start_server,{'config':CONFIG})
 
 
@@ -124,13 +127,22 @@ def start_rasa_server(run_event):
     p2.wait()
 
 def train_rasa(run_event):
-    cmd = ['rasa','train',' --data','data/nlu.md','data/stories.md','chatito/nlu.md']  
+    cmd = ['rasa','train',' --data','data/stories.md','data/nlu.md','data/stories.md','chatito/nlu.md']  
     # '--debug',,'--model','models'
-    p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
+    p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
     while run_event.is_set():
         time.sleep(1)
     p1.terminate()
     p1.wait()
+
+    # cmd = ['rasa','train','core']  
+    # # '--debug',,'--model','models'
+    # p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
+    # while run_event.is_set():
+        # time.sleep(1)
+    # p1.terminate()
+    # p1.wait()
+
     
 if not os.environ.get('RASA_ACTIONS_URL'):
     os.environ['RASA_ACTIONS_URL'] = 'http://localhost:5055/webhook'
@@ -226,9 +238,6 @@ if ARGS.mqttserver > 0:
 	# THREAD_HANDLER.run(start_mqtt_server)
 
 
-def start_hermod(run_event):
-    while True and run_event.is_set():
-        asyncio.run(async_start_hermod())
 
 async def async_start_hermod():
     # start hermod services as asyncio events in an event loop
@@ -246,11 +255,13 @@ async def async_start_hermod():
         # CONFIG['mqtt_hostname']= ARGS.mqttserver_host
 
     if os.getenv('MQTT_PORT') is not None:
-            CONFIG['mqtt_port'] = os.getenv('MQTT_PORT')
+            CONFIG['mqtt_port'] = int(os.getenv('MQTT_PORT'))
     if os.getenv('MQTT_USER') is not None:
             CONFIG['mqtt_user'] = os.getenv('MQTT_USER')
     if os.getenv('MQTT_PASSWORD') is not None:
             CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD')
+   
+    
     
     if os.getenv('DEEPSPEECH_MODELS') is not None and 'DeepSpeechAsrService' in CONFIG['services']:
         CONFIG['services']['DeepSpeechAsrService']['model_path'] = os.getenv('DEEPSPEECH_MODELS')
@@ -258,7 +269,7 @@ async def async_start_hermod():
 
     # disable deepspeech and enable IBM ASR
     
-    if os.getenv('IBM_SPEECH_TO_TEXT_APIKEY',None) is not None:
+    if os.getenv('IBM_SPEECH_TO_TEXT_APIKEY',None) is not None and len(os.getenv('IBM_SPEECH_TO_TEXT_APIKEY','')) > 0 :
             print('EENABLE ibm ASR')
             #del CONFIG['services']['DeepspeechAsrService']
             CONFIG['services'].pop('DeepspeechAsrService',None)
@@ -270,6 +281,7 @@ async def async_start_hermod():
     if os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
             print('EENABLE GOOGLE ASR')
             CONFIG['services'].pop('DeepspeechAsrService',None)
+            CONFIG['services'].pop('IbmAsrService',None)
             #del CONFIG['services']['DeepspeechAsrService']
             #print(CONFIG)
             CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
@@ -301,29 +313,78 @@ async def async_start_hermod():
         
     print('START SERVER 2')
     print(CONFIG)
-    
-    loop = asyncio.get_event_loop()
-    # loop.set_debug(True)
-    run_services = []
-    for service in CONFIG['services']:
-        # force dialog initialise if argument present
-        full_path = os.path.join(MODULE_DIR, 'src',service + '.py')
-        module_name = pathlib.Path(full_path).stem
-        module = importlib.import_module(module_name)
-        a = getattr(module, service)(CONFIG,loop)
-        run_services.append(a.run())
-        # extra event loop threads on init
-        if hasattr(a,'also_run'):
-            # print(a.also_run)
-            for i in a.also_run:
-                run_services.append(i())
-    print('starting services')
-    print(run_services)
-    await asyncio.gather(*run_services)
+         
+    while True:
+        loop = asyncio.get_event_loop()
+        # loop.set_debug(True)
+        run_services = []
+        for service in CONFIG['services']:
+            # force dialog initialise if argument present
+            full_path = os.path.join(MODULE_DIR, 'src',service + '.py')
+            module_name = pathlib.Path(full_path).stem
+            module = importlib.import_module(module_name)
+            print(module_name)
+            a = getattr(module, service)(CONFIG,loop)
+            run_services.append(a.run())
+            # extra event loop threads on init
+            if hasattr(a,'also_run'):
+                # print(a.also_run)
+                for i in a.also_run:
+                    run_services.append(i())
+        print('starting services')
+        print(run_services)
+        await asyncio.gather(*run_services, return_exceptions = True)
         
     # print('started services')
     #loop.run_until_complete()
     # print('ended services')
+
+
+
+def start_hermod(run_event):
+    #loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    #loop.set_exception_handler(handle_exception)
+    while True and run_event.is_set():
+        asyncio.run(async_start_hermod())
+        
+        # May want to catch other signals too
+        # signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+        # for s in signals:
+            # loop.add_signal_handler(
+                # s, lambda s=s: asyncio.create_task(shutdown(s, loop)))
+        # try:
+            # loop.create_task(async_start_hermod())
+            # loop.run_forever()
+        # finally:
+            # loop.close()
+            # logging.info("Successfully shutdown the Hermod service.")    
+        
+# https://www.roguelynn.com/words/asyncio-exception-handling/        
+async def shutdown(loop, signal=None):
+    """Cleanup tasks tied to the service's shutdown."""
+    if signal:
+        logging.info(f"Received exit signal {signal.name}...")
+    """Cleanup tasks tied to the service's shutdown."""
+    logging.info("Closing database connections")
+    logging.info("Nacking outstanding messages")
+    tasks = [t for t in asyncio.all_tasks() if t is not
+             asyncio.current_task()]
+
+    [task.cancel() for task in tasks]
+
+    logging.info(f"Cancelling {len(tasks)} outstanding tasks")
+    await asyncio.gather(*tasks)
+    logging.info(f"Flushing metrics")
+    loop.stop()
+    
+def handle_exception(loop, context):
+    # context["message"] will always be there; but context["exception"] may not
+    msg = context.get("exception", context["message"])
+    logging.error(f"Caught exception: {msg}")
+    logging.info("Shutting down...")
+    asyncio.create_task(shutdown(loop))    
         
 if ARGS.hermod:
     THREAD_HANDLER.run(start_hermod)

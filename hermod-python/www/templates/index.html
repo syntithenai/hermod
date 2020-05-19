@@ -1,8 +1,6 @@
 <html><body>
 <script  type="text/javascript" src="bundle.js" ></script>
-<pre>
-{{data.get('output')}}
-</pre>
+
 <script>
 var state = 0
 var client = null
@@ -27,14 +25,16 @@ var config = {
 }
 
 
-
+/**
+ Microphone status display
+ */
 function showDisconnected() {
     document.getElementById('microphone_button').style.backgroundColor='grey'
     document.getElementById('microphone_button').style.borderColor='black'
 }
 function showStopped() {
-    document.getElementById('microphone_button').style.backgroundColor='lightblue'
-    document.getElementById('microphone_button').style.borderColor='grey'
+    document.getElementById('microphone_button').style.backgroundColor='grey'
+    document.getElementById('microphone_button').style.borderColor='lightblue'
 }
 function showHotword() {
     document.getElementById('microphone_button').style.backgroundColor='pink'
@@ -45,8 +45,8 @@ function showListening() {
     document.getElementById('microphone_button').style.borderColor='darkblue'
 }
 function showSilentListening() {
-    document.getElementById('microphone_button').style.backgroundColor='aqua'
-    document.getElementById('microphone_button').style.borderColor='darkblue'
+    document.getElementById('microphone_button').style.backgroundColor='green'
+    document.getElementById('microphone_button').style.borderColor='green'
 }
 
 function hideSpeechBubble() {
@@ -82,6 +82,9 @@ function showSpeechBubble() {
     bubbleTimeout = setTimeout(hideSpeechBubble,5000)
 }
 
+/**
+ UI control - frames, buttons, ..
+ */
 function hideAllDisplays() {
     console.log('hideaolol')
     displays = document.getElementsByClassName('display')
@@ -90,6 +93,24 @@ function hideAllDisplays() {
         console.log(displays[i])
         displays[i].style.display = 'none'
     }
+}
+
+function showSlots(slots) {
+    //return
+    content = document.createElement('div')
+    for (slot in slots) {
+        slotContent = document.createElement('span')
+        slotContent.style.paddingRight = '1em'
+        if (slots[slot] != null) slotContent.innerText = slot+"="+slots[slot]
+        content.append(slotContent)
+    }
+    document.getElementById('slots').innerHTML = ''
+    document.getElementById('slots').append(content);
+}
+
+function showHome() {
+    hideAllDisplays()
+    document.getElementById('show_home').style.display='block'
 }
 
 function showImage(src) {
@@ -122,6 +143,8 @@ function showButtons(buttons) {
                 button.onclick=function() {client.sendNLUMessage(config.site,thebutton.nlu)}
             } else if (thebutton.url) {
                 button.onclick=function() {showUrl(thebutton.url)}
+            } else if (thebutton.frame) {
+                button.onclick=function() {showFrame(thebutton.frame)}
             }
             button.className='btn'
             buttonsList.append(button)
@@ -193,19 +216,24 @@ function stopWaiting() {
 }
 
 
-
-
         function onClick() {
-            if (state == 1) {
+            console.log('onclick '+state)
+            // state 0 - disconnected no click
+            if (state == 0) { // connected
+                client.connect().then(function() {
+                    state = 1
+                    client.startHotword().then(function() { state = 2})
+                })
+            } else if (state == 1) { // connected
                 client.stopMicrophone()
                 client.stopHotword()
                 // trigger dialog start through hermod
                 client.sendMessage('hermod/'+config.site+'/dialog/end',{})
-            } else if (state == 2) {
-                client.stopMicrophone()
-                client.stopHotword()
+            } else if (state == 2) {  // hotword active
+                //client.stopMicrophone()
+                //client.stopHotword()
                 client.sendMessage('hermod/'+config.site+'/hotword/detected',{})
-            } else if (state == 3) {
+            } else if (state == 3) { // active
                 client.stopMicrophone()
                 client.stopHotword()
                 client.sendMessage('hermod/'+config.site+'/dialog/end',{})
@@ -221,7 +249,6 @@ function stopWaiting() {
         var state = 0;
         client.bind('hotwordDetected',function() {
            showListening(); 
-           
         })
         client.bind('microphoneStart',function() {
            showListening(); 
@@ -293,6 +320,10 @@ function stopWaiting() {
                 if (payload.buttons && payload.buttons.length > 0) {
                     showButtons(payload.buttons)
                 }
+            } else if (parts.length > 3 && parts[2] == "dialog"  && parts[3] == "slots") {
+                console.log('slots')
+                payload = jsonPayload()
+                showSlots(payload)
             } else if (parts.length > 3 && parts[2] == "asr"  && parts[3] == "text") {
                 console.log('asr text')
                 payload = jsonPayload()
@@ -359,13 +390,13 @@ function stopWaiting() {
 
 
 </script>    
-<div >
+<div>
     <div id="buttons" style="float: left" >
         <span class="fixedbuttons" >
-            <button class="btn"  onClick="client.sendNLUMessage(config.site,'ask_date',[{entity:'word',value:'glissy'}])" >Date</button>
+            <button class="btn"   onClick="showHome()" >Home</button>
             <button class="btn"   onClick="client.sendMessage('hermod/'+config.site+'/display/show',{image:'https://images.unsplash.com/photo-1459682687441-7761439a709d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1110&q=80'})" >Image</button>
-            <button class="btn"   onClick="client.sendASRTextMessage(config.site,'define the word imagine')"  >Define</button>
         </span>
+        <span id="slots" ></span>
         <span class="dynamicbuttons" id="dynamicbuttons" >
         
         </span>
@@ -376,9 +407,9 @@ function stopWaiting() {
     </div>
     
            
-    <button id='microphone_button'   onClick=onClick() style="position: fixed; top: 10px; right: 10px; font-size: 1em; background-color:grey; border: 1px solid black; border-radius: 2em; height: 4em; width: 4em" >
+    <button  id='microphone_button'   onClick=onClick() style="position: fixed; top: 0.5em; right: 0.5em; font-size: 1.2em; background-color:grey; border: 2px solid black; border-radius: 2em; height: 4em; width: 4em" >
         <div style="position: relative">
-        <img id="waiting-overlay" src="/waiting_small.gif" style="display: none; position: fixed; top: 12px; right: 12px; opacity: 0.2; z-index: 50" />
+        <img id="waiting-overlay" src="/waiting_small.gif" style="display: none; position: fixed;  top: 0.8em; right: 0.8em; height: 3.2em; opacity: 0.2; z-index: 50" />
             <svg aria-hidden="true" style="position: fixed; top: 14px; right: 14px; height: 2.7em; width: 2.7em; padding: 0.3em; z-index: 60"  focusable="false" data-prefix="fas" data-icon="microphone" class="svg-inline--fa fa-microphone fa-w-11" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512"><path fill="currentColor" d="M176 352c53.02 0 96-42.98 96-96V96c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96zm160-160h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16z"></path></svg>
             <!--img style="height: 2em; width: 2em; padding: 0.4em" src='microphone-slash-solid.svg' /-->
         <div>
@@ -389,6 +420,9 @@ function stopWaiting() {
 
 <script>
     document.getElementById("microphone_button").oncontextmenu = function(event) {
+        console.log('context menu')
+        console.log(event.which)
+        console.log(event)
         if (event.which == 3) {
             stopAll()
         }
@@ -401,6 +435,45 @@ function stopWaiting() {
 
 <div style="display: none" class="display" id="show_images" >IMAGES</div>
 
+<div style="display: block; font-size: 1em" class="display" id="show_home" >
+
+<h2>Hi, I'm Edison</h2>
+
+    <div>Say <b>"Hey Edison"</b> or click on the microphone to trigger me,  then ask a question.</div>
+    <br/>
+    <div>I know about 
+    <ul>
+        <li>the capital cities and populations of countries</li>
+        <li>the meanings of lots of words (and I can spell them for you)</li>
+        <li>the date and time </li>
+        <li>basic maths</li>
+        <li>overviews for many topics from wikipedia</li>
+    </ul>
+</div>
+
+<div>If I don't know, I'll send you to wikipedia to see what your brain can find. Have Fun!  </div>
+<br/>
+<div>Say or click the following examples to see what I can do.
+<br/>
+<br/><br/>
+ <div class="helpsamplebuttons" >
+    <button class="btn"  onClick="client.sendNLUMessage(config.site,'ask_date',[])" >What's the date</button>
+    <button class="btn"  onClick="client.sendNLUMessage(config.site,'define',[{entity:'word',value:'glissy'}])" >Define "glissy"</button>
+    <button class="btn"   onClick="client.sendASRTextMessage(config.site,'tell me about aeroplanes')"  >Tell me about aeroplanes</button>
+</div>
+<div class="helpsamplebuttons" >
+    <button class="btn"  onClick="client.sendNLUMessage(config.site,'tell_me_about_place_attribute',[{entity:'place', value:'Poland'},{entity:'attribute', value:'capital'}])" >What's the capital of Poland</button>
+    <button class="btn"  onClick="client.sendNLUMessage(config.site,'spell_word',[{entity:'word',value:'pantheistic'}])" >Spell the word "pantheistic"</button>
+    
+</div>
+
+
+
+
+</div>
+
+
+</div>
 
 <iframe class="display" style="display: none;  left: 0, top: 0, overflow-y: hidden; width: 100%; height: 100%; overflow:hidden, border: None"  src='' id="show_frame" ></iframe>
 
@@ -408,6 +481,12 @@ function stopWaiting() {
 
 
 <style>
+button.btn {
+    font-size: 1.6em !important;
+    margin-right: 0.5em !important;
+    margin-bottom: 1em !important;
+}
+
 .speech-bubble-wrap {
     position: fixed;
     top: 0.5em;

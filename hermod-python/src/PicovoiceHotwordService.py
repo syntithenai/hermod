@@ -125,7 +125,7 @@ class PicovoiceHotwordService(MqttService):
             # self.log('deactivated')
         
     async def start_main(self):
-        self.log('start hotword main')
+        # self.log('start hotword main')
         try:
             while True :
                 await asyncio.sleep(0.001)
@@ -140,11 +140,11 @@ class PicovoiceHotwordService(MqttService):
                         result = self.porcupine[site].process(pcm)
                         # self.log(result)
                         if self.num_keywords == 1 and result:
-                            self.log('HOTWORD DETECTED')
+                            # self.log('HOTWORD DETECTED')
                             await self.client.publish(
                                 'hermod/' + site + '/hotword/detected', json.dumps({'hotword': self.keyword_names[0]}))
                         elif self.num_keywords > 1 and result >= 0:
-                            self.log('HOTWORD DETECTED')
+                            # self.log('HOTWORD DETECTED')
                             await self.client.publish(
                                 'hermod/' + site + '/hotword/detected', json.dumps({'hotword': self.keyword_names[result]}))
 

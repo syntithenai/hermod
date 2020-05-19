@@ -30,8 +30,11 @@ def get_mosquitto_user(email):
     # Assumes the default UTF-8
     # hash_object = hashlib.md5(email.encode())
     # email_clean = hash_object.hexdigest()
+    # letters = string.ascii_lowercase
+    # randomtag =  ''.join(random.choice(letters) for i in range(stringLength))
+    randomtag = get_password(4)
     email_clean = email.replace("@",'__')
-    email_clean = email_clean.replace(".",'_')
+    email_clean = email_clean.replace(".",'_') + '_' + randomtag
     print(email_clean)
     print('get mosq user')
     password = get_password()

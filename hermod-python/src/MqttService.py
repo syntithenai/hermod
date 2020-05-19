@@ -72,12 +72,15 @@ class MqttService(object):
                 if hasattr(self,'connect_hook'):
                     await self.connect_hook()
                 for sub in self.subscribe_to.split(","):
-                    # self.log('subscribe to {}'.format(sub))
+                    #self.log('subscribe to {}'.format(sub))
                     await client.subscribe(sub)
                 
                 async with client.unfiltered_messages() as messages:
                     async for message in messages:
-                        await self.on_message(message)
+                        try:
+                            await self.on_message(message)
+                        except Exception as e:
+                            self.log(e)
                        
             
 

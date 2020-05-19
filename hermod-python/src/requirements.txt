@@ -24,4 +24,4 @@ sounddevice
 wptools
 google-cloud-speech
 websocket
-
+inflect

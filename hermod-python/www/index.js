@@ -172,7 +172,7 @@ var HermodWebClient = function(config) {
             
             return new Promise(function(resolve,reject) {
                 function onConnect() {
-                    //console.log('connected')
+                    console.log('connected')
                     //console.log(config)
                     if (config.subscribe && config.subscribe.length  > 0) { 
                         mqttClient.subscribe('hermod/rasa/ready',function(err) { 
@@ -214,7 +214,28 @@ var HermodWebClient = function(config) {
                 mqttClient = mqtt.connect(config.server, options);
                 
                 mqttClient.on('connect', onConnect)
-                mqttClient.on('error', console.error)
+                mqttClient.on('error', function(e) {
+                    console.log('error')
+                    console.log(e)
+                    if (onCallbacks.hasOwnProperty('disconnect')) {
+                        onCallbacks['disconnect']()
+                    }
+                })
+                mqttClient.on('disconnect', function(e) {
+                    console.log('disconnect')
+                    console.log(e)
+                    if (onCallbacks.hasOwnProperty('disconnect')) {
+                        onCallbacks['disconnect']()
+                    }
+                })
+                mqttClient.on('reconnect', function(e) {
+                    console.log('reconnect')
+                    console.log(e)
+                    if (onCallbacks.hasOwnProperty('disconnect')) {
+                        onCallbacks['disconnect']()
+                    }
+                })
+
                 mqttClient.on('message',onMessageArrived);
                 //console.log('connect done')
                 
@@ -285,21 +306,25 @@ var HermodWebClient = function(config) {
 
         function setVolume(volume) {
             console.log('set volume '+volume)
-            gainNode.gain.value = volume/100;
+            if (gainNode && gainNode.gain) gainNode.gain.value = volume/100;
         }
         
         function muteVolume() {
             console.log('mute')
-            currentVolume = gainNode.gain.value
-            gainNode.gain.value = 0.05;
+            if (gainNode && gainNode.gain) {
+                currentVolume = gainNode.gain.value
+                gainNode.gain.value = 0.05;
+            }
             
         }
         
         function unmuteVolume() {
             console.log('unmute to '+ currentVolume)
             if (currentVolume != null) {
-                gainNode.gain.value = currentVolume;
-                currentVolume = gainNode.gain.value;
+                if (gainNode && gainNode.gain) {
+                    gainNode.gain.value = currentVolume;
+                    currentVolume = gainNode.gain.value;
+                }
             }
         }
          
@@ -547,7 +572,7 @@ var HermodWebClient = function(config) {
                              if (onCallbacks.hasOwnProperty('stopspeaking')) {
                                 onCallbacks['stopspeaking']()
                              }
-                      },4000);
+                      },3000);
                     });    
                       
                   }, function(e) {
@@ -584,9 +609,10 @@ var HermodWebClient = function(config) {
         
         
         function startMicrophone() {
-            //console.log('start rec -'+config.site)
+            console.log('start rec -'+config.site)
             isSending = true;
-           
+            //stopPlaying()
+            muteVolume()
             if (onCallbacks.hasOwnProperty('microphoneStart')) {
                 onCallbacks['microphoneStart']()
             }
@@ -594,13 +620,41 @@ var HermodWebClient = function(config) {
             
         }
         
-        function activateRecording(site) {
-            //console.log('activate rec'+site)
+            
+        function gotDevices(deviceInfos,site) {
+          // Handles being called several times to update labels. Preserve values.
+          console.log(['GOT DEV',site,deviceInfos])
+          device = 'default'
+          devices={}
+          for (let i = 0; i !== deviceInfos.length; ++i) {
+            const deviceInfo = deviceInfos[i];
+            if (deviceInfo.kind === 'audioinput') {
+                console.log(deviceInfo.label)
+                console.log(deviceInfo.deviceId)
+                devices[deviceInfo.label] = deviceInfo.deviceId
+                if (deviceInfo.label && deviceInfo.label.toLowerCase().indexOf('speakerphone') !== -1) {
+                    console.log('found speakerphone')
+                    device = deviceInfo.deviceId
+                }
+            }
+            devices['FINAL'] = device
+            showSlots(devices)
+          }
+          activateRecording(site,device)
+        }
+
+        function handleError(error) {
+          console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
+        }
+        
+        
+        function activateRecording(site,deviceId) {
+            console.log('activate rec'+site + deviceId)
             //this.setState({sending:true});
             //if (onCallbacks.hasOwnProperty('microphoneStart')) {
                 //onCallbacks['microphoneStart']()
             //}
-            //bindSpeakingEvents()
+            //bindSpeakingEvents()z
             if (isRecording) return;
             isRecording = true;
             
@@ -608,10 +662,15 @@ var HermodWebClient = function(config) {
                 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
             navigator.mozGetUserMedia || navigator.msGetUserMedia;
             }
-             try {
+            
+            try {
                 if (navigator.getUserMedia) {
+                    // TODO https://github.com/webrtc/samples/blob/gh-pages/src/content/devices/input-output/js/main.js
+                    // SELECT AUDIO INPUT DEVICE, PREFER SPEAKERPHONE IF AVAILABLE TO HELP MOBILE
+                    // NOTE CAN SET GAIN VOLUME > 1 
+                    //{deviceId: {exact: deviceId}}
                   navigator.getUserMedia({audio:true}, success, function(e) {
-                    console.log(['MIC Error capturing audio.',e]);
+                    console.log(['dMIC Error capturing audio.',e]);
                   });
                 } else {
                     console.log('MIC getUserMedia not supported in this browser.');
@@ -620,7 +679,7 @@ var HermodWebClient = function(config) {
                  console.log(e);
              }
             function success(e) {
-                 // console.log('got navigator')
+                  console.log('got navigator')
                   var audioContext = window.AudioContext || window.webkitAudioContext;
                   var context = new audioContext();
                   var gainNode = context.createGain();
@@ -628,7 +687,7 @@ var HermodWebClient = function(config) {
                   var audioInput = context.createMediaStreamSource(e);
                   
                   
-                  var bufferSize = 2048;
+                  var bufferSize = 4096;
                   
                     function convertFloat32ToInt16(buffer) {
                       if (buffer) {
@@ -675,10 +734,10 @@ var HermodWebClient = function(config) {
                           //console.log(['REC'])
                           resample(e.inputBuffer,16000,function(res) {
                             if (speaking) {
-                                //console.log(['SEND'])
+                                console.log(['SEND '+'hermod/'+site+'/microphone/audio'])
                                 sendAudioMessage('hermod/'+site+'/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
                             } else {
-                                //console.log(['BUFFER'])
+                                console.log(['BUFFER'])
                                 bufferAudio(Buffer.from(convertFloat32ToInt16(res)));
                             }
                           });
@@ -695,11 +754,12 @@ var HermodWebClient = function(config) {
         }
         function stopMicrophone() {
             isSending = false;
+            
             if (onCallbacks.hasOwnProperty('microphoneStop')) {
                 onCallbacks['microphoneStop']()
             }
             //sendMessage('hermod/'+config.site+'/asr/stop',{})
-            
+            unmuteVolume()
         }
         function stopAll() {
             stopHotword()
@@ -708,7 +768,8 @@ var HermodWebClient = function(config) {
         }   
         
         function init() {
-            activateRecording(config.site)
+            navigator.mediaDevices.enumerateDevices().then(function(info){ gotDevices(info,config.site)} ).catch(handleError);
+            //activateRecording(config.site)
             bindSpeakingEvents()
         }
         

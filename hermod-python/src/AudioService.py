@@ -1,6 +1,7 @@
 """
 This class captures audio from the available hardware and streams mqtt audio packets
 Streaming is enabled by a microphone/start message and stopped by microphone/stop
+The service also acts on speaker/play messages and others...
 This service is preconfigured for a single site.
 """
 
@@ -45,7 +46,8 @@ class AudioService(MqttService):
         self.vad = webrtcvad.Vad(config['services']['AudioService'].get('vad_sensitivity',0))
         self.speaking = False
         self.force_stop_play = False
-        self.current_volume = None
+        self.current_volume = '75%'
+        subprocess.call(["amixer", "-D", "pulse", "sset", "Master", "75%"])
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
@@ -101,6 +103,8 @@ class AudioService(MqttService):
             f = open(wav_file, "rb")
             wav = f.read();
             await self.client.publish('hermod/'+self.site+'/speaker/play',wav)
+        elif topic == 'hermod/'+self.site+'/hotword/detected' or topic == 'hermod/'+self.site+'/dialog/continue':
+            self.microphone_buffer = []
         elif topic == 'hermod/'+self.site+'/timeout':
             pass
             # this_folder = os.path.dirname(os.path.realpath(__file__))
@@ -110,20 +114,18 @@ class AudioService(MqttService):
             # await self.client.publish('hermod/'+self.site+'/speaker/play',wav)
             
     async def send_microphone_buffer(self):
-        pass
-        # if hasattr(self,'client'):
-            # for a in self.microphone_buffer:
-                # topic = 'hermod/' + self.site + '/microphone/audio'
-                # await self.client.publish(
-                    # topic, payload=a, qos=0)
-            # self.microphone_buffer = []
+       if hasattr(self,'client'):
+            for a in self.microphone_buffer:
+                topic = 'hermod/' + self.site + '/microphone/audio'
+                await self.client.publish(
+                    topic, payload=a, qos=0)
+            self.microphone_buffer = []
         
     def save_microphone_buffer(self,frame):
-        pass
-        # self.microphone_buffer.append(frame)
-        # # ring buffer
-        # if len(self.microphone_buffer) > 2:
-            # self.microphone_buffer.pop(0)
+        self.microphone_buffer.append(frame)
+        # ring buffer
+        if len(self.microphone_buffer) > 3:
+            self.microphone_buffer.pop(0)
 
     async def send_audio_frames(self):
         # determine which audio device
@@ -252,10 +254,10 @@ class AudioService(MqttService):
                
         await self.client.publish("hermod/" + self.site +
                                  "/speaker/finished", json.dumps({"id": playId}))
-        self.log('sent  p started')
+        #self.log('sent  p started')
                     
     async def start_playing(self, wav, playId = ''):
-        self.log('start playing')
+        #self.log('start playing')
         # self.force_stop_play = False;
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         with sf.SoundFile(io.BytesIO(bytes(wav))) as f:
@@ -280,11 +282,11 @@ class AudioService(MqttService):
                
         await self.client.publish("hermod/" + self.site +
                                  "/speaker/finished", json.dumps({"id": playId}))
-        self.log('sent  p started')
+        #self.log('sent  p started')
   
                 
     async def stop_playing(self, playId):
-        self.log('stop playing')
+        #self.log('stop playing')
         self.force_stop_play = True;
         # self.log('set force stop play')
         # if hasattr(self,'wf'):
@@ -305,24 +307,27 @@ class AudioService(MqttService):
     # PULSE BASED VOLUME FUNCTIONS SET MASTER VOLUME
     # TODO - extract output device detection and run on init so device name can be used here to replace pulse
     def set_volume(self,volume):
-        self.log('SET VOLUME '+str(volume))
+        #self.log('SET VOLUME '+str(volume))
         # get current volume
-        subprocess.call(["amixer", "-D", "pulse", "sset", "Master", str(volume)+"%"])
+        FNULL = open(os.devnull, 'w')
+        subprocess.call(["amixer", "-D", "pulse", "sset", "Master", str(volume)+"%"], stdout=FNULL, stderr=subprocess.STDOUT)
         self.current_volume = None
 
     async def mute_volume(self):
-        self.log('MUTE VOLUME ')
+        #self.log('MUTE VOLUME ')
         self.current_volume = subprocess.getoutput("amixer sget Master | grep 'Right:' | awk -F'[][]' '{ print $2 }'")
         await self.client.subscribe('hermod/'+self.site+'/asr/stop')
-        subprocess.call(["amixer", "-D", "pulse", "sset", "Master", "5%"])
+        FNULL = open(os.devnull, 'w')
+        subprocess.call(["amixer", "-D", "pulse", "sset", "Master", "5%"], stdout=FNULL, stderr=subprocess.STDOUT)
         
     async def restore_volume(self):
-        self.log('RESTORE VOLUME {}'.format(self.current_volume))
+        #self.log('RESTORE VOLUME {}'.format(self.current_volume))
         if self.current_volume != None:
             restore_to = self.current_volume
             # if not float(restore_to) > 0: 
                 # restore_to = 0
-            subprocess.call(["amixer", "-D", "pulse", "sset", "Master", '{}'.format(restore_to)])
+            FNULL = open(os.devnull, 'w')
+            subprocess.call(["amixer", "-D", "pulse", "sset", "Master", '{}'.format(restore_to)], stdout=FNULL, stderr=subprocess.STDOUT)
             self.current_volume = None
             await self.client.unsubscribe('hermod/'+self.site+'/asr/stop')
 
