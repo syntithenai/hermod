@@ -5,7 +5,7 @@ It was created to simplify integrating custom speech services into a website.
 It can also be used to build standalone alexa like devices that do not need the Internet. 
 
 
-> **This repository has recently been ported from nodejs to python.**
+> **This project has recently been ported from nodejs to python.**
 > In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
 > Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
 > Access the historic nodejs version remains available via the [nodejs branch](https://github.com/syntithenai/hermod/tree/nodejs)
@@ -14,8 +14,8 @@ It can also be used to build standalone alexa like devices that do not need the 
 The software is provided as a suite of microservices that collaborate using a shared MQTT server.
 Services include
 - audio capture and playback services for local hardware
-- audio to text - automated speech recognition(ASR)  using streaming for fastest transcriptions
-- hotword optimised audio to text 
+- audio to text - automated speech recognition(ASR)  using streaming for fastest transcriptions. Includes implementations for Deepspeech, IBM Watson and Google
+- hotword optimised audio to text using picovoice.
 - text to speech (TTS)
 - RASA based Natural Language Understanding (NLU) to determine intents and slots from text
 - RASA routing using machine learning of stories to translate a history of intents and slots into a choice about the next action.
@@ -24,15 +24,7 @@ Services include
 The software also provides a vanilla javascript library and example for integrating a hotword and visual microphone into a web page as a client of the suite.
 The client uses mqtt over websockets for live communication and streaming audio back to the hermod server.
 
-
-
-The server software is built to allow many concurrent users however local deepspeech ASR and RASA are processor and memory intensive. 
-
-A pi4 can transcribe with deepspeech streaming returning results within a couple of seconds for a single user. 
-Google online ASR is close to instant.
-
-The hermod services run in a single threaded asyncio loop to allow for scalability however each active google ASR stream starts a new multiprocessing thread (because
-the Google ASR python library doesn't play well with asyncio).
+The hermod services run in a single threaded asyncio loop to allow for scalability.
 
 Services can be distributed across hardware connected by a shared MQTT server.
 
@@ -65,8 +57,9 @@ docker-compose up
 # OR (with pulseaudio on host)  to enable local audio
 # PULSE_HOST=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'` ; docker-compose up
 
-# open http://localhost
+
 ```
+Open  (http://localhost)[http://localhost] in a web browser.
 
 Say "Hey Edison" or click the microphone button to enable speech and then ask a question.
 
@@ -84,7 +77,7 @@ It is largely written in python and requires at least python 3.7
 As per the notes below, cross platform shouldn't be too much of a stretch.
 
 The TTS service uses a Linux binary pico2wav to generate audio from text. An alternative would need to be found on other platforms.
-Many web based services offer text to speech.
+Many web based services offer text to speech. Mycroft offers mimic.
 
 For strictly web based services, audio is handled by the client browser so no problems with audio.
 
@@ -115,7 +108,7 @@ There are also operating system requirements including
 - pip install -r requirements.txt in hermod-python/src
 - npm install (in hermod-python/tests and hermod-python/rasa/chatito)
 
-*See the Dockerfile for install instructions.**
+*See the hermod-python/Dockerfile for install instructions.**
 
 
 The folder hermod-python contains a number of shell scripts for various development tasks using hermod as a docker image.
@@ -181,7 +174,7 @@ The deepspeech model files required for speech recognition are not part of this 
 **They are included in the docker image syntithenai/hermod-python available on docker hub.**
 
 If you need to download them, 
-```wget  -qO- -c https://github.com/mozilla/DeepSpeech/releases/download/v0.6.1/deepspeech-0.6.1-models.tar.gz ```
+```wget  -qO- -c https://github.com/mozilla/DeepSpeech/releases/download/v0.7.0/deepspeech-0.7.0-models.tar.gz ```
 
 By default, the model files are expected to be found in in ../deepspeech-models  relative to the source directory.
 
@@ -192,17 +185,18 @@ The environment variable DEEPSPEECH_MODELS can be used to set an alternate path.
 
 ### Google HD ASR
 
-Create resource for speech recognition and download credentials.
-https://console.developers.google.com/
-
 To enable high quality google speech recognition use console.developers.google.com to create and download credentials for a service account
 with google speech recognition API enabled. This will require that you enable billing in your google project.
+
+https://console.developers.google.com/
 
 Set environment variables to enable
 - GOOGLE_APPLICATION_CREDENTIALS=path to downloaded creds file
 - optionally GOOGLE_APPLICATION_LANGUAGE=optimise recognition for specified language. default en-AU
 
-If google credentials are provided, the DeepSpeechASR service will be automatically disabled.
+If google credentials are provided, the DeepSpeechASR and IBMASR service will be automatically disabled.
+
+Google is the most expensive online service 
 
 
 ### IBM HD ASR
@@ -305,7 +299,7 @@ When services.py starts mosquitto, it checks if the files exist. If they do it r
 If the certificate files are not available, mosquitto starts without SSL.
 In both cases, mosquitto web sockets is exposed on port 9001.
 
-The web server serves https on port 443 if the certificate files are available other wise http on port 80.
+The web server serves https on port 443 if the certificate files are available otherwise http on port 80.
 
 
 ### Local Audio
@@ -498,7 +492,7 @@ All messages in the subtopic are available by binding to the message event using
 `client.bind('message',function(message,payloadIn) {})`
 
 The client exposes methods including
-# TODO
+
 **volume management**
 - setVolume
 - muteVolume
@@ -530,7 +524,6 @@ The client exposes methods including
 - stopMicrophone
 
 
-eg
 
 
 ### Monitoring
@@ -545,6 +538,8 @@ mqtt_sub -h localhost -u hermod -P -hermod_server  -v -t 'hermod/+/asr/+' -t 'he
 ```
 
 ### Tests
+
+*TODO update test suite to latest image and features.*
 
 The test suite was developed with nodejs and npm. jest is used as a testing library for hermod-nodejs.
 
@@ -562,6 +557,8 @@ npm test
 
 ## Hermod MQTT Services
 
+TODO update the following message reference for recent changes
+
 
 ### Dialog ID
 
@@ -572,32 +569,21 @@ An id is created (if missing) when the dialog manager receives  dialog/start, di
 
 ### Audio Buffers
 
-Microphone audio passes through
+Both local and web AudioServices buffer captured audio. 
 
-- pyaudio
+To minimise network traffic, voice detection algorithms are used to enable and disable streaming of audio packets.
 
-- python audio service OR web audio client (hotword detection via direct audio access on client)
-    - short buffer that is sent when the service detects that a user has started speaking
+When voice detection hears speech, the buffered audio is sent before starting to stream packets.
 
-- mqtt server
+When voice detection hears no speech for a short period, audio streaming is paused. 
 
-- hotword server 
-    - captures audio into a buffer on one coroutine and reads the buffer as fast as possible in another coroutine.
 
-- asr server DS
-    - captures audio into a buffer on one coroutine 
-    - another coroutine reads the buffer, checking for speech ....
 
-OR
-- asr server IBM
-
-OR
-- asr server GOOGLE
 
 
 ### Media Streaming
 
-The media server can play and record audio on a device and send or receive it from the MQTT bus. 
+The media service can play and record audio on a device and send or receive it from the MQTT bus. 
 
 The ASR and Hotword services listen for audio via the MQTT bus. The TTS service sends audio file of generated speech to the MQTT bus.
 
@@ -1138,3 +1124,6 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
 - Dialog Flow/Routing
   - (RASA Core)[https://rasa.com/docs/rasa/core/about/]
 
+https://github.com/samfeder/banter-deepspeech/blob/master/serverless.yml
+
+https://medium.com/@lukasgrasse/deploying-mozilla-deepspeech-models-to-aws-lambda-using-serverless-b5405ccd546b

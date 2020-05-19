@@ -35,8 +35,8 @@ services:
     image: syntithenai/hermod-python
     build: ./hermod-python/
     container_name: hermodpython
-    entrypoint: ['sleep','500000']
-    #entrypoint: ['python','./services.py','-d'] # ,'-nl'
+    #entrypoint: ['sleep','500000']
+    entrypoint: ['python','./services.py','-d'] # ,'-nl'
     working_dir: '/app/src'
     privileged: true
     environment:
