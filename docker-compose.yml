@@ -11,7 +11,7 @@ services:
 # mqtt
   mqtt:
     image: syntithenai/hermod-python
-    build: ./hermod-python/
+    #build: ./hermod-python/
     container_name: mqtt
     entrypoint: ['python','/app/src/services.py','-m']
     environment:
@@ -33,7 +33,7 @@ services:
 # hermod
   hermod:
     image: syntithenai/hermod-python
-    build: ./hermod-python/
+    #build: ./hermod-python/
     container_name: hermodpython
     #entrypoint: ['sleep','500000']
     entrypoint: ['python','./services.py','-d'] # ,'-nl'
@@ -86,7 +86,7 @@ services:
 # hermod web server
   hermodweb:
     image: syntithenai/hermod-python
-    build: ./hermod-python/
+    #build: ./hermod-python/
     container_name: hermodweb
     #entrypoint: ['sleep','1000000']
     entrypoint: ['python','/app/src/services.py','-w']
@@ -116,7 +116,7 @@ services:
 # rasa
   rasa:
     image: syntithenai/hermod-python
-    build: ./hermod-python/
+    #build: ./hermod-python/
     container_name: rasa
     entrypoint: ['python','/app/src/services.py','-r'] # -t
     environment:
@@ -131,7 +131,7 @@ services:
 # rasa action server
   rasa_actions:
     image: syntithenai/hermod-python
-    build: ./hermod-python
+    #build: ./hermod-python
     container_name: rasa_actions
     #entrypoint: ['sleep','1000000']
     entrypoint: ['python','/app/src/services.py','-a']
