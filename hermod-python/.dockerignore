@@ -3,7 +3,6 @@ bin
 include
 lib
 lib64
-models
 include
 share
 pyenv.cfg

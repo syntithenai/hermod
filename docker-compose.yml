@@ -73,7 +73,7 @@ services:
       # dev mount src
       - ./hermod-python/src:/app/src  
       # dev mount rasa model
-      - ./hermod-python/rasa:/app/rasa  
+      #- ./hermod-python/rasa:/app/rasa  
    
       # access to pulse audio cookie from the host
       - ${HOME}/.config/pulse/cookie:/tmp/cookie 
@@ -124,7 +124,7 @@ services:
       RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
     volumes:
       - ./hermod-python/src:/app/src 
-      - ./hermod-python/rasa:/app/rasa  
+      #- ./hermod-python/rasa:/app/rasa  
     #ports:
     #  - 5005
       
@@ -142,7 +142,7 @@ services:
       MQTT_PORT: 1883
     volumes:
       - ./hermod-python/src:/app/src 
-      - ./hermod-python/rasa:/app/rasa  
+      #- ./hermod-python/rasa:/app/rasa  
       
     #ports:
     # - 5055  
