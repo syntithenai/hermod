@@ -1,0 +1,11 @@
+import ./slot_person.chatito
+
+
+%[tell_me_about_person_attribute]('training': '500')
+    what [job]{"entity":"attribute","value":"occupation"} does @[person] have
+    what does @[person] do [for a job]{"entity":"attribute","value":"occupation"}
+    what does @[person] do to [make a living]{"entity":"attribute","value":"occupation"}
+    how does @[person] [make money]{"entity":"attribute","value":"occupation"}
+    when is @[person] [birthday]{"entity":"attribute","value":"date of birth"}
+    what [job]{"entity":"attribute","value":"occupation"} did @[person] do
+    what is @[person] [birth day]{"entity":"attribute","value":"date of birth"}

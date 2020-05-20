@@ -1,0 +1,13 @@
+%[ask_date]
+    what is the ~[date]
+    what's ~[date] 
+    tell me the ~[date]
+    what's the ~[date]
+    what ~[date] is it
+
+~[date]
+    date
+    date today
+    today's date
+    hour of the day
+

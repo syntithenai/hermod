@@ -1,0 +1,10 @@
+import ./slot_number.chatito
+
+%[maths_add_numbers]('training':'100')
+    what is @[number] plus @[number]
+    what is @[number] and @[number]
+    what is the sum of @[number] plus @[number]
+    add @[number] to @[number]
+    add @[number] and @[number]
+    add @[number] and @[number] together
+    what is @[number] @[number]

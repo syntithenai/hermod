@@ -1,0 +1,23 @@
+import ./slot_person.chatito
+
+%[ask_about_person]('training': '300')
+    who is @[person]
+    tell me about is @[person]
+    give me a bio for @[person]
+    give me a biography for @[person]
+    who is the ~[role?] @[person]
+    tell me about the  ~[role?] @[person]
+    tell me about  ~[role?] @[person]
+
+~[role]
+    artist
+    musician
+    performer
+    judge
+    actor
+    politician
+    reverend
+    person
+
+
+

@@ -1,0 +1,7 @@
+import ./slot_word.chatito
+
+%[define]('training': '500')
+    define @[word]
+    what does @[word] mean
+    what is the meaning of @[word]
+    define the word @[word]

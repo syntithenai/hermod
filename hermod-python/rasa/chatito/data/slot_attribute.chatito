@@ -1,0 +1,8 @@
+@[attribute]
+    weight
+    height
+    size
+    radius
+    use
+    color
+    material

@@ -1,0 +1,97 @@
+actions:
+- action_end
+- action_maths_add_numbers
+- action_maths_divide_numbers
+- action_maths_multiply_numbers
+- action_maths_subtract_numbers
+- action_convert_units
+- action_spell_word
+- action_tell_time
+- action_tell_date
+- action_tell_me_more
+- action_search_wikipedia
+- action_search_wikipedia_place
+- action_search_wikipedia_person
+- action_search_wiktionary
+- action_search_wikidata
+- action_search_wikidata_place
+- action_search_wikidata_person
+- action_search_wikidata_followup
+- utter_goodbye
+- utter_can_say
+- utter_ok
+
+entities:
+- query
+- number
+- attribute
+- thing
+- word
+- place
+- person
+- from_unit
+- to_unit
+
+intents:
+- tell_me_about
+- tell_me_about_place
+- tell_me_about_person
+- tell_me_about_place_attribute
+- tell_me_about_person_attribute
+- ask_attribute
+- ask_followup_attribute
+- tell_me_more
+- define
+- spell_word
+- what_can_i_say
+- ask_time
+- ask_date
+- maths_add_numbers
+- maths_divide_numbers
+- maths_subtract_numbers
+- maths_multiply_numbers
+- affirm
+- deny
+- quit
+- convert_units
+
+responses:
+  utter_goodbye:
+  - text: Bye
+  utter_can_say:
+  - text: I can search for information, tell the time and do math questions.
+  - text: Ask me a question
+  utter_ok:
+  - text: OK  
+  utter_wait:
+  - text: Just a sec
+  - text: I'll ask
+  utter_default:
+  - text: I didn't hear that. Try again.
+  - text: I'm not sure I heard that right. Try again.   
+  
+  
+session_config:
+  carry_over_slots_to_new_session: true
+  session_expiration_time: 60
+
+slots:
+  query:
+    type: unfeaturized
+  attribute:
+    type: unfeaturized
+  thing:
+    type: unfeaturized
+  word:
+    type: unfeaturized
+  result:
+    type: unfeaturized
+  place:
+    type: unfeaturized
+  person:
+    type: unfeaturized    
+  from_unit:
+    type: unfeaturized   
+  to_unit:
+    type: unfeaturized
+    

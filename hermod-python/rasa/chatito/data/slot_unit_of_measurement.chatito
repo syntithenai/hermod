@@ -1,0 +1,16 @@
+~[unit_of_measurement_distance_a]
+    metres
+    kilometres
+~[unit_of_measurement_distance_b]
+    yards
+    miles
+~[unit_of_measurement_weight_a]
+    kilograms
+~[unit_of_measurement_weight_b]
+    pounds
+~[unit_of_measurement_temperature_a]
+    degrees centigrade
+    centigrade
+~[unit_of_measurement_temperature_b]
+    degrees fahrenheit
+    fahrenheit
