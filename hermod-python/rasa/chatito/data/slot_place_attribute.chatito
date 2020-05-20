@@ -1,0 +1,7 @@
+@[attribute]
+    ~[capital]
+    population
+
+~[capital]('synonym': 'true')
+    capital city
+    biggest city

@@ -1,0 +1,15 @@
+{
+  "name": "hermod_agent_wikipedia_chatito",
+  "version": "1.0.0",
+  "description": "chatito files to feed rasa NLU",
+  "main": "index.js",
+  "scripts": {
+    "start": "python buildnlu.py",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chatito": "^2.3.5"
+  }
+}

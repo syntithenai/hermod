@@ -1,0 +1,30 @@
+// Ways to say no
+
+import ./common.chatito
+
+%[negative]('training': '50', 'testing': '50')
+    *[20%] ~[no]
+    ~[no] ~[please?] ~[its not ok?]
+    ~[please?] ~[no] ~[its not ok?]
+    *[20%] ~[its not ok]
+
+~[no]
+    no
+    nope
+    not really
+    that's not right
+    incorrect
+    don't do that
+
+~[its not ok]
+    i don't want that
+    didnt meant that
+    dont mean that
+    that's not what i want
+    that's not correct
+    that's wrong
+    it's not good
+    that is wrong
+    its not ok
+    its not correct
+

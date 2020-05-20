@@ -1,0 +1,10 @@
+%[ask_time]
+    what is the ~[time]
+    what ~[time] is it
+    tell me the ~[time]
+
+~[time]
+    hour
+    time
+    time of day
+    hour of the day

@@ -1,0 +1,17 @@
+import ./slot_attribute.chatito
+import ./slot_thing.chatito
+
+%[ask_attribute]
+    what [color](attribute) is a [marigold](thing)
+    what is the [radius][attribute] of a [football](thing)
+    what [country][attribute] do [gladiators](thing) come from 
+    what [do you use a]{"entity": "attribute", "value": "use"} [house](thing) for
+    what [do you use a]{"entity": "attribute", "value": "use"} [car](thing) for
+    what is [cloth](thing) [made from]{"entity": "attribute", "value": "material used"}
+    what is [petrol](thing) [made from]{"entity": "attribute", "value": "material used"}
+#    what @[attribute] is a @[thing]
+#    how @[attribute] is the @[thing]
+#    what is the @[attribute] of @[thing]
+#    what is the @[attribute] of a @[thing]
+#    what @[attribute] @[thing] for
+#    what is @[attribute] @[thing]

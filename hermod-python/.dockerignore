@@ -4,7 +4,6 @@ include
 lib
 lib64
 models
-rasa/models
 include
 share
 pyenv.cfg

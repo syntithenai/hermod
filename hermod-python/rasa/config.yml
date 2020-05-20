@@ -1,0 +1,43 @@
+#importers:
+#- name: RasaFileImporter
+  #training_data_paths: 
+    #- data
+#- name: RasaFileImporter
+#  training_data_paths: chatito
+
+language: en
+pipeline:
+  - name: WhitespaceTokenizer
+  - name: RegexFeaturizer
+  - name: LexicalSyntacticFeaturizer
+  - name: CountVectorsFeaturizer
+  - name: CountVectorsFeaturizer
+    analyzer: "char_wb"
+    min_ngram: 1
+    max_ngram: 4
+  - name: ResponseSelector
+    epochs: 100
+  - name: DucklingHTTPExtractor                                                     
+    url: ${DUCKLING_URL}                                                          
+    locale: "en_GB"                                                               
+    timezone: "UTC"                                                               
+    dimensions:                                                                   
+    - time                                                                           
+    - number                                                                      
+    - ordinal                                                                     
+    - duration          
+  - name: DIETClassifier
+    epochs: 100
+  - name: EntitySynonymMapper
+
+policies:
+  - name: FormPolicy
+  - name: MemoizationPolicy
+  - name: TEDPolicy
+    max_history: 5
+    epochs: 100
+  - name: MappingPolicy
+  - name: "FallbackPolicy"
+    nlu_threshold: 0.4
+    core_threshold: 0.3
+    fallback_action_name: "action_default_fallback"
