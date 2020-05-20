@@ -6,7 +6,6 @@ deepspeech-models/alphabet.txt
 deepspeech-models/output_graph*
 deepspeech-models/lm.binary
 deepspeech-models/trie
-rasa
 tests/rasa
 bin
 old
