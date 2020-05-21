@@ -5,7 +5,7 @@ from typing import Any, Text, Dict, List
 #
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet
+from rasa_sdk.events import SlotSet, FollowupAction
 from word2number import w2n
 ##
 # MATHS FUNCTIONS
@@ -85,6 +85,7 @@ class ActionMathsAddNumbers(Action):
             slotsets.append(SlotSet("result", str(answer)))
         else:
             dispatcher.utter_message(text="I didn't hear two numbers. Please try again.")
+        slotsets.append(FollowupAction('action_end'))  
             
         return slotsets
  
@@ -110,6 +111,7 @@ class ActionMathsSubtractNumbers(Action):
             slotsets.append(SlotSet("result", str(answer)))
         else:
             dispatcher.utter_message(text="I didn't hear two numbers. Please try again.")
+        slotsets.append(FollowupAction('action_end'))  
             
         return slotsets
  
@@ -137,6 +139,7 @@ class ActionMathsMultiplyNumbers(Action):
             slotsets.append(SlotSet("result", str(answer)))
         else:
             dispatcher.utter_message(text="I didn't hear two numbers. Please try again.")
+        slotsets.append(FollowupAction('action_end'))  
             
         return slotsets
  
@@ -164,6 +167,7 @@ class ActionMathsDivideNumbers(Action):
             slotsets.append(SlotSet("result", str(answer)))
         else:
             dispatcher.utter_message(text="I didn't hear two numbers. Please try again.")
+        slotsets.append(FollowupAction('action_end'))  
             
         return slotsets
         

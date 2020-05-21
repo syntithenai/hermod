@@ -5,7 +5,7 @@ from typing import Any, Text, Dict, List
 #
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet
+from rasa_sdk.events import SlotSet, FollowupAction
 
 from time import localtime, strftime
 ##
@@ -22,7 +22,7 @@ class ActionTellTime(Action):
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         slotsets = []
         dispatcher.utter_message(text="The time is {}".format(strftime("%I:%M %p", localtime())))
-            
+        slotsets.append(FollowupAction('action_end'))  
         return slotsets
 
 class ActionTellDate(Action):
@@ -35,6 +35,6 @@ class ActionTellDate(Action):
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         slotsets = []
         dispatcher.utter_message(text="The date is {}".format(strftime("%d %B", localtime())))
-            
+        slotsets.append(FollowupAction('action_end'))  
         return slotsets
  

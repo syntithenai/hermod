@@ -1,3 +1,4 @@
+import asyncio
 import inflect
 import sys
 import logging
@@ -7,15 +8,47 @@ import yaml
 from socket import error as socket_error        
 from typing import Any, Text, Dict, List
 #
+import concurrent.futures
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet
+from rasa_sdk.events import SlotSet, FollowupAction
 
 from mediawiki import MediaWiki
 from wikidata.client import Client
 import requests        
 import wptools        
 import paho.mqtt.client as mqtt
+
+
+import types
+from asyncio_mqtt import Client
+
+class AuthenticatedMqttClient(Client):
+    def __init__(self,hostname,port,username='',password=''):
+        super(AuthenticatedMqttClient, self).__init__(hostname,port)
+        self._client.username_pw_set(username, password)    
+        
+    # hack to include topic in yielded    
+    def _cb_and_generator(self, *, log_context, queue_maxsize=0):
+        # Queue to hold the incoming messages
+        messages = asyncio.Queue(maxsize=queue_maxsize)
+        # Callback for the underlying API
+        def _put_in_queue(client, userdata, msg):
+            try:
+                # convert set to object
+                message = types.SimpleNamespace()
+                message.topic = msg.topic
+                message.payload = msg.payload;
+                messages.put_nowait(message)
+            except asyncio.QueueFull:
+                MQTT_LOGGER.warning(f'[{log_context}] Message queue is full. Discarding message.')
+        # The generator that we give to the caller
+        async def _message_generator():
+            # Forward all messages from the queue
+            while True:
+                yield await messages.get()
+        return _put_in_queue, _message_generator()
+
 
 # config from main source. will need to be updated if action server is hosted elsewhere        
 # F = open(os.path.join(os.path.dirname(__file__), '../src/config-all.yaml'), "r")
@@ -27,13 +60,14 @@ CONFIG={
     'mqtt_port':int(os.environ.get('MQTT_PORT','1883')) ,
 }
 
-def publish(topic,payload):        
-    client = mqtt.Client()
-    client.username_pw_set(CONFIG.get('mqtt_user'), CONFIG.get('mqtt_password'))
-    client.connect(CONFIG.get('mqtt_hostname'), CONFIG.get('mqtt_port'), 60)
+async def publish(topic,payload): 
+    async with AuthenticatedMqttClient(CONFIG.get('mqtt_hostname','localhost'),CONFIG.get('mqtt_port',1883),CONFIG.get('mqtt_user',''),CONFIG.get('mqtt_password','')) as client:
+    # client = mqtt.Client()
+    # client.username_pw_set(CONFIG.get('mqtt_user'), CONFIG.get('mqtt_password'))
+    # client.connect(CONFIG.get('mqtt_hostname'), CONFIG.get('mqtt_port'), 60)
     # client.username_pw_set('hermod_server','hermod')
     # client.connect("localhost", 1883, 60)
-    client.publish(topic,json.dumps(payload))
+        await client.publish(topic,json.dumps(payload))
 
 ##
 # WIKIPEDIA FUNCTIONS
@@ -199,7 +233,21 @@ def strip_after_bracket(text):
     parts = text.split("(")
     return parts[0]
         
-
+async def send_to_wikipedia(word,site):
+    # lookup in wiktionary and send display message
+    wikipedia = MediaWiki()
+    wikipedia.set_api_url('https://en.wiktionary.org/w/api.php')
+    matches = {}
+    search_results = wikipedia.opensearch(word)
+    # logger.debug(search_results)
+    
+    if len(search_results) > 0:
+        page_title = search_results[0][0]
+        page_link = search_results[0][2]
+        # page = wikipedia.page(page_title)
+        # parts = page.content.split("\n")
+        # logger.debug([page_title,page_link])
+        await publish('hermod/'+site+'/display/show',{'frame':page_link})
 
 
 class ActionSearchWiktionary(Action):
@@ -207,7 +255,7 @@ class ActionSearchWiktionary(Action):
     def name(self) -> Text:
         return "action_search_wiktionary"
 #
-    def run(self, dispatcher: CollectingDispatcher,
+    async def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
@@ -225,22 +273,26 @@ class ActionSearchWiktionary(Action):
         slotsets = []
         if len(word) > 0:
             #dispatcher.utter_message(text=)
-            publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
-            publish('hermod/'+site+'/display/startwaiting',{})
+            await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
+            await publish('hermod/'+site+'/display/startwaiting',{})
             slotsets.append(SlotSet('word',word))
-            result = lookup_wiktionary(word)
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None,lookup_wiktionary,word)
+
+            #result = lookup_wiktionary(word)
             if result and len(result.get('definition','')) > 0:
                 #{"label":'date',"text":'what is the date'},{"label":'time',"nlu":'ask_time'}, 
-                publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Etymology',"frame":'https://en.wiktionary.org/wiki/'+word+'#Etymology'}]})
-                publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word})
+                await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Etymology',"frame":'https://en.wiktionary.org/wiki/'+word+'#Etymology'}]})
+                await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word})
                 dispatcher.utter_message(text="The meaning of "+word+" is "+ result.get('definition',''))
                 # TODO send hermod/XX/display/url   
             else:
                 dispatcher.utter_message(text="I can't find the word "+word)
-            publish('hermod/'+site+'/display/stopwaiting',{})
+            await publish('hermod/'+site+'/display/stopwaiting',{})
         else:
             dispatcher.utter_message(text="I didn't hear the word you want defined. Try again")
-       
+        slotsets.append(FollowupAction('action_end'))  
+        
         return slotsets
         
         
@@ -253,7 +305,7 @@ class ActionSearchWikipedia(Action):
     def name(self) -> Text:
         return "action_search_wikipedia"
 #
-    def run(self, dispatcher: CollectingDispatcher,
+    async def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
@@ -275,20 +327,23 @@ class ActionSearchWikipedia(Action):
                 slotsets.append(SlotSet('person',word))
         site = tracker.current_state().get('sender_id')        
         if word and len(word) > 0:
-            publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
-            publish('hermod/'+site+'/display/startwaiting',{})
-            result = lookup_wikipedia(word)
+            await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
+            await publish('hermod/'+site+'/display/startwaiting',{})
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None,lookup_wikipedia,word)
+            #result = lookup_wikipedia(word)
             if result and len(result) > 0:
-                publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
+                await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                 dispatcher.utter_message(text=word + ". " + result)
             else:
-                publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
+                await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                 dispatcher.utter_message(text="I can't find the topic "+word)
                 
         else:
             dispatcher.utter_message(text="I didn't hear your question. Try again")
-        publish('hermod/'+site+'/display/stopwaiting',{})
-       
+        await publish('hermod/'+site+'/display/stopwaiting',{})
+        slotsets.append(FollowupAction('action_end'))  
+        
         return slotsets
         
         
@@ -308,7 +363,7 @@ class ActionSearchWikidata(Action):
     def name(self) -> Text:
         return "action_search_wikidata"
 #
-    def run(self, dispatcher: CollectingDispatcher,
+    async def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
@@ -350,26 +405,29 @@ class ActionSearchWikidata(Action):
                 
         site = tracker.current_state().get('sender_id')        
         if attribute and thing and len(attribute) > 0 and len(thing) > 0:
-            publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
-            publish('hermod/'+site+'/display/startwaiting',{})
-            result = lookup_wikidata(attribute,thing)
+            await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
+            await publish('hermod/'+site+'/display/startwaiting',{})
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None,lookup_wikidata,attribute,thing)
+            
+            #result = lookup_wikidata(attribute,thing)
             if result and len(result) > 0:
                 # convert to spoken numbers
                 if attribute=="population":
                     p = inflect.engine()
                     result = p.number_to_words(result)
     
-                publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
+                await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
                 dispatcher.utter_message(text="The "+attribute+" of "+thing+" is "+ result)
                 # TODO send hermod/XX/display/url  {'url':'https://en.wiktionary.org/wiki/'+word} 
                 
             else:
-                publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
+                await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
                 dispatcher.utter_message(text="I don't know the "+attribute+" of "+thing)
         elif attribute  and len(attribute) > 0:
             dispatcher.utter_message(text="I didn't hear your question. Try again")
         elif  thing and len(thing) > 0:
-            publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
+            await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
             result = lookup_wikipedia(thing)
             if result and len(result) > 0:
                 dispatcher.utter_message(text=thing + ". " + result)
@@ -377,7 +435,8 @@ class ActionSearchWikidata(Action):
                 dispatcher.utter_message(text="I can't find the topic "+thing)
         else:
             dispatcher.utter_message(text="I didn't hear your question. Try again")
-        publish('hermod/'+site+'/display/stopwaiting',{})
+        await publish('hermod/'+site+'/display/stopwaiting',{})
+        slotsets.append(FollowupAction('action_end'))  
         return slotsets
 
         
@@ -399,7 +458,7 @@ class ActionSpellWord(Action):
     def name(self) -> Text:
         return "action_spell_word"
     
-    def run(self, dispatcher: CollectingDispatcher,
+    async def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         # logger = logging.getLogger(__name__)    
@@ -421,23 +480,12 @@ class ActionSpellWord(Action):
                 letters.append(letter.upper())
             message = word + " is spelled "+", ".join(letters)
             dispatcher.utter_message(text=message)
+            loop = asyncio.get_event_loop()
             
-            # lookup in wiktionary and send display message
-            wikipedia = MediaWiki()
-            wikipedia.set_api_url('https://en.wiktionary.org/w/api.php')
-            matches = {}
-            search_results = wikipedia.opensearch(word)
-            # logger.debug(search_results)
-            
-            if len(search_results) > 0:
-                page_title = search_results[0][0]
-                page_link = search_results[0][2]
-                # page = wikipedia.page(page_title)
-                # parts = page.content.split("\n")
-                # logger.debug([page_title,page_link])
-                publish('hermod/'+site+'/display/show',{'frame':page_link})
+            await send_to_wikipedia(word,site)
                 
         else:
             dispatcher.utter_message(text="I didn't hear the word you want to spell. Try again")
-       
+        slotsets.append(FollowupAction('action_end'))  
+        
         return slotsets  
