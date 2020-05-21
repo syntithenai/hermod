@@ -57,7 +57,7 @@ var HermodWebClient = function(config) {
         var bufferSource = null;
         var currentVolume = null;
         var SENSITIVITIES = new Float32Array([
-                0.8 //, // "Hey Edison"
+                0.9 //, // "Hey Edison"
                 //0.5, // "Hot Pink"
                 //0.5, // "Deep Pink"
                 //0.5, // "Fire Brick"

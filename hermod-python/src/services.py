@@ -278,13 +278,24 @@ async def async_start_hermod():
             
             
     # disable deepspeech and enable google ASR
-    if os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
+    if os.getenv('GOOGLE_ENABLE_ASR',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
             print('EENABLE GOOGLE ASR')
             CONFIG['services'].pop('DeepspeechAsrService',None)
             CONFIG['services'].pop('IbmAsrService',None)
             #del CONFIG['services']['DeepspeechAsrService']
             #print(CONFIG)
             CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+    
+    print('CHECK GOOGLE TTS')
+    print(os.getenv('GOOGLE_ENABLE_TTS',''))
+    print(os.getenv('GOOGLE_ENABLE_APPLICATION_CREDENTIALS',''))
+    if os.getenv('GOOGLE_ENABLE_TTS',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and len(os.getenv('GOOGLE_APPLICATION_CREDENTIALS','')) > 0 :
+            print('EENABLE GOOGLE TTS')
+            #del CONFIG['services']['DeepspeechAsrService']
+            CONFIG['services'].pop('Pico2wavTtsService',None)
+            CONFIG['services']['GoogleTtsService'] = { 'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')} #}
+            print(CONFIG['services'])
+      
     
     if os.getenv('RASA_URL') and len(os.getenv('RASA_URL')) > 0:
         CONFIG['services']['RasaService']['rasa_server'] = os.getenv('RASA_URL')
