@@ -67,6 +67,8 @@ services:
       # to enable google high quality ASR create and download service account credentials for a project with speech to text enabled
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
       GOOGLE_APPLICATION_LANGUAGE: ${GOOGLE_APPLICATION_LANGUAGE}
+      GOOGLE_ENABLE_ASR: ${GOOGLE_ENABLE_ASR}
+      GOOGLE_ENABLE_TTS: ${GOOGLE_ENABLE_TTS}
       IBM_SPEECH_TO_TEXT_APIKEY: ${IBM_SPEECH_TO_TEXT_APIKEY}
       IBM_SPEECH_TO_TEXT_REGION: ${IBM_SPEECH_TO_TEXT_REGION}
     volumes:
