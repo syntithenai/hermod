@@ -44,7 +44,10 @@ The image also provides a default set of RASA model files defining configuration
 
 ```
 # install docker
-curl -fsSL https://get.docker.com -o get-docker.sh | sh
+sudo curl -fsSL https://get.docker.com -o get-docker.sh | sh
+
+# install docker-compose
+sudo curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
 
 # clone this repository
 git clone https://github.com/syntithenai/hermod.git
@@ -53,7 +56,7 @@ git clone https://github.com/syntithenai/hermod.git
 cd hermod
 
 # start services
-docker-compose up
+sudo docker-compose up
 # OR (with pulseaudio on host)  to enable local audio
 # PULSE_HOST=`ip -4 route get 8.8.8.8 | awk {'print $7'} | tr -d '\n'` ; docker-compose up
 
@@ -76,18 +79,14 @@ It is largely written in python and requires at least python 3.7
 
 As per the notes below, cross platform shouldn't be too much of a stretch.
 
-The TTS service uses a Linux binary pico2wav to generate audio from text. An alternative would need to be found on other platforms.
-Many web based services offer text to speech. Mycroft offers mimic.
+- The TTS service uses a Linux binary pico2wav to generate audio from text. The Google TTS service is cross platform but requires the Internet.
 
-For strictly web based services, audio is handled by the client browser so no problems with audio.
-
+- For strictly web based services, audio is handled by the client browser so no problems with audio devices.
 The local Audio Service relies on pyaudio and (optionally) pulseaudio for local microphone capture and playback. 
 Cross platform audio on python is challenging. In particular streaming with asyncio. 
 Implementation on Windows or OSX would require the use of an alternate python sound library that works for those platforms.
 
-I am unclear about OS portability of other key libraries including deepspeech, picovoice and rasa.
-
-Raspberry pi4  with ARM runs deepspeech, picovoice and the rest of the hermod suite.
+- Raspberry pi4  with ARM runs deepspeech, picovoice and the rest of the hermod suite.
 However, at this time i haven't been able to install RASA on ARM (although I have in the past) due to missing libraries. 
 
 
@@ -100,7 +99,7 @@ The software package has python dependencies that can be installed with
 There are also operating system requirements including 
 - python 3.7+
 - nodejs
-- installation of a recent version of mosquitto that supports authentication
+- installation of a recent version of mosquitto
 - pico2wav binary install for the TTS service
 - portaudio
 - pulseaudio
@@ -121,6 +120,14 @@ The folder hermod-python contains a number of shell scripts for various developm
 *See the source code for details.*
 
 
+### Mosquitto
+
+Newer versions (1.6+) of mosquitto include an option to restrict the header size
+```` websockets_headers_size 4096```
+
+When websockets is sharing a domain with a Flask served web application, large cookies cause mosquitto to crash disconnect.
+
+The docker image includes a build of mosquitto 1.6.7
 
 
 
@@ -183,7 +190,7 @@ The environment variable DEEPSPEECH_MODELS can be used to set an alternate path.
 
 
 
-### Google HD ASR
+### Google  ASR
 
 To enable high quality google speech recognition use console.developers.google.com to create and download credentials for a service account
 with google speech recognition API enabled. This will require that you enable billing in your google project.
@@ -191,12 +198,46 @@ with google speech recognition API enabled. This will require that you enable bi
 https://console.developers.google.com/
 
 Set environment variables to enable
-- GOOGLE_APPLICATION_CREDENTIALS=path to downloaded creds file
-- optionally GOOGLE_APPLICATION_LANGUAGE=optimise recognition for specified language. default en-AU
+```
+GOOGLE_APPLICATION_CREDENTIALS=path to downloaded creds file
+GOOGLE_APPLICATION_LANGUAGE=optimise recognition for specified language. default en-AU
+GOOGLE_ENABLE_ASR=true
+```
 
-If google credentials are provided, the DeepSpeechASR and IBMASR service will be automatically disabled.
 
-Google is the most expensive online service 
+If google credentials are provided, the DeepSpeechASR and IBMASR services will be automatically disabled.
+
+
+Pricing is calculated in 15s increments rounded up. 100 requests costs $0.60 USD.
+
+Because most utterances are only a fraction of 15s, the rounding up approach means Google is likely to be more expensive than IBM Watson speech recognition.
+
+Because the microphone is often restarted after executing an action, some requests to the service are very short bursts of silence which still incur the 15s minimum cost.
+
+**22/05/2020**
+The first 240 (< 15s) requests are free.
+After than $0.024 USD/minute.
+
+Google is noticably more able to accurately capture uncommon words and names than the IBM service ( or deepspeech )
+
+
+### Google TTS
+
+To offload the processing of text to speech generation and for high quality voices, an alternate TTS service implementation using google is provided.
+
+
+Similarly to google ASR, enable the text to speech API in the google console, download credentials (can be the same file as ASR) and then set environment variables to enable
+```
+GOOGLE_APPLICATION_CREDENTIALS=path to downloaded creds file
+GOOGLE_APPLICATION_LANGUAGE=optimise recognition for specified language. default en-AU
+GOOGLE_ENABLE_TTS=true
+```
+
+**22/05/2020**
+Google charge $4.00 USD per million characters.
+IBM charge $20/million characters. They also offer a free tier of 10,000 characters per month.
+
+
 
 
 ### IBM HD ASR
@@ -204,10 +245,21 @@ Google is the most expensive online service
 Create resource for speech recognition and download credentials.
 https://cloud.ibm.com/resources
 
+Set environment variables to enable
+```
 IBM_SPEECH_TO_TEXT_APIKEY=your-key-here
 IBM_SPEECH_TO_TEXT_REGION=us-east    
+```
+If ibm credentials are provided, the DeepSpeechASR service will be automatically disabled.
+
+IBM speech to text pricing is calculated as the sum of all audio sent to the service over one month without rounding.
+
+**22/05/2020**
+The free plan provides 500 minutes each month.
+The standard plan costs $0.0412 USD / minute.
 
 
+    
 
 ### Authentication
 
@@ -1102,13 +1154,19 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
 
 ## Links
 
+- Contribute to the Mozilla Open Source Voice Dataset)[https://voice.mozilla.org/en/speak]
+
+
 - Hotwords
   - (picovoice)[https://picovoice.ai/]  (also for web browsers)
   - (snowboy)[https://snowboy.kitt.ai/]
+
 - Automated Speech to Text Recognition  (ASR)
   - (CMUSphinx)[http://cmusphinx.github.io/]
   - (Kaldi)[https://kaldi-asr.org/]
   - (Deepspeech)[https://github.com/mozilla/DeepSpeech]
+  - (Facebook  wav2letter)[https://github.com/facebookresearch/wav2letter]
+
 - Text to Speech  (TTS)
   - (pico2wav)[https://packages.debian.org/jessie/libttspico0]
   - (mycroft mimic)[https://mycroft-ai.gitbook.io/docs/mycroft-technologies/mimic-overview]
@@ -1116,14 +1174,22 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
   
 - Natural Language Understanding (NLU) Service
   - (RASA)[https://rasa.com/docs/rasa/nlu/about/]
+  - (Duckling)[https://github.com/facebook/duckling]
   - (Snips NLU)[https://github.com/snipsco/snips-nlu]
   - (Mycroft Adapt)[https://mycroft-ai.gitbook.io/docs/mycroft-technologies/adapt]
   - (Mycroft Padatious)[https://mycroft-ai.gitbook.io/docs/mycroft-technologies/padatious] 
+
 - NLU Tools
+  - (Apache NLP)[https://opennlp.apache.org/]
+- (Stanford NLP)[https://stanfordnlp.github.io/CoreNLP/]
   
 - Dialog Flow/Routing
   - (RASA Core)[https://rasa.com/docs/rasa/core/about/]
 
-https://github.com/samfeder/banter-deepspeech/blob/master/serverless.yml
-
-https://medium.com/@lukasgrasse/deploying-mozilla-deepspeech-models-to-aws-lambda-using-serverless-b5405ccd546b
+- Other
+  -  (RASA Voice Interface)[https://github.com/RasaHQ/rasa-voice-interface]  - Integrate RASA and deepspeech into web browser without intermediate service makes Deepspeech websocket requests and RASA calls from the browser.
+  - (JOVO Framework)[https://www.jovo.tech/]
+  -(Deepspeech on AWS Serverless)[https://github.com/samfeder/banter-deepspeech/blob/master/serverless.yml]
+      - https://medium.com/@lukasgrasse/deploying-mozilla-deepspeech-models-to-aws-lambda-using-serverless-b5405ccd546b
+  - https://jasperproject.github.io/documentation/modules/   -   voice module plugins for movies, stocks, ...
+  - http://doc.tock.ai/tock/en/ - java/kotlin bot framework 
