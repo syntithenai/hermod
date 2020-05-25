@@ -101,6 +101,7 @@ class IbmAsrService(MqttService):
         self.active = {} #False
         self.models = {}
         self.empty_count = {}
+        self.restart_count = {}
         self.stream_contexts = {}
         self.ring_buffer = {}
         self.last_audio = {}
@@ -365,8 +366,9 @@ class IbmAsrService(MqttService):
         text = ''
         sender = None
         # reconnect on error while started and no text heard
-        while site in self.started and self.started[site] and not len(text) > 0:
-            self.empty_count[site] = 0
+        self.empty_count[site] = 0;
+        while site in self.started and self.started[site] and not len(text) > 0 and self.empty_count[site] < 4:
+            #self.empty_count[site] = 0
             # clear stream buffer
             self.audio_stream[site] = BytesLoop()
             # NEW
@@ -385,7 +387,14 @@ class IbmAsrService(MqttService):
                 sender = asyncio.create_task(self.send_audio(conn,site))
 
                 # Keeps receiving transcript until we have the final transcript
-                while True:
+                while True :
+                    self.log('ASRVAD RESTART LOOP')
+                    
+                    if self.empty_count[site] >= 4:
+                        await self.client.publish('hermod/'+site+'/timeout',json.dumps({}))
+                        await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
+                        self.started[site] = False
+                        break
                     try:
                         rec = await conn.recv()
                         parsed = json.loads(rec)
@@ -403,23 +412,25 @@ class IbmAsrService(MqttService):
                             self.log(parsed.get('error'))
                             self.empty_count[site] = self.empty_count[site]  + 1
                             self.ibmlistening[site] = False
-                            # try:
-                                # #await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
-                                # await conn.close()
-                            # except Exception:
-                                # pass
+                            try:
+                                #await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
+                                await conn.close()
+                            except Exception:
+                                pass
                             break
                             
                         if parsed.get('state',False) and parsed.get('state') == 'listening':
                             self.log('ASRVAD SET LISTENING '+site)
                             self.ibmlistening[site] = True;
                         
+                        have_results = False
                         if "results" in parsed:
+                            self.log('RESULTS')
+                            self.log(parsed["results"])
                             if len(parsed["results"]) > 0:
                                 if "final" in parsed["results"][0]:
                                     if parsed["results"][0]["final"]:
-                                        if len(parsed["results"][0]['alternatives']) > 0:
-                                        
+                                        if len(parsed["results"][0]['alternatives']) > 0:                                        
                                             text = str(parsed["results"][0]["alternatives"][0].get("transcript",""))
                                             self.log('ASRVAD got text [{}]'.format(text))
                                             if len(text) > 0:
@@ -427,6 +438,7 @@ class IbmAsrService(MqttService):
                                                 # self.log(self.client)
                                                 # self.log('hermod/'+site+'/asr/text')
                                                 # self.log(json.dumps({'text':text}))
+                                                have_results = True
                                                 self.empty_count[site] = 0
                                                 await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text,"id":self.last_start_id.get(site,'')}))
                                                 # self.log('sent content '+text)
@@ -434,11 +446,11 @@ class IbmAsrService(MqttService):
                                                 await conn.close()
                                                 break
                                                 
-                                            else:
-                                                self.log('ASRVAD incc emtpy '+ self.empty_count[site])
-                                                self.empty_count[site] = self.empty_count[site]  + 1
-                                                self.ibmlistening[site] = False
-                                            
+                            if not have_results:               
+                                self.log('ASRVAD incc emtpy f'+ str(self.empty_count[site]))
+                                self.empty_count[site] = self.empty_count[site]  + 1
+                                self.ibmlistening[site] = False
+                                        
                                             #conn.close()
                                             #return False
                                             # pass
@@ -451,7 +463,16 @@ class IbmAsrService(MqttService):
                         self.log(e)
                         await conn.close()
                         break
-    
+        
+        # cleanup
+        self.started[site] = False
+        self.ibmlistening[site] = False
+        if sender:
+            sender.cancel()
+        try: 
+            await conn.close()
+        except Exception as e:
+            pass    
     
 
     async def send_audio(self,ws,site):
@@ -460,7 +481,7 @@ class IbmAsrService(MqttService):
         have_frame = False;
         async for frame in self.vad_collector(site):
             self.log('AUDIOLOOP frame {} {}'.format(site,self.empty_count[site]))
-            if self.empty_count[site] > 3 and self.started[site]:
+            if self.empty_count[site] > 2 and self.started[site]:
                 self.log('AUDIOLOOP TIMEOUT EMPTY')
                 await self.client.publish('hermod/'+site+'/timeout',json.dumps({}))
                 await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
