@@ -18,7 +18,7 @@ from wikidata.client import Client
 import requests        
 import wptools        
 import paho.mqtt.client as mqtt
-
+import motor.motor_asyncio
 
 import types
 from asyncio_mqtt import Client
@@ -106,148 +106,214 @@ WIKIDATA_ATTRIBUTES = {
 
 
 def lookup_wiktionary(word):
-    wikipedia = MediaWiki()
-    wikipedia.set_api_url('https://en.wiktionary.org/w/api.php')
-    matches = {}
-    search_results = wikipedia.opensearch(word)
-    if len(search_results) > 0:
-        page_title = search_results[0][0]
-        page = wikipedia.page(page_title)
-        parts = page.content.split("\n")
-        i = 0
-        while i < len(parts):
-            definition = ""
-            part = parts[i].strip()
-            
-            if part.startswith("=== Verb ===") or part.startswith("=== Noun ===") or part.startswith("=== Adjective ==="):
-                #print(part)
-                # try to skip the first two lines after the marker
-                if (i + 1) < len(parts): 
-                    definition  = parts[i+1]
-                if (i + 2) < len(parts) and len(parts[i+2].strip()) > 0: 
-                    definition  = parts[i+2]
-                if (i + 3) < len(parts) and len(parts[i+3].strip()) > 0: 
-                    definition  = parts[i+3]
-            
-            
-            if part.startswith("=== Adjective ===") and not 'adjective' in matches:
-                matches['adjective'] = definition
-            if part.startswith("=== Noun ===") and not 'noun' in matches:
-                matches['noun'] = definition
-            if part.startswith("=== Verb ===") and not 'verb' in matches:
-                matches['verb'] = definition
+    logger = logging.getLogger(__name__)    
+    try:
+        wikipedia = MediaWiki()
+        wikipedia.set_api_url('https://en.wiktionary.org/w/api.php')
+        matches = {}
+        search_results = wikipedia.opensearch(word)
+        if len(search_results) > 0:
+            page_title = search_results[0][0]
+            page = wikipedia.page(page_title)
+            parts = page.content.split("\n")
+            i = 0
+            while i < len(parts):
+                definition = ""
+                part = parts[i].strip()
                 
-            i = i + 1
-        final = ""
-        
-        # prefer verb, noun then adjective
-        if matches.get('adjective',False):
-            final = matches.get('adjective')
-        if matches.get('noun',False):
-            final = matches.get('noun')
-        if matches.get('verb',False):
-            final = matches.get('verb')
-        # strip leading bracket comment
-        if final[0] == '(':
-            close = final.index(")") + 1
-            final = final[close:]
-        matches['definition'] = final
-    return matches
+                if part.startswith("=== Verb ===") or part.startswith("=== Noun ===") or part.startswith("=== Adjective ==="):
+                    #print(part)
+                    # try to skip the first two lines after the marker
+                    if (i + 1) < len(parts): 
+                        definition  = parts[i+1]
+                    if (i + 2) < len(parts) and len(parts[i+2].strip()) > 0: 
+                        definition  = parts[i+2]
+                    if (i + 3) < len(parts) and len(parts[i+3].strip()) > 0: 
+                        definition  = parts[i+3]
+                
+                
+                if part.startswith("=== Adjective ===") and not 'adjective' in matches:
+                    matches['adjective'] = definition
+                if part.startswith("=== Noun ===") and not 'noun' in matches:
+                    matches['noun'] = definition
+                if part.startswith("=== Verb ===") and not 'verb' in matches:
+                    matches['verb'] = definition
+                    
+                i = i + 1
+            final = ""
+            
+            # prefer verb, noun then adjective
+            if matches.get('adjective',False):
+                final = matches.get('adjective')
+            if matches.get('noun',False):
+                final = matches.get('noun')
+            if matches.get('verb',False):
+                final = matches.get('verb')
+            # strip leading bracket comment
+            if final[0] == '(':
+                close = final.index(")") + 1
+                final = final[close:]
+            matches['definition'] = final
+        return matches
+    except:
+        e = sys.exc_info()[0]
+        logger.debug(e)
 
 
 def lookup_wikipedia(word):
-    wikipedia = MediaWiki()
-    #wikipedia.set_api_url('https://en.wikpedia.org/w/api.php')
-    summary = ''
-    search_results = wikipedia.opensearch(word)
-    if len(search_results) > 0:
-        page_title = search_results[0][0]
-        page = wikipedia.page(page_title)
-        parts = page.summary.split('. ')
-        summary = parts[0];
-    return summary
+    logger = logging.getLogger(__name__)    
+    try:
+        wikipedia = MediaWiki()
+        #wikipedia.set_api_url('https://en.wikpedia.org/w/api.php')
+        summary = ''
+        search_results = wikipedia.opensearch(word)
+        if len(search_results) > 0:
+            page_title = search_results[0][0]
+            page = wikipedia.page(page_title)
+            parts = page.summary.split('. ')
+            summary = parts[0];
+        return summary
+    except:
+        e = sys.exc_info()[0]
+        logger.debug(e)
 
 def lookup_wikidata(attribute,thing):
     logger = logging.getLogger(__name__)    
-    # logger.debug(['lookup',attribute,thing]) 
-    wikidata_id = lookup_wikidata_id(thing)
-    # client = Client()  # doctest: +SKIP
-    # entity = client.get(wikidata_id, load=True)
-    #logger.debug(json.dumps(entity))
-    page = wptools.page(wikibase=wikidata_id)
-    page.wanted_labels(list(WIKIDATA_ATTRIBUTES.get('person').keys()) + list(WIKIDATA_ATTRIBUTES.get('place').keys()))
-    page.get_wikidata()
-    facts = page.data['wikidata']
-    clean_facts = {}
-    for fact in facts:
-        clean_key = strip_after_bracket(fact).lower().strip()
-        # convert to single string, different types of facts - string, list, list of objects
-        if type(facts[fact]) == str:
-            # simple case string fact
-            clean_facts[clean_key] = strip_after_bracket(facts[fact])
-        elif type(facts[fact]) == list:
-            # assume all list elements same type, decide based on first
-            if len(facts[fact]) > 0:
-                if type(facts[fact][0]) == str:
-                    # join first five with commas
-                    max_list_facts=5
-                    # only use the first listed capital 
-                    if clean_key == "capital" or clean_key == "continent":
-                        max_list_facts=1
-                    
-                    i = 0
-                    joined_facts = []
-                    for fact_item in facts[fact]:
-                        if i < max_list_facts:
-                            joined_facts.append(strip_after_bracket(fact_item))
-                        else:
-                            break
-                        i = i+1
-                                                    
-                    clean_facts[clean_key] = ", ".join(joined_facts)
+    try:
+        # logger.debug(['lookup',attribute,thing]) 
+        wikidata_id = lookup_wikidata_id(thing)
+        # client = Client()  # doctest: +SKIP
+        # entity = client.get(wikidata_id, load=True)
+        #logger.debug(json.dumps(entity))
+        page = wptools.page(wikibase=wikidata_id)
+        page.wanted_labels(list(WIKIDATA_ATTRIBUTES.get('person').keys()) + list(WIKIDATA_ATTRIBUTES.get('place').keys()))
+        page.get_wikidata()
+        facts = page.data['wikidata']
+        clean_facts = {}
+        for fact in facts:
+            clean_key = strip_after_bracket(fact).lower().strip()
+            # convert to single string, different types of facts - string, list, list of objects
+            if type(facts[fact]) == str:
+                # simple case string fact
+                clean_facts[clean_key] = strip_after_bracket(facts[fact])
+            elif type(facts[fact]) == list:
+                # assume all list elements same type, decide based on first
+                if len(facts[fact]) > 0:
+                    if type(facts[fact][0]) == str:
+                        # join first five with commas
+                        max_list_facts=5
+                        # only use the first listed capital 
+                        if clean_key == "capital" or clean_key == "continent":
+                            max_list_facts=1
                         
-                elif type(facts[fact][0]) == dict:
-                    # if list object has amount attribute, use amount from first list item
-                    if 'amount' in facts[fact][0]:
-                        clean_facts[clean_key] = facts[fact][0].get('amount','')
-                    
-    
-    # logger.debug(clean_facts)    
-    if attribute.lower() in clean_facts:
-        return clean_facts[attribute.lower()]
-    return ""
-
+                        i = 0
+                        joined_facts = []
+                        for fact_item in facts[fact]:
+                            if i < max_list_facts:
+                                joined_facts.append(strip_after_bracket(fact_item))
+                            else:
+                                break
+                            i = i+1
+                                                        
+                        clean_facts[clean_key] = ", ".join(joined_facts)
+                            
+                    elif type(facts[fact][0]) == dict:
+                        # if list object has amount attribute, use amount from first list item
+                        if 'amount' in facts[fact][0]:
+                            clean_facts[clean_key] = facts[fact][0].get('amount','')
+                        
+        
+        # logger.debug(clean_facts)    
+        if attribute.lower() in clean_facts:
+            return clean_facts[attribute.lower()]
+        return ""
+    except:
+        e = sys.exc_info()[0]
+        logger.debug(e)
 
 def lookup_wikidata_id(thing):
-    API_ENDPOINT = "https://www.wikidata.org/w/api.php"
-    params = {'action': 'wbsearchentities','format': 'json','language': 'en','search': thing}
-    r = requests.get(API_ENDPOINT, params = params)
-    results = r.json()['search']
-    #print(results)
-    final = None
-    if len(results) > 0:
-        final = r.json()['search'][0].get('id',None)
-    return final
+    logger = logging.getLogger(__name__)
+    try:
+        API_ENDPOINT = "https://www.wikidata.org/w/api.php"
+        params = {'action': 'wbsearchentities','format': 'json','language': 'en','search': thing}
+        r = requests.get(API_ENDPOINT, params = params)
+        results = r.json()['search']
+        #print(results)
+        final = None
+        if len(results) > 0:
+            final = r.json()['search'][0].get('id',None)
+        return final
+    except:
+        e = sys.exc_info()[0]
+        logger.debug(e)
     
 def strip_after_bracket(text):
     parts = text.split("(")
     return parts[0]
         
 async def send_to_wikipedia(word,site):
-    # lookup in wiktionary and send display message
-    wikipedia = MediaWiki()
-    wikipedia.set_api_url('https://en.wiktionary.org/w/api.php')
-    matches = {}
-    search_results = wikipedia.opensearch(word)
-    # logger.debug(search_results)
+    logger = logging.getLogger(__name__)
+    try:
+        # lookup in wiktionary and send display message
+        wikipedia = MediaWiki()
+        wikipedia.set_api_url('https://en.wiktionary.org/w/api.php')
+        matches = {}
+        search_results = wikipedia.opensearch(word)
+        # logger.debug(search_results)
+        
+        if len(search_results) > 0:
+            page_title = search_results[0][0]
+            page_link = search_results[0][2]
+            # page = wikipedia.page(page_title)
+            # parts = page.content.split("\n")
+            # logger.debug([page_title,page_link])
+            await publish('hermod/'+site+'/display/show',{'frame':page_link})
+    except:
+        e = sys.exc_info()[0]
+        logger.debug(e)
     
-    if len(search_results) > 0:
-        page_title = search_results[0][0]
-        page_link = search_results[0][2]
-        # page = wikipedia.page(page_title)
-        # parts = page.content.split("\n")
-        # logger.debug([page_title,page_link])
-        await publish('hermod/'+site+'/display/show',{'frame':page_link})
+
+## DATABASE FUNCTIONS
+
+
+def mongo_connect():
+    client = motor.motor_asyncio.AsyncIOMotorClient(process.env.get('MONGO_CONNECTION_STRING'))
+
+    db = client['hermod']
+    collection = db['wikifacts']
+    return collection
+
+async def save_fact(attribute,thing,answer):
+    logger = logging.getLogger(__name__)
+    try:
+        if attribute and thing and answer: 
+            collection = mongo_connect() 
+            document = {'attribute': attribute,'thing':thing,'answer':answer}
+            result = await collection.insert_one(document)
+            print('result %s' % repr(result.inserted_id))
+    except:
+        e = sys.exc_info()[0]
+        logger.debug(e)
+        
+
+async def find_fact(attribute,thing):
+    logger = logging.getLogger(__name__)
+    try:
+        collection = mongo_connect() 
+        document = await collection.find_one({'attribute':attribute,'thing':thing})
+        print(document)
+        return document.get('answer',None)
+    except:
+        e = sys.exc_info()[0]
+        logger.debug(e)
+    
+# async def do_find():
+    # collection = mongo_connect() 
+    # cursor = collection.find({})
+    # # Modify the query before iterating
+    # #cursor.sort('i', -1).skip(1).limit(2)
+    # async for document in cursor:
+        # print(document)
 
 
 class ActionSearchWiktionary(Action):
@@ -486,6 +552,7 @@ class ActionSpellWord(Action):
                 
         else:
             dispatcher.utter_message(text="I didn't hear the word you want to spell. Try again")
+        
         slotsets.append(FollowupAction('action_end'))  
         
         return slotsets  
