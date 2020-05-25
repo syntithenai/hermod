@@ -26,5 +26,6 @@ google-cloud-speech
 websocket
 inflect
 google-cloud-texttospeech
+motor
 
 

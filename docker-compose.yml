@@ -1,6 +1,22 @@
 version: '3.4'
 
 services:
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+
   # duckling
   duckling:
     image: rasa/duckling
@@ -17,6 +33,9 @@ services:
     environment:
       # see volume mount below
       SSL_CERTIFICATES_FOLDER: /app/certs
+      # root user and password to be created on startup
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
     ports:
       - 9001:9001
       # expose for logging
@@ -40,9 +59,9 @@ services:
     working_dir: '/app/src'
     privileged: true
     environment:
-      MQTT_HOSTNAME: mqtt
-      MQTT_USER: hermod_server
-      MQTT_PASSWORD: hermod
+      MQTT_HOSTNAME: ${MQTT_HOSTNAME}
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
       MQTT_PORT: 1883
       
       RASA_URL: http://rasa:5005
@@ -137,14 +156,17 @@ services:
     container_name: rasa_actions
     #entrypoint: ['sleep','1000000']
     entrypoint: ['python','/app/src/services.py','-a']
+    # TODO - should use exposed websockets mqtt access
     environment:
       MQTT_HOSTNAME: mqtt
       MQTT_USER: hermod_server
       MQTT_PASSWORD: hermod
       MQTT_PORT: 1883
+      MONGO_CONNECTION_STRING: mongodb://root:example@mongo:27017/
+
     volumes:
       - ./hermod-python/src:/app/src 
-      #- ./hermod-python/rasa:/app/rasa  
+      - ./hermod-python/rasa:/app/rasa  
       
     #ports:
     # - 5055  

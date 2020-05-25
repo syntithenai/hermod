@@ -188,6 +188,19 @@ def start_mqtt_auth_watcher(run_event):
 
         
 if ARGS.mqttserver > 0:
+    # ensure admin password 
+    if os.getenv('MQTT_USER') is not None:
+            CONFIG['mqtt_user'] = os.getenv('MQTT_USER')
+    if os.getenv('MQTT_PASSWORD') is not None:
+            CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD')
+    print('PRESET ADMIN PASSWORD TO MOSQ DB')
+    print(CONFIG)
+    cmd = ['/usr/bin/mosquitto_passwd','-b','/etc/mosquitto/password',CONFIG['mqtt_user'],CONFIG['mqtt_password']] 
+    p = call(cmd)
+    print('SET ADMIN PASSWORD TO MOSQ DB')
+    cmd2 = ['/app/src/update_acl.sh' , CONFIG['mqtt_user']]
+    p = call(cmd2, shell=True, cwd=os.path.join(os.path.dirname(__file__)))
+    print('SET ADMIN USER IN ACL')
     if os.environ.get('SSL_CERTIFICATES_FOLDER') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/cert.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/fullchain.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/privkey.pem'):
         # use mosquitto conf template to rewrite mosquitto conf file including env SSL_CERTIFICATES_FOLDER
         cmd = ['/app/src/update_ssl.sh' + ' ' + os.environ.get('SSL_CERTIFICATES_FOLDER')]
@@ -260,7 +273,6 @@ async def async_start_hermod():
             CONFIG['mqtt_user'] = os.getenv('MQTT_USER')
     if os.getenv('MQTT_PASSWORD') is not None:
             CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD')
-   
     
     
     if os.getenv('DEEPSPEECH_MODELS') is not None and 'DeepSpeechAsrService' in CONFIG['services']:
@@ -279,7 +291,7 @@ async def async_start_hermod():
             
     # disable deepspeech and enable google ASR
     if os.getenv('GOOGLE_ENABLE_ASR',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
-            print('EENABLE GOOGLE ASR')
+            print('ENABLE GOOGLE ASR')
             CONFIG['services'].pop('DeepspeechAsrService',None)
             CONFIG['services'].pop('IbmAsrService',None)
             #del CONFIG['services']['DeepspeechAsrService']
@@ -290,7 +302,7 @@ async def async_start_hermod():
     print(os.getenv('GOOGLE_ENABLE_TTS',''))
     print(os.getenv('GOOGLE_ENABLE_APPLICATION_CREDENTIALS',''))
     if os.getenv('GOOGLE_ENABLE_TTS',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and len(os.getenv('GOOGLE_APPLICATION_CREDENTIALS','')) > 0 :
-            print('EENABLE GOOGLE TTS')
+            print('ENABLE GOOGLE TTS')
             #del CONFIG['services']['DeepspeechAsrService']
             CONFIG['services'].pop('Pico2wavTtsService',None)
             CONFIG['services']['GoogleTtsService'] = { 'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')} #}
