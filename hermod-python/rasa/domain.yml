@@ -10,13 +10,11 @@ actions:
 - action_tell_date
 - action_tell_me_more
 - action_search_wikipedia
-- action_search_wikipedia_place
-- action_search_wikipedia_person
 - action_search_wiktionary
 - action_search_wikidata
-- action_search_wikidata_place
-- action_search_wikidata_person
 - action_search_wikidata_followup
+- action_confirm_save_fact
+- action_save_fact
 - utter_goodbye
 - utter_can_say
 - utter_ok
@@ -31,13 +29,10 @@ entities:
 - person
 - from_unit
 - to_unit
+- answer
 
 intents:
 - tell_me_about
-- tell_me_about_place
-- tell_me_about_person
-- tell_me_about_place_attribute
-- tell_me_about_person_attribute
 - ask_attribute
 - ask_followup_attribute
 - tell_me_more
@@ -50,10 +45,11 @@ intents:
 - maths_divide_numbers
 - maths_subtract_numbers
 - maths_multiply_numbers
-- affirm
-- deny
 - quit
 - convert_units
+- save_fact
+- affirmative
+- negative
 
 responses:
   utter_goodbye:
@@ -76,6 +72,10 @@ session_config:
   session_expiration_time: 60
 
 slots:
+  last_wikipedia_search:
+    type: unfeaturized
+  answer:
+    type: unfeaturized
   query:
     type: unfeaturized
   attribute:

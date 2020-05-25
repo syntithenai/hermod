@@ -7,6 +7,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+        - ./hermod-python/mongo_data:/data
 
   mongo-express:
     image: mongo-express
@@ -145,7 +147,7 @@ services:
       RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
     volumes:
       - ./hermod-python/src:/app/src 
-      #- ./hermod-python/rasa:/app/rasa  
+      - ./hermod-python/rasa:/app/rasa  
     #ports:
     #  - 5005
       
@@ -154,13 +156,13 @@ services:
     image: syntithenai/hermod-python
     #build: ./hermod-python
     container_name: rasa_actions
-    #entrypoint: ['sleep','1000000']
-    entrypoint: ['python','/app/src/services.py','-a']
+    entrypoint: ['sleep','1000000']
+    #entrypoint: ['python','/app/src/services.py','-a']
     # TODO - should use exposed websockets mqtt access
     environment:
       MQTT_HOSTNAME: mqtt
-      MQTT_USER: hermod_server
-      MQTT_PASSWORD: hermod
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
       MQTT_PORT: 1883
       MONGO_CONNECTION_STRING: mongodb://root:example@mongo:27017/
 

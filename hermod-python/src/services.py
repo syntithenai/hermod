@@ -4,6 +4,7 @@ Complete configuration is passed through to each service
 """
 #https://pythonspot.com/login-to-flask-app-with-google/
 import signal
+import shlex
 import importlib
 import subprocess
 import time
@@ -28,7 +29,9 @@ import AuthService
 import WebService
 from dotenv import load_dotenv
 load_dotenv()
-
+from rasa.train import train
+from rasa.nlu.convert import convert_training_data
+    
 # threads are used for external processes - mqtt, rasa, rasa action server, web server
 from ThreadHandler import ThreadHandler
 THREAD_HANDLER = ThreadHandler()
@@ -126,22 +129,22 @@ def start_rasa_server(run_event):
     p2.terminate()
     p2.wait()
 
-def train_rasa(run_event):
-    cmd = ['rasa','train',' --data','data/stories.md','data/nlu.md','data/stories.md','chatito/nlu.md']  
-    # '--debug',,'--model','models'
-    p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
-    while run_event.is_set():
-        time.sleep(1)
-    p1.terminate()
-    p1.wait()
+def train_rasa():
+    print('TRAIN RASA')
+    
+    cmd = ['npx chatito --format rasa data/']
+    p = call(cmd, shell=True, cwd=os.path.join(os.path.dirname(__file__),'../rasa/chatito'))
+                    
+    convert_training_data(data_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/rasa_dataset_training.json'), out_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/nlu.md'), output_format="md", language="")
 
-    # cmd = ['rasa','train','core']  
-    # # '--debug',,'--model','models'
-    # p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
-    # while run_event.is_set():
-        # time.sleep(1)
-    # p1.terminate()
-    # p1.wait()
+    
+    train(
+        domain= os.path.join(os.path.dirname(__file__),'../rasa/domain.yml'),
+        config= os.path.join(os.path.dirname(__file__),'../rasa/config.yml'),
+        training_files= [os.path.join(os.path.dirname(__file__),'../rasa/data/nlu.md'),os.path.join(os.path.dirname(__file__),'../rasa/data/stories.md'),os.path.join(os.path.dirname(__file__),'../rasa/chatito/nlu.md')],
+        output= os.path.join(os.path.dirname(__file__),'../rasa/models')
+    )
+  
 
     
 if not os.environ.get('RASA_ACTIONS_URL'):
@@ -150,7 +153,7 @@ if not os.environ.get('DUCKLING_URL'):
     os.environ['DUCKLING_URL'] = 'http://localhost:8000'
     
 if ARGS.train:
-    THREAD_HANDLER.run(train_rasa)    
+    train_rasa()
     
 if ARGS.rasaserver and CONFIG['services'].get('RasaService',False):
     THREAD_HANDLER.run(start_rasa_server)
@@ -334,8 +337,8 @@ async def async_start_hermod():
         if 'AudioService' in CONFIG['services']: del CONFIG['services']['AudioService']
         if 'PicovoiceHotwordService' in CONFIG['services']: del CONFIG['services']['PicovoiceHotwordService']
         
-    print('START SERVER 2')
-    print(CONFIG)
+    # print('START SERVER 2')
+    # print(CONFIG)
          
     while True:
         loop = asyncio.get_event_loop()

@@ -1,0 +1,19 @@
+import ./slot_person.chatito
+import ./slot_place.chatito
+import ./slot_thing.chatito
+
+%[tell_me_more]
+    tell me more
+    give me more
+    i want to know more
+    keep going
+    tell me more about @[thing]
+    give me more information about @[thing]
+    i want to know more about @[thing]
+    tell me more about @[place]
+    give me more information about @[place]
+    i want to know more about @[place]
+    tell me more about @[person]
+    give me more information about @[person]
+    i want to know more about @[person]
+

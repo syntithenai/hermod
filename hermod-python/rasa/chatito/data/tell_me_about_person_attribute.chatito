@@ -1,6 +1,5 @@
 import ./slot_person.chatito
 
-
 %[ask_attribute]('training': '500')
     what [job]{"entity":"attribute","value":"occupation"} does @[person] have
     what does @[person] do [for a job]{"entity":"attribute","value":"occupation"}

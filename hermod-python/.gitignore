@@ -3,4 +3,5 @@ deepspeech-models/
 rasa/.gitignore
 src/__pycache__/
 www/node_modules/
-
+mongo_data/
+mosquitto/password
