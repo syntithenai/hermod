@@ -1,5 +1,5 @@
 # admin user for server can sub/pub everywhere
-user 
+user HERMOD_ROOT_USER
 topic readwrite #
 
 # general users can only sub/pub to hermod/%u(sername)
