@@ -1,6 +1,6 @@
 import ./slot_place.chatito
 
-%[tell_me_about_place]('training': '300')
+%[tell_me_about]('training': '300')
     tell me about @[place]
     where is @[place]
     what kind of place is @[place]

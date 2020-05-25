@@ -1,5 +1,5 @@
 import ./slot_place.chatito
 import ./slot_place_attribute.chatito
 
-%[tell_me_about_place_attribute]('training': '500')
+%[ask_attribute]('training': '500')
     what is the @[attribute] of @[place]

@@ -1,6 +1,6 @@
 import ./slot_person.chatito
 
-%[ask_about_person]('training': '300')
+%[tell_me_about]('training': '300')
     who is @[person]
     tell me about is @[person]
     give me a bio for @[person]
