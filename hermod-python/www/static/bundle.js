@@ -8707,6 +8707,7 @@ var HermodWebClient = function(config) {
             } ,
             'hermod/+/asr/stop': function(topic,site,payload) {
                 // quarter volume for 10 seconds
+                console.log('stop message unmute')
                 unmuteVolume()
             } ,
             'hermod/+/speaker/volume': function(topic,site,payloadIn) {
@@ -9332,7 +9333,7 @@ var HermodWebClient = function(config) {
                           offlineCtx.startRendering();
                     }
          
-                    
+                  let recorderTimeout = null;  
                   let recorder = context.createScriptProcessor(bufferSize, 1, 1);
                   recorder.onaudioprocess = function(e){
                       //console.log(['onaudio',isRecording  ,isSending ])
@@ -9343,9 +9344,11 @@ var HermodWebClient = function(config) {
                           //console.log(['REC'])
                           resample(e.inputBuffer,16000,function(res) {
                             if (speaking) {
+                                if (recorderTimeout) clearTimeout(recorderTimeout)
                                 console.log(['SEND '+'hermod/'+site+'/microphone/audio'])
                                 sendAudioMessage('hermod/'+site+'/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
                             } else {
+                                if (!recorderTimeout) setTimeout(function() {stopMicrophone(); startHotword()},5000)
                                 console.log(['BUFFER'])
                                 bufferAudio(Buffer.from(convertFloat32ToInt16(res)));
                             }
@@ -9368,6 +9371,7 @@ var HermodWebClient = function(config) {
                 onCallbacks['microphoneStop']()
             }
             //sendMessage('hermod/'+config.site+'/asr/stop',{})
+            console.log('stop mic unmute')
             unmuteVolume()
         }
         function stopAll() {

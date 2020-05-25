@@ -96,7 +96,7 @@ function hideAllDisplays() {
 }
 
 function showSlots(slots) {
-    //return
+    return
     content = document.createElement('div')
     for (slot in slots) {
         slotContent = document.createElement('span')
@@ -414,7 +414,10 @@ function stopWaiting() {
             <!--img style="height: 2em; width: 2em; padding: 0.4em" src='microphone-slash-solid.svg' /-->
         <div>
     </button>
-     
+    
+    <div >
+      <form onSubmit="client.sendMessage('hermod/'+config.site+'/asr/text',{text:document.getElementById('text_input').value});document.getElementById('text_input').value=''; return false" ><input style="margin-left: 3em; font-size: 1.8em" id="text_input" type='text' placeholder='Type your question here' /></form>
+    </div> 
 </div>
 
 
@@ -430,7 +433,7 @@ function stopWaiting() {
         return false;
     }
 </script>
-<br/><br/><br/><br/>
+<br/><br/>
 <img style="display: none" src="" border="0" class="display" id="show_image" />
 
 <div style="display: none" class="display" id="show_images" >IMAGES</div>
@@ -545,6 +548,9 @@ button.btn:hover {
 
 
 
+
 </style>
+
+<script data-ad-client="ca-pub-8152690534650306" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
 </body></html>
