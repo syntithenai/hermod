@@ -1,4 +1,4 @@
-@[number]
+~[number]
     0
     1
     2
@@ -31,6 +31,8 @@
     1289
     7889888
 
+@[number]
+    ~[number]
 
 ~[4]('synonym': 'true')
     for

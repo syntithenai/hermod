@@ -1,10 +1,8 @@
 import ./slot_thing.chatito
 
-%[tell_me_about]('training': '300')
+%[tell_me_about]('training': '200')
     tell me about @[thing]
     give me some information about @[thing]
-    show me a page about @[thing]
-    show me a @[thing] webpage
     what is @[thing]
     what are @[thing]
     what kinds of @[thing] are there

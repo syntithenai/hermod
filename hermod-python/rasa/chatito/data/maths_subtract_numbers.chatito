@@ -1,8 +1,0 @@
-import ./slot_number.chatito
-
-%[maths_subtract_numbers]('training':'100')
-    what is @[number] subtract @[number]
-    what is the difference between @[number] and @[number]
-    what is the difference of  @[number] minus @[number]
-    what is @[number] subtract @[number]
-    what is @[number] take away @[number]

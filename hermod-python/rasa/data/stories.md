@@ -13,6 +13,32 @@
   - slot{"place": "fred"}
   - action_search_wikipedia
   
+## ask attribute
+* ask_attribute{"attribute":"capital","thing":"Paris"}
+  - slot{"attribute": "capital"}
+  - slot{"thing": "Paris"}
+  - action_search_wikidata
+  
+## ask attribute
+* ask_attribute{"attribute":"capital","thing":"Paris"}
+  - slot{"attribute": "capital"}
+  - slot{"thing": "Paris"}
+  - action_search_wikidata
+  - slot{"mnemonic": "Help me to remember"}
+  - utter_ask_mnemonic
+* affirmative
+  - action_speak_mnemonic
+  
+## ask attribute
+* ask_attribute{"attribute":"capital","thing":"Paris"}
+  - slot{"attribute": "capital"}
+  - slot{"thing": "Paris"}
+  - action_search_wikidata
+  - slot{"mnemonic": "Help me to remember"}
+  - utter_ask_mnemonic
+* negative
+  - utter_ok
+
 ## tell me about person attribute
 * ask_attribute{"person":"fred","attribute":"age"}
   - slot{"person": "fred"}
@@ -34,12 +60,6 @@
 * spell_word{"word":"fred"}
   - slot{"word": "fred"}
   - action_spell_word  
-  
-## ask attribute
-* ask_attribute{"attribute":"capital","thing":"Paris"}
-  - slot{"attribute": "capital"}
-  - slot{"thing": "Paris"}
-  - action_search_wikidata
   
 ## ask follow up attribute
 * ask_attribute{"attribute":"capital","thing":"Paris"}
@@ -70,6 +90,19 @@
 * tell_me_more
   - slot{"last_wikipedia_search": "3::::::fred"}
   - action_tell_me_more
+  
+## tell me more 3 after attribute
+* ask_attribute{"place":"fred","attribute":"population"}
+  - slot{"place": "fred"}
+  - slot{"attribute": "population"}
+  - action_search_wikidata
+* tell_me_more
+  - slot{"last_wikipedia_search": "2::::::fred"}
+  - action_tell_me_more
+* tell_me_more
+  - slot{"last_wikipedia_search": "3::::::fred"}
+  - action_tell_me_more
+
 
 ## what can i say
 * what_can_i_say
@@ -84,43 +117,7 @@
 * ask_date
   - action_tell_date
   
-## convert units
-* convert_units{"from_unit":"degrees","from_unit":"radians"}
-  - action_convert_units
 
-## add numbers
-* maths_add_numbers
-  - action_maths_add_numbers
-  - slot{"result": "3"}
-  
-## subtract numbers
-* maths_subtract_numbers
-  - action_maths_subtract_numbers
-  - slot{"result": "3"}
-
-## multiply numbers
-* maths_multiply_numbers
-  - action_maths_multiply_numbers
-  - slot{"result": "3"}
-  
-## divide numbers
-* maths_divide_numbers
-  - action_maths_divide_numbers
-  - slot{"result": "3"}
-
-## interactive_story_1
-* maths_divide_numbers{"number": "2"}
-    - action_maths_divide_numbers
-    - slot{"result": "2.5"}
-
-## interactive_story_1
-* maths_add_numbers{"number": 4}
-    - action_maths_add_numbers
-    - slot{"result": "8"}
-* maths_add_numbers{"number": "7.2"}
-    - action_maths_add_numbers
-    - slot{"result": "8"}
-    
     
 ## say goodbye
 * quit
@@ -134,7 +131,7 @@
     - slot{"attribute": "meaning"}
     - slot{"thing": "life"}
     - slot{"answer": "42"}
-# affirmative
+* affirmative
     - action_save_fact
     
 ## save fact fail
@@ -143,6 +140,6 @@
     - slot{"attribute": "meaning"}
     - slot{"thing": "life"}
     - slot{"answer": "42"}
-# negative
-    - utter_ok  
+* negative
+    - utter_cancelled
 

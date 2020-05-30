@@ -1,12 +1,5 @@
+import ./alias_cities.chatito
+
 @[city]
-    Canberra
-    Sydney
-    Melbourne
-    London
-    Washington DC
-    Paris
-    Vienna
-    Bern
-    Vaduz
-    Tokyo
+    ~[city]
 

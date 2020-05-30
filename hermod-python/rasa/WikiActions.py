@@ -5,6 +5,7 @@ import logging
 import json
 import os
 import yaml
+import time
 
 from socket import error as socket_error        
 from typing import Any, Text, Dict, List
@@ -21,9 +22,10 @@ import wptools
 import paho.mqtt.client as mqtt
 import motor
 import motor.motor_asyncio
-
+from metaphone import doublemetaphone
 import types
 from asyncio_mqtt import Client
+import Levenshtein as lev
 
 class AuthenticatedMqttClient(Client):
     def __init__(self,hostname,port,username='',password=''):
@@ -112,6 +114,8 @@ WIKIDATA_ATTRIBUTES = {
 }
 
 
+
+
 def lookup_wiktionary(word):
     logger = logging.getLogger(__name__)    
     try:
@@ -177,8 +181,9 @@ def lookup_wikipedia(word):
         if len(search_results) > 0:
             page_title = search_results[0][0]
             page = wikipedia.page(page_title)
-            parts = page.summary.split('. ')
-            summary = parts[0];
+            # parts = page.summary.split('. ')
+            # summary = parts[0];
+            summary = page.summary
         return summary
     except:
         e = sys.exc_info()
@@ -294,23 +299,53 @@ def mongo_connect():
     db = client['hermod']
     collection = db['wikifacts']
     return collection
+    
+def mongo_connect_words():
+    logger = logging.getLogger(__name__)
+    logger.debug('MONGO CONNECT ')
+    logger.debug(str(os.environ.get('MONGO_CONNECTION_STRING')))
+    
+    client = motor.motor_asyncio.AsyncIOMotorClient(os.environ.get('MONGO_CONNECTION_STRING'))
 
-async def save_fact(attribute,thing,answer):
+    db = client['hermod']
+    collection = db['wordset_dictionary']
+    return collection
+
+async def save_fact(attribute,thing,answer,site,thing_type):
     logger = logging.getLogger(__name__)
     logger.debug('SAVE FACT')
     logger.debug([attribute,thing,answer])
     try:
         if attribute and thing and answer: 
             collection = mongo_connect() 
-            logger.debug('SAVE FACT CONNECTED')
-            document = {'attribute': attribute,'thing':thing,'answer':answer}
-            result = await collection.insert_one(document)
-            logger.debug('result %s' % repr(result.inserted_id))
+            # does fact already exist and need update ?
+            query = {'$and':[{'attribute':attribute},{'thing':thing}]}
+            logger.debug(query)
+            document = await collection.find_one(query)
+            logger.debug(document)
+            if document:
+                logger.debug('FOUND DOCUMENT MATCH')
+                document['answer'] = answer
+                site_parts = site.split('_')
+                username = '_'.join(site_parts[:-1])
+                document['user'] = username
+                document['updated'] = time.time()
+                result = await collection.replace_one({"_id":document.get('_id')},document)
+                logger.debug(result)
+            else:
+                logger.debug('SAVE FACT not found')
+                site_parts = site.split('_')
+                username = '_'.join(site_parts[:-1])
+                document = {'attribute': attribute,'thing':thing,'answer':answer,"user":username,"thing_type":thing_type}
+                document['created'] = time.time()
+                document['updated'] = time.time()
+                result = await collection.insert_one(document)
+                logger.debug('result %s' % repr(result.inserted_id))
     except:
         logger.debug('SAVE FACT ERR')
         e = sys.exc_info()
         logger.debug(e)
-        
+
 
 async def find_fact(attribute,thing):
     logger = logging.getLogger(__name__)
@@ -326,20 +361,76 @@ async def find_fact(attribute,thing):
         document = await collection.find_one(query)
         logger.debug(document)
         if document:
-            return document.get('answer',None)
+            return document
+        else:
+            return None
     except:
         logger.debug('FIND FACT ERR')
         e = sys.exc_info()
         logger.debug(e)
-    
-# async def do_find():
-    # collection = mongo_connect() 
-    # cursor = collection.find({})
-    # # Modify the query before iterating
-    # #cursor.sort('i', -1).skip(1).limit(2)
-    # async for document in cursor:
-        # print(document)
 
+
+async def find_word(word):
+    logger = logging.getLogger(__name__)
+    logger.debug('FIND WORD')
+    logger.debug([word])
+    try:
+        collection = mongo_connect_words() 
+        logger.debug('FIND WORD CONNECTED')
+        query = {'word':word}
+        logger.debug(query)
+        document = await collection.find_one(query)
+        logger.debug('FIND WORD found')
+        logger.debug(document)
+        if document:
+            return document
+        else:
+            return None
+    except:
+        logger.debug('FIND WORD ERR')
+        e = sys.exc_info()
+        logger.debug(e)
+
+async def search_word(word):
+    logger = logging.getLogger(__name__)
+    metaname = doublemetaphone(word)
+    queryname = metaname[0]+metaname[1]
+    logger.debug('SEARCH WORD')
+    logger.debug([word,queryname])
+    try:
+        collection = mongo_connect_words() 
+        #query = {'_s_word':queryname}
+        query={"_s_word":{"$eq":queryname}}
+        logger.debug(query)
+        distances=[]
+        # logger.debug('SEARCH WORD A')
+        # logger.debug(collection)
+        async for document in collection.find(query): #:
+            # logger.debug('SEARCH WORD FOUND')
+            # logger.debug(document)
+            distance = lev.jaro_winkler(word,document.get('word'))
+            distances.append({"word":document.get('word'),"distance":distance,"data":document})
+        if len(distances) > 0:
+            distances.sort(key=lambda x: x.get('distance'), reverse=True)
+            logger.debug('SEARCH DIST LIST')
+            logger.debug(distances)
+            return distances[0].get('data')
+        else:
+            return None
+        
+        # document = await collection.find_one(query)
+        # logger.debug('SEARCH WORD FOUND')
+        # logger.debug(document)
+        # if document:
+            # return document
+        # else:
+            # return None
+    except:
+        logger.debug('SEARCH WORD ERR')
+        e = sys.exc_info()
+        logger.debug(e)
+
+                
 
 class ActionSearchWiktionary(Action):
 #
@@ -356,39 +447,87 @@ class ActionSearchWiktionary(Action):
         last_entities = tracker.current_state()['latest_message']['entities']
         site = tracker.current_state().get('sender_id')
         word = ''
+        slots = tracker.current_state().get('slots')
+        
+        for slot in slots:
+            if slot == "word" :
+                if not word or len(word) <= 0:
+                    word = slots[slot]
+            
         for raw_entity in last_entities:
             # logger.debug(raw_entity)
             if raw_entity.get('entity','') == "word":
                 word = raw_entity.get('value','')
         
         slotsets = []
-        if len(word) > 0:
-            cached_fact = await find_fact('definition',word.lower())
-            if cached_fact:
-                await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Etymology',"frame":'https://en.wiktionary.org/wiki/'+word+'#Etymology'}]})
-                await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word})
-                dispatcher.utter_message(text="The meaning of "+word+" is "+ cached_fact)
-            else:   
-                #dispatcher.utter_message(text=)
-                await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
-                await publish('hermod/'+site+'/display/startwaiting',{})
-                slotsets.append(SlotSet('word',word))
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(None,lookup_wiktionary,word)
+        if word and len(word) > 0:
+            word_record = await find_word(word)
+            
+            if not word_record:
+                # try fuzzy match
+                word_record = await search_word(word)
+            
+            if word_record:
+                slotsets.append(SlotSet('word',word_record.get('word')))
+                meanings = word_record.get('meanings')
+                if len(meanings) > 0:
+                    meaning = meanings[0]    
+                    if meaning.get('def',False):
+                        meaning_parts=[]
+                        if meaning.get('speech_part',False):
+                            meaning_parts.append(' the {} '.format(meaning.get('speech_part')))
+                        meaning_parts.append(word_record.get('word'))
+                        meaning_parts.append(' means {}.'.format(meaning.get('def')))
+                        if meaning.get('synonyms',False) and len(meaning.get('synonyms')) > 0:
+                            if len(meaning.get('synonyms')) > 1:
+                                meaning_parts.append(' It has synonyms {}.'.format(", ".join(meaning.get('synonyms'))))
+                            else:
+                                meaning_parts.append(' It has a synonym {}. '.format(meaning.get('synonyms')[0]))
+                        await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word_record.get('word')})
+                        #slotsets.append(SlotSet('last_wiktionary_search',0))
+                        if len(meanings) > 1:
+                            meaning2 = meanings[1] 
+                            meaning_parts.append(' It can also be ')
+                            if meaning2.get('speech_part',False):
+                                meaning_parts.append(' an {} '.format(meaning2.get('speech_part')))
+                            meaning_parts.append(' {}.'.format(meaning2.get('def')))
+                            if meaning2.get('synonyms',False) and len(meaning2.get('synonyms')) > 0:
+                                if len(meaning2.get('synonyms')) > 1:
+                                    meaning_parts.append(' with synonyms {}'.format(", ".join(meaning2.get('synonyms'))))
+                                else:
+                                    meaning_parts.append(' with a synonym {}'.format(meaning2.get('synonyms')[0]))
+                        dispatcher.utter_message(text="".join(meaning_parts))
+                        slotsets.append(FollowupAction('action_end'))  
+            
+                
+                
+                
+            # cached_fact = await find_fact('definition',word.lower())
+            # if cached_fact:
+                # await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Etymology',"frame":'https://en.wiktionary.org/wiki/'+word+'#Etymology'}]})
+                # await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word})
+                # dispatcher.utter_message(text="The meaning of "+word+" is "+ cached_fact.get('answer'))
+            # else:   
+                # #dispatcher.utter_message(text=)
+                # await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
+                # await publish('hermod/'+site+'/display/startwaiting',{})
+                # slotsets.append(SlotSet('word',word))
+                # loop = asyncio.get_event_loop()
+                # result = await loop.run_in_executor(None,lookup_wiktionary,word)
 
-                #result = lookup_wiktionary(word)
-                if result and len(result.get('definition','')) > 0:
-                    await save_fact('definition',word.lower(),result.get('definition',''))
-                    #{"label":'date',"text":'what is the date'},{"label":'time',"nlu":'ask_time'}, 
-                    await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Etymology',"frame":'https://en.wiktionary.org/wiki/'+word+'#Etymology'}]})
-                    await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word})
-                    dispatcher.utter_message(text="The meaning of "+word+" is "+ result.get('definition',''))
-                    slotsets.append(FollowupAction('action_end'))  
-                    # TODO send hermod/XX/display/url   
-                else:
-                    dispatcher.utter_message(text="I can't find the word "+word)
-                    slotsets.append(FollowupAction('action_end'))  
-            await publish('hermod/'+site+'/display/stopwaiting',{})
+                # #result = lookup_wiktionary(word)
+                # if result and len(result.get('definition','')) > 0:
+                    # await save_fact('definition',word.lower(),result.get('definition',''),site,'word')
+                    # #{"label":'date',"text":'what is the date'},{"label":'time',"nlu":'ask_time'}, 
+                    # await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Etymology',"frame":'https://en.wiktionary.org/wiki/'+word+'#Etymology'}]})
+                    # await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word})
+                    # dispatcher.utter_message(text="The meaning of "+word+" is "+ result.get('definition',''))
+                    # slotsets.append(FollowupAction('action_end'))  
+                    # # TODO send hermod/XX/display/url   
+                # else:
+                    # dispatcher.utter_message(text="I can't find the word "+word)
+                    # slotsets.append(FollowupAction('action_end'))  
+            # await publish('hermod/'+site+'/display/stopwaiting',{})
         else:
             dispatcher.utter_message(text="I didn't hear the word you want defined. Try again")
         
@@ -413,37 +552,50 @@ class ActionSearchWikipedia(Action):
         # logger.debug(tracker.current_state())
         last_entities = tracker.current_state()['latest_message']['entities']
         word = ''
+        thing_type=''
         slotsets = []
         for raw_entity in last_entities:
             logger.debug(raw_entity)
             if raw_entity.get('entity','') == "thing":
-                word = raw_entity.get('value','')
-                slotsets.append(SlotSet('thing',word))
+                if len(word) <= 0:
+                    word = raw_entity.get('value','')
+                    thing_type='thing'
+                    slotsets.append(SlotSet('thing',word))
             if raw_entity.get('entity','') == "place":
-                word = raw_entity.get('value','')
-                slotsets.append(SlotSet('place',word))
+                if len(word) <= 0:
+                    word = raw_entity.get('value','')
+                    thing_type='place'
+                    slotsets.append(SlotSet('place',word))
             if raw_entity.get('entity','') == "person":
-                word = raw_entity.get('value','')
-                slotsets.append(SlotSet('person',word))
+                if len(word) <= 0:
+                    word = raw_entity.get('value','')
+                    thing_type='person'
+                    slotsets.append(SlotSet('person',word))
         site = tracker.current_state().get('sender_id')        
+        slotsets.append(SlotSet('last_wikipedia_search',0))
         if word and len(word) > 0:
             cached_fact = await find_fact('summary',word.lower())
             if cached_fact:
                 await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
-                dispatcher.utter_message(text=word + ". " + cached_fact)
-                slotsets.append(FollowupAction('action_end'))  
+                parts = cached_fact.get('answer').split('. ')
+                summary = parts[0].ljust(200)[:200].strip();
+                dispatcher.utter_message(text=word + ". " + summary)
+                #slotsets.append(FollowupAction('action_end'))  
         
             else:   
                 await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
                 await publish('hermod/'+site+'/display/startwaiting',{})
                 loop = asyncio.get_event_loop()
                 result = await loop.run_in_executor(None,lookup_wikipedia,word)
-                #result = lookup_wikipedia(word)
                 if result and len(result) > 0:
-                    await save_fact('summary',word.lower(),result)
+                    parts = result.split('. ')
+                    summary = parts[0].ljust(200)[:200].strip();
+                    await save_fact('summary',word.lower(),result,site,thing_type)
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
-                    dispatcher.utter_message(text=word + ". " + result)
-                    slotsets.append(FollowupAction('action_end'))  
+                    await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Tell me more',"text":'tell me more'}]})
+                    
+                    dispatcher.utter_message(text=word + ". " + summary)
+                    #slotsets.append(FollowupAction('action_end'))  
                 else:
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                     dispatcher.utter_message(text="I can't find the topic "+word)
@@ -476,37 +628,49 @@ class ActionSearchWikipediaMore(Action):
         # logger.debug(tracker.current_state())
         last_entities = tracker.current_state()['latest_message']['entities']
         word = ''
+        thing_type = ''
+        last_wikipedia_search = 1;
         slotsets = []
-        for raw_entity in last_entities:
-            logger.debug(raw_entity)
-            if raw_entity.get('entity','') == "thing":
-                word = raw_entity.get('value','')
-                slotsets.append(SlotSet('thing',word))
-            if raw_entity.get('entity','') == "place":
-                word = raw_entity.get('value','')
-                slotsets.append(SlotSet('place',word))
-            if raw_entity.get('entity','') == "person":
-                word = raw_entity.get('value','')
-                slotsets.append(SlotSet('person',word))
+        slots = tracker.current_state().get('slots')
+        for slot in slots:
+            if slot == "thing" or  slot == "person" or  slot == "place":
+                if not word or len(word) <= 0:
+                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    word = slots[slot]
+                    thing_type=slot
+            if slot == "last_wikipedia_search" and slots[slot] and slots[slot] > 0:
+                last_wikipedia_search = slots[slot] + 1
+        
+        slotsets.append(SlotSet('last_wikipedia_search',int(last_wikipedia_search)))
+        
         site = tracker.current_state().get('sender_id')        
         if word and len(word) > 0:
             cached_fact = await find_fact('summary',word.lower())
             if cached_fact:
-                await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
-                dispatcher.utter_message(text=word + ". " + cached_fact)
-                slotsets.append(FollowupAction('action_end'))  
+                #await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
+                parts = cached_fact.get('answer').split('. ')
+                summary = parts[last_wikipedia_search];
+                if summary and len(summary) > 0:
+                    dispatcher.utter_message(text=summary)
+                else:
+                    dispatcher.utter_message(text='All done')
+                    slotsets.append(FollowupAction('action_end'))  
+                
+                #slotsets.append(FollowupAction('action_end'))  
         
             else:   
                 await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
                 await publish('hermod/'+site+'/display/startwaiting',{})
                 loop = asyncio.get_event_loop()
                 result = await loop.run_in_executor(None,lookup_wikipedia,word)
+                parts = result.split('. ')
+                summary = parts[last_wikipedia_search].ljust(200)[:200].strip();
                 #result = lookup_wikipedia(word)
                 if result and len(result) > 0:
-                    await save_fact('summary',word.lower(),result)
+                    await save_fact('summary',word.lower(),result,site,thing_type)
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
-                    dispatcher.utter_message(text=word + ". " + result)
-                    slotsets.append(FollowupAction('action_end'))  
+                    dispatcher.utter_message(text=summary)
+                    #slotsets.append(FollowupAction('action_end'))  
                 else:
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                     dispatcher.utter_message(text="I can't find the topic "+word)
@@ -518,6 +682,23 @@ class ActionSearchWikipediaMore(Action):
         
         return slotsets
 
+class ActionSpeakMnemonic(Action):
+
+    def name(self) -> Text:
+        return "action_speak_mnemonic"
+
+    async def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        logger = logging.getLogger(__name__)    
+        slotsets = []
+        slots = tracker.current_state().get('slots')
+        if slots.get('mnemonic') and len(slots.get('mnemonic')) > 0:
+            dispatcher.utter_message(text="The memory aid is "+slots.get('mnemonic'))
+        
+        slotsets.append(FollowupAction('action_end'))      
+        
+        return slotsets
 
 class ActionSearchWikidata(Action):
     
@@ -534,6 +715,7 @@ class ActionSearchWikidata(Action):
         last_entities = tracker.current_state()['latest_message']['entities']
         attribute = ''
         thing = ''
+        thing_type=''
         slotsets = []
         # TODO - also slots to be considered 
         # logger.debug('SLOTS')
@@ -542,8 +724,10 @@ class ActionSearchWikidata(Action):
         slots = tracker.current_state().get('slots')
         for slot in slots:
             if slot == "thing" or  slot == "person" or  slot == "place":
-                logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                thing = slots[slot]
+                if not thing or len(thing) <= 0:
+                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    thing = slots[slot]
+                    thing_type=slot
             if slot == "attribute" :
                 logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
                 attribute = slots[slot]
@@ -555,12 +739,15 @@ class ActionSearchWikidata(Action):
                 slotsets.append(SlotSet('attribute',attribute))
             if raw_entity.get('entity','') == "thing":
                 thing = raw_entity.get('value','')
+                thing_type='thing'
                 slotsets.append(SlotSet('thing',thing))
             if raw_entity.get('entity','') == "place":
                 thing = raw_entity.get('value','')
+                thing_type='place'
                 slotsets.append(SlotSet('place',thing))
             if raw_entity.get('entity','') == "person":
                 thing = raw_entity.get('value','')
+                thing_type='person'
                 slotsets.append(SlotSet('person',thing))
             
         
@@ -570,7 +757,9 @@ class ActionSearchWikidata(Action):
             cached_fact = await find_fact(attribute.lower(),thing.lower())
             if cached_fact:
                 await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
-                dispatcher.utter_message(text="The "+attribute+" of "+thing+" is "+ cached_fact)
+                if cached_fact.get('mnemonic'):
+                    slotsets.append(SlotSet('mnemonic',cached_fact.get('mnemonic')))
+                dispatcher.utter_message(text="The "+attribute+" of "+thing+" is "+ cached_fact.get('answer'))
             else:     
                 await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
                 await publish('hermod/'+site+'/display/startwaiting',{})
@@ -583,7 +772,7 @@ class ActionSearchWikidata(Action):
                     if attribute=="population":
                         p = inflect.engine()
                         result = p.number_to_words(result)
-                    await save_fact(attribute.lower(),thing.lower(),result)
+                    await save_fact(attribute.lower(),thing.lower(),result,site,thing_type)
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
                     dispatcher.utter_message(text="The "+attribute+" of "+thing+" is "+ result)
                     # TODO send hermod/XX/display/url  {'url':'https://en.wiktionary.org/wiki/'+word} 
@@ -591,7 +780,7 @@ class ActionSearchWikidata(Action):
                 else:
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+thing})
                     dispatcher.utter_message(text="I don't know the "+attribute+" of "+thing)
-            slotsets.append(FollowupAction('action_end'))  
+                #slotsets.append(FollowupAction('action_end'))  
         
         elif attribute  and len(attribute) > 0:
             dispatcher.utter_message(text="I didn't hear your question. Try again")
@@ -640,29 +829,38 @@ class ActionConfirmSaveFact(Action):
         
         # only interested in entities from the last utterance        
         for raw_entity in last_entities:
-            # logger.debug(raw_entity)
+            logger.debug(raw_entity)
             if raw_entity.get('entity','') == "attribute":
                 attribute = raw_entity.get('value','')
                 slotsets.append(SlotSet('attribute',attribute))
             if raw_entity.get('entity','') == "answer":
                 answer = raw_entity.get('value','')
                 slotsets.append(SlotSet('answer',answer))
+            # also process number entities (from duckling) as the answer
+            if raw_entity.get('entity','') == "number" and len(answer) <= 0:
+                answer = raw_entity.get('value','')
+                slotsets.append(SlotSet('answer',answer))
             if raw_entity.get('entity','') == "thing":
-                thing = raw_entity.get('value','')
-                slotsets.append(SlotSet('thing',thing))
+                if raw_entity.get('value',False):
+                    thing = raw_entity.get('value','')
+                    slotsets.append(SlotSet('thing',thing))
             if raw_entity.get('entity','') == "place":
-                thing = raw_entity.get('value','')
-                slotsets.append(SlotSet('place',thing))
+                if raw_entity.get('value',False):
+                    thing = raw_entity.get('value','')
+                    slotsets.append(SlotSet('place',thing))
             if raw_entity.get('entity','') == "person":
-                thing = raw_entity.get('value','')
-                slotsets.append(SlotSet('person',thing))
+                if raw_entity.get('value',False):
+                    thing = raw_entity.get('value','')
+                    slotsets.append(SlotSet('person',thing))
             
-        
+        logger.debug('CONFIRM SAVE FACT')
+        logger.debug([attribute,thing,answer])
                 
-        if attribute and thing and len(attribute) > 0 and len(thing) > 0 and answer and and len(answer) > 0:
+        if attribute and thing and len(attribute) > 0 and len(thing) > 0 and answer and len(answer) > 0:
             dispatcher.utter_message(text="Do you want me to remember that the "+attribute+" of "+thing+" is "+answer)
-        else 
+        else:
             dispatcher.utter_message(text="Can't save because I'm missing information")
+            slotsets.append(FollowupAction('action_end'))  
         return slotsets
         
 class ActionSaveFact(Action):
@@ -675,24 +873,36 @@ class ActionSaveFact(Action):
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__) 
         slots = tracker.current_state().get('slots')
+        logger.debug('ACTION SAVE FACT')
+        logger.debug(slots)
         slotsets = []
         thing=''
         answer=''
         attribute=''
+        thing_type=''
+        site = tracker.current_state().get('sender_id')        
         for slot in slots:
             if slot == "thing" or  slot == "person" or  slot == "place":
-                logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                thing = slots[slot]
+                if not slots[slot] == None:
+                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    thing = slots[slot]
+                    thing_type=slot
             if slot == "attribute" :
-                logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                attribute = slots[slot]
+                if not slots[slot] == None:
+                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    attribute = slots[slot]
             if slot == "answer" :
-                logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                answer = slots[slot]
-        if attribute and thing and len(attribute) > 0 and len(thing) > 0 and answer and and len(answer) > 0:
+                if not slots[slot] == None:
+                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    answer = slots[slot]
+        logger.debug([attribute,thing,answer])        
+        if attribute and thing and len(attribute) > 0 and len(thing) > 0 and answer and len(answer) > 0:
+            await save_fact(attribute.lower(),thing.lower(),answer,site,thing_type)
             dispatcher.utter_message(text="Saved")
-        else 
+            slotsets.append(FollowupAction('action_end'))  
+        else:
             dispatcher.utter_message(text="Can't save because I'm missing information")
+            slotsets.append(FollowupAction('action_end'))  
         return slotsets
 
 
@@ -710,22 +920,42 @@ class ActionSpellWord(Action):
         word = ''
         slotsets = []
         site = tracker.current_state().get('sender_id')        
+        
+        slots = tracker.current_state().get('slots')
+        
+        for slot in slots:
+            if slot == "word" :
+                if not word or len(word) <= 0:
+                    word = slots[slot]
+
         for raw_entity in last_entities:
             # logger.debug(raw_entity)
             if raw_entity.get('entity','') == "word":
                 word = raw_entity.get('value','')
-        if len(word) > 0:
-            slotsets.append(SlotSet('word',word))
-            letters = []
-            # say letters
-            for letter in word:
-                letters.append(letter.upper())
-            message = word + " is spelled "+", ".join(letters)
-            dispatcher.utter_message(text=message)
-            # loop = asyncio.get_event_loop()
+        
+        slotsets = []
+        if word and len(word) > 0:
+            word_record = await find_word(word)
             
-            await send_to_wikipedia(word,site)
-            slotsets.append(FollowupAction('action_end'))  
+            if not word_record:
+                # try fuzzy match
+                word_record = await search_word(word)
+            
+            if word_record:
+                word = word_record.get('word')
+                slotsets.append(SlotSet('word',word))
+                letters = []
+                # say letters
+                for letter in word:
+                    letters.append(letter.upper())
+                message = word + " is spelled "+", ".join(letters)
+                dispatcher.utter_message(text=message)
+                # loop = asyncio.get_event_loop()
+            
+                await send_to_wikipedia(word,site)
+                slotsets.append(FollowupAction('action_end'))  
+            else:
+                dispatcher.utter_message(text="I don't know the word "+word+". Try again")
         
         else:
             dispatcher.utter_message(text="I didn't hear the word you want to spell. Try again")

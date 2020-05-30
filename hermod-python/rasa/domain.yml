@@ -15,6 +15,7 @@ actions:
 - action_search_wikidata_followup
 - action_confirm_save_fact
 - action_save_fact
+- action_speak_mnemonic
 - utter_goodbye
 - utter_can_say
 - utter_ok
@@ -55,10 +56,15 @@ responses:
   utter_goodbye:
   - text: Bye
   utter_can_say:
-  - text: I can search for information, tell the time and do math questions.
+  - text: I can search for information. Ask a question.
   - text: Ask me a question
   utter_ok:
   - text: OK  
+  utter_cancelled:
+  - text: Cancelled 
+  utter_ask_mnemonic:
+  - text: Would you like to hear a memory aid
+  - text: Shall I tell you a mnemonic to help you remember
   utter_wait:
   - text: Just a sec
   - text: I'll ask
@@ -73,6 +79,8 @@ session_config:
 
 slots:
   last_wikipedia_search:
+    type: unfeaturized
+  last_wiktionary_search:
     type: unfeaturized
   answer:
     type: unfeaturized
@@ -94,4 +102,5 @@ slots:
     type: unfeaturized   
   to_unit:
     type: unfeaturized
-    
+  mnemonic:
+    type: unfeaturized    

@@ -4,3 +4,7 @@ import ./slot_attribute.chatito
     what about the @[attribute]
     what is the @[attribute]
     and what is the @[attribute]
+    what about the [summary](attribute)
+    what is the [population](attribute)
+    and what is the [language spoken](attribute)
+    what is the [capital city]{"attribute:"attribute","value":"capital")

@@ -1,8 +1,0 @@
-import ./slot_number.chatito
-
-%[maths_divide_numbers]('training':'100')
-    what is @[number] divided by @[number]
-    what is @[number] over @[number]
-    what is the @[number] into @[number]
-    divide @[number] by @[number]
-    divide @[number] into @[number]

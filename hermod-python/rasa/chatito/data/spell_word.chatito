@@ -1,6 +1,6 @@
 import ./slot_word.chatito
 
-%[spell_word]('training': '500')
+%[spell_word]('training': '200')
     spell the word @[word]
     spell @[word]
     how do i spell @[word]

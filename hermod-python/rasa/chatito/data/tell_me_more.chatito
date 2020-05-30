@@ -2,7 +2,7 @@ import ./slot_person.chatito
 import ./slot_place.chatito
 import ./slot_thing.chatito
 
-%[tell_me_more]
+%[tell_me_more]('training': '50')
     tell me more
     give me more
     i want to know more

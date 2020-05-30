@@ -1,26 +1,26 @@
-import ./slot_place.chatito
 import ./slot_number.chatito
-import ./slot_cities.chatito
+import ./alias_cities.chatito
+import ./alias_countries.chatito
 
-%[save_fact]
-    keep the fact that the  [population](attribute) of @[place] is @[number]
-    save the fact that the  [population](attribute) of @[place] is @[number]
-    remember the fact that the [population](attribute) of @[place] is @[number]
-    remember that the [population](attribute) of @[place] is @[number]
-    learn that the [population](attribute) of @[place] is @[number]
-    keep the fact that   [population](attribute) of @[place] is @[number]
-    save the fact that   [population](attribute) of @[place] is @[number]
-    remember the fact that  [population](attribute) of @[place] is @[number]
-    remember that  [population](attribute) of @[place] is @[number]
-    learn that  [population](attribute) of @[place] is @[number]
-    keep the fact that the  [capital](attribute) of @[place] is @[city]
-    save the fact that the  [capital](attribute) of @[place] is @[city]
-    remember the fact that the [capital](attribute) of @[place] is @[city]
-    remember that the [population](capital) of @[place] is @[city]
-    learn that the [population](capital) of @[place] is @[city]
-    keep the fact that   [capital](attribute) of @[place] is @[city]
-    save the fact that   [capital city]{"entity":"attribute","value":"capital"} of @[place] is @[city]
-    remember the fact that  [capital](attribute) of @[place] is @[city]
-    remember that  [capital](attribute) of @[place] is @[city]
-    learn that  [capital](attribute) of @[place] is @[city]
+%[save_fact]('training':'200')
+    keep the fact that the  [population](attribute) of ~[country](place) is [~[number]](answer)
+    save the fact that the  [population](attribute) of ~[country](place) is [~[number]](answer)
+    remember the fact that the [population](attribute) of ~[country](place) is [~[number]](answer)
+    remember that the [population](attribute) of ~[country](place) is [~[number]](answer)
+    learn that the [population](attribute) of ~[country](place) is [~[number]](answer)
+    keep the fact that   [population](attribute) of ~[country](place) is [~[number]](answer)
+    save the fact that   [population](attribute) of ~[country](place) is [~[number]](answer)
+    remember the fact that  [population](attribute) of ~[country](place) is [~[number]](answer)
+    remember that  [population](attribute) of ~[country](place) is [~[number]](answer)
+    learn that  [population](attribute) of ~[country](place) is [~[number]](answer)
+    keep the fact that the  [capital](attribute) of ~[country](place) is [~[city]](answer)
+    save the fact that the  [capital](attribute) of ~[country](place) is [~[city]](answer)
+    remember the fact that the [capital](attribute) of ~[country](place) is [~[city]](answer)
+    remember that the [population](capital) of ~[country](place) is [~[city]](answer)
+    learn that the [population](capital) of ~[country](place) is [~[city]](answer)
+    keep the fact that   [capital](attribute) of ~[country](place) is [~[city]](answer)
+    save the fact that   [capital city]{"entity":"attribute","value":"capital"} of ~[country](place) is [~[city]](answer)
+    remember the fact that  [capital](attribute) of ~[country](place) is [~[city]](answer)
+    remember that  [capital](attribute) of ~[country](place) is [~[city]](answer)
+    learn that  [capital](attribute) of ~[country](place) is [~[city]](answer)
 
