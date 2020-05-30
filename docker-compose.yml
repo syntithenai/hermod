@@ -5,10 +5,10 @@ services:
     image: mongo
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     volumes:
-        - ./hermod-python/mongo_data:/data
+        - ./hermod-python/mongo_data:/data/db
 
   mongo-express:
     image: mongo-express
@@ -16,8 +16,8 @@ services:
     ports:
       - 8081:8081
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD}
 
   # duckling
   duckling:
@@ -31,7 +31,7 @@ services:
     image: syntithenai/hermod-python
     #build: ./hermod-python/
     container_name: mqtt
-    entrypoint: ['python','/app/src/services.py','-m']
+    entrypoint: ['python','/app/src/hermod.py','-m']
     environment:
       # see volume mount below
       SSL_CERTIFICATES_FOLDER: /app/certs
@@ -57,7 +57,7 @@ services:
     #build: ./hermod-python/
     container_name: hermodpython
     #entrypoint: ['sleep','500000']
-    entrypoint: ['python','./services.py','-d'] # ,'-nl'
+    entrypoint: ['python','./hermod.py','-d'] # ,'-nl'
     working_dir: '/app/src'
     privileged: true
     environment:
@@ -70,6 +70,9 @@ services:
       DEEPSPEECH_MODELS: /app/deepspeech-models
       DUCKLING_URL: http://duckling:8000
       RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
+      # for logging
+      MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING}
+      MNEMO_CONNECTION_STRING: ${MNEMO_CONNECTION_STRING}
       # defaults. to change, use mosquitto_password to edit hermod-python/mosquitto/password and mosquitto/acl
       # MQTT_PORT: hermod_server
       # MQTT_USER: hermod_server
@@ -96,8 +99,8 @@ services:
       # dev mount src
       - ./hermod-python/src:/app/src  
       # dev mount rasa model
-      #- ./hermod-python/rasa:/app/rasa  
-   
+      - ./hermod-python/rasa:/app/rasa  
+      - ./tts_cache:/tmp/tts_cache
       # access to pulse audio cookie from the host
       - ${HOME}/.config/pulse/cookie:/tmp/cookie 
    
@@ -112,20 +115,20 @@ services:
     #build: ./hermod-python/
     container_name: hermodweb
     #entrypoint: ['sleep','1000000']
-    entrypoint: ['python','/app/src/services.py','-w']
+    entrypoint: ['python','/app/src/hermod.py','-w']
     #entrypoint: ['python','./src/tf.py']
     #env_file:
       #- secrets.env
     ports:
-      - 80:80
-      - 443:443
+      - 8090:8090
+      - 4430:443
     environment:
       MQTT_HOSTNAME: mqtt
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET}
-      # enable SSL for Flask (not useful in combination with nginx-proxy)
+      # enable SSL for Flask 
       SSL_CERTIFICATES_FOLDER: /app/certs
       AUTHLIB_INSECURE_TRANSPORT: 1
     volumes:
@@ -141,7 +144,7 @@ services:
     image: syntithenai/hermod-python
     #build: ./hermod-python/
     container_name: rasa
-    entrypoint: ['python','/app/src/services.py','-r'] # -t
+    entrypoint: ['python','/app/src/hermod.py','-r'] # -t
     environment:
       DUCKLING_URL: http://duckling:8000
       RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
@@ -156,15 +159,15 @@ services:
     image: syntithenai/hermod-python
     #build: ./hermod-python
     container_name: rasa_actions
-    entrypoint: ['sleep','1000000']
-    #entrypoint: ['python','/app/src/services.py','-a']
+    #entrypoint: ['sleep','1000000']
+    entrypoint: ['python','/app/src/hermod.py','-a']
     # TODO - should use exposed websockets mqtt access
     environment:
       MQTT_HOSTNAME: mqtt
       MQTT_USER: ${MQTT_USER}
       MQTT_PASSWORD: ${MQTT_PASSWORD}
       MQTT_PORT: 1883
-      MONGO_CONNECTION_STRING: mongodb://root:example@mongo:27017/
+      MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING}
 
     volumes:
       - ./hermod-python/src:/app/src 

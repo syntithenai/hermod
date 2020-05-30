@@ -37,7 +37,7 @@ class ThreadHandler(Singleton):
         """
         try:
             while True:
-                time.sleep(0.0001)
+                time.sleep(0.00000001)
         except KeyboardInterrupt:
             self.stop()
 

@@ -79,7 +79,7 @@ class RasaService(MqttService):
             await self.client.unsubscribe('hermod/'+site+'/tts/finished')
             await self.finish(site,payload)
             
-        elif topic == 'hermod/' + site + '/dialog/ended':
+        elif topic == 'hermod/' + site + '/dialog/started':
             # await self.client.publish('hermod/'+site+'/display/stopwaiting',{})
             await self.reset_tracker(site) 
    
@@ -87,10 +87,10 @@ class RasaService(MqttService):
     async def reset_tracker(self,site):
         #pass
         self.log('reset tracker '+site)
-        #requests.post(self.rasa_server+"conversations/"+site+"/tracker/events",json.dumps({"event": "restart"}))
-        #requests.put(self.rasa_server+"/conversations/"+site+"/tracker/events",json.dumps([]),headers = {'content-type': 'application/json'})
         await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[])
-
+        #requests.post(self.rasa_server+"/conversations/"+site+"/tracker/events",json.dumps({"event": "restart"}))
+        # #requests.put(self.rasa_server+"/conversations/"+site+"/tracker/events",json.dumps([]),headers = {'content-type': 'application/json'})
+        
     async def handle_intent(self,topic,site,payload):
         await self.client.publish('hermod/'+site+'/core/started',json.dumps({}));
         # self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))

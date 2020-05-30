@@ -133,7 +133,7 @@ The docker image includes a build of mosquitto 1.6.7
 
 ## Configuration
 
-The entrypoint for the source code is the file services.py which has a number of command line arguments to enable and disable various features of the software suite.
+The entrypoint for the source code is the file hermod.py which has a number of command line arguments to enable and disable various features of the software suite.
 
 Environment variables are also used to configure the hermod services.
 
@@ -142,7 +142,7 @@ The file hermod-python/src/config-all.yml provides base configuration which is m
 
 ### Arguments
 
-Arguments to services.py are mainly used to specify which services should be activated.
+Arguments to hermod.py are mainly used to specify which services should be activated.
 
 Arguments include
 
@@ -156,11 +156,11 @@ Arguments include
 -  **t (train)**  train RASA model when starting local server
 
 For example to start the mosquitto, web and action servers as well as the main hermod services.
-```python services.py -dwarm```
+```python hermod.py -dwarm```
 
 
 To start just the RASA server
-```python services.py -r```
+```python hermod.py -r```
 
 ### Environment
 
@@ -170,7 +170,7 @@ The .env file is excluded from git and is a good place to store secrets.  To ena
 
 ```cp .env-sample  .env```
 
-Without docker compose, environment variables should be present in the shell that runs ```python services.py```
+Without docker compose, environment variables should be present in the shell that runs ```python hermod.py```
 
 
 
@@ -347,7 +347,7 @@ Using docker-compose, SSL_CERTIFICATES_FOLDER is set to /app/certs/.
 Edit docker-compose.yml to host mount a folder to that path in both the mqtt and hermodweb containers.
 
 
-When services.py starts mosquitto, it checks if the files exist. If they do it rewrites mosquitto-ssl.conf to reflect the path and starts mosquitto using mosquitto-ssl.conf.
+When hermod.py starts mosquitto, it checks if the files exist. If they do it rewrites mosquitto-ssl.conf to reflect the path and starts mosquitto using mosquitto-ssl.conf.
 If the certificate files are not available, mosquitto starts without SSL.
 In both cases, mosquitto web sockets is exposed on port 9001.
 
@@ -364,7 +364,7 @@ To enable local audio and hotword services is easiest using the default setup re
 
 Depending on your host, you may need to use paprefs or some other method to allow network access to your host pulse audio installation.
 
-To use pulse, the hermod services.py file needs to run with 
+To use pulse, the hermod hermod.py file needs to run with 
 - environment variables PULSE_SERVER and PULSE_COOKIE
 - access (? volume mount) to cookie file from host
 
@@ -422,7 +422,7 @@ Notably,the duckling URL is built into the RASA model when it is trained.
 
 Hermod uses environment variables in these configuration files to allow dynamic assignment. (Although changes to the duckling url  will require model training)
 
-- **DUCKLING_URL** default http://localhost:8000 set in services.py 
+- **DUCKLING_URL** default http://localhost:8000 set in hermod.py 
 eg
 ```
   - name: DucklingHTTPExtractor                                                     
@@ -431,13 +431,13 @@ eg
 
 
 
-- **RASA_ACTIONS_URL**  default http://localhost:5055 set in services.py 
+- **RASA_ACTIONS_URL**  default http://localhost:5055 set in hermod.py 
   eg
 ```
 action_endpoint:
   url: "${RASA_ACTIONS_URL}"
 ```
-If RASA_ACTIONS_URL is present in the environment when starting services.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable.
+If RASA_ACTIONS_URL is present in the environment when starting hermod.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable.
 
 
 

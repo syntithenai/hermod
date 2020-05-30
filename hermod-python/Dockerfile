@@ -27,7 +27,8 @@ RUN apt-get update && apt-get install -y libttspico0 libttspico-utils  && rm -rf
 
 RUN apt-get update && apt-get install -y node-libnpx npm  && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pymongo==3.10.0
+RUN pip install --upgrade pymongo==3.10.0 
+RUN pip install --upgrade metaphone python-Levenshtein
 
 # copy source code
 COPY ./deepspeech-models /app/deepspeech-models
@@ -39,6 +40,8 @@ COPY ./porcupine /app/porcupine
 COPY ./mosquitto/ /etc/mosquitto
 COPY ./pulseaudio/asound-pulse.conf /etc/asound.conf
 COPY ./pulseaudio/client.conf /etc/pulse/client.conf
+COPY ./wordset-dictionary /app/wordset-dictionary
 
-ENTRYPOINT [ "python", "./src/services.py" ]
+
+ENTRYPOINT [ "python", "./src/hermod.py" ]
 

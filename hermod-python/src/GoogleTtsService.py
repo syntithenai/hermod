@@ -21,10 +21,10 @@ import string
 
 from google.cloud import texttospeech
 
+from pathlib import Path
 
 valid_filename_chars = "-_() %s%s" % (string.ascii_letters, string.digits)
 char_limit = 240
-
 
 
 
@@ -89,6 +89,9 @@ class GoogleTtsService(MqttService):
         self.config = config
         # subscribe to all sites
         self.subscribe_to = 'hermod/+/tts/say'
+        cache_path = self.config['services']['GoogleTtsService'].get('cache_path','/tmp/tts_cache')
+        Path(cache_path).mkdir(parents=True, exist_ok=True)
+
 
     async def on_message(self, msg):
         self.log('message {}'.format(msg))
@@ -123,7 +126,7 @@ class GoogleTtsService(MqttService):
     
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
     async def generate_audio(self, site, text, payload):
-        cache_path = self.config['services']['GoogleTtsService'].get('cache_path','/tmp')
+        cache_path = self.config['services']['GoogleTtsService'].get('cache_path','/tmp/tts_cache')
         value = payload.get('id','no_id')
         # self.log('TTS GEN '+cache_path)
         
@@ -152,6 +155,6 @@ class GoogleTtsService(MqttService):
                 'hermod/{}/speaker/play/{}'.format(site, value), payload=bytes(audio_file), qos=0)
             # self.log('TTS sent')
             # cache short texts
-            if len(short_text) > self.config.get('cache_max_letters',50):
+            if len(short_text) > self.config.get('cache_max_letters',100):
                 # self.log('TTS remove file')
                 os.remove(file_name)

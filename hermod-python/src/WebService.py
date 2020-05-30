@@ -54,7 +54,7 @@ app.config["GITHUB_OAUTH_CLIENT_SECRET"] = os.environ.get("GITHUB_OAUTH_CLIENT_S
 github_bp = make_github_blueprint()
 app.register_blueprint(github_bp, url_prefix="/login")
 
-print('START WEB')
+#print('START WEB')
 
 
 # @app.route('/logout', methods=['GET'])

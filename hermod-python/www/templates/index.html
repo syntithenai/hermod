@@ -78,8 +78,10 @@ function showSpeechBubble() {
     
     document.getElementById("speechbubble").innerHTML = wrap.innerHTML
     document.getElementById("speechbubble").style.display = 'block'
-    
-    bubbleTimeout = setTimeout(hideSpeechBubble,5000)
+    bonus_time = lastText.length * 500
+    console.log(lastText)
+    console.log(5000 + bonus_time)
+    bubbleTimeout = setTimeout(hideSpeechBubble,5000 + bonus_time)
 }
 
 /**
@@ -270,6 +272,10 @@ function stopWaiting() {
            showDisconnected(); 
            state = 0
         })
+        client.bind('reconnect',function() {
+           showDisconnected(); 
+           state = 0
+        })
         client.bind('connect',function() {
            showStopped(); 
            state = 1
@@ -449,7 +455,6 @@ function stopWaiting() {
         <li>the capital cities and populations of countries</li>
         <li>the meanings of lots of words (and I can spell them for you)</li>
         <li>the date and time </li>
-        <li>basic maths</li>
         <li>overviews for many topics from wikipedia</li>
     </ul>
 </div>

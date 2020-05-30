@@ -15,13 +15,13 @@ services:
     sensitivity: 0.9
   Pico2wavTtsService:
     binary_path: /usr/bin/pico2wave
-    cache_path: /tmp/
+    cache_path: /tmp/tts_cache
   RasaService:
     rasa_server: "http://localhost:5005"
   DialogManagerService:  
   # capture conversations to file
   DataLoggerService:
-    #record_nlu: True
-    #record_stories: True
-    capture_path: /app/rasa/logger/
+    ##record_nlu: True
+    ##record_stories: True
+    #capture_path: /app/rasa/logger/
     

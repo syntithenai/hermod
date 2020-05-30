@@ -161,6 +161,7 @@ class GoogleAsrService(MqttService):
             self.audio_count = self.audio_count + 1
             # self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
             #self.audio_stream[site].write(msg.payload) 
+            self.last_audio[site] =  time.time()
             if site in self.transcoders:
                 self.transcoders[site].write(msg.payload)
                 self.transcoders[site].closed = False

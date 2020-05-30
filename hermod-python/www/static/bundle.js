@@ -8783,14 +8783,14 @@ var HermodWebClient = function(config) {
             return new Promise(function(resolve,reject) {
                 function onConnect() {
                     console.log('connected')
-                    //console.log(config)
+                    console.log(config)
                     if (config.subscribe && config.subscribe.length  > 0) { 
                         mqttClient.subscribe('hermod/rasa/ready',function(err) { 
                             mqttClient.unsubscribe(config.subscribe,function(err) {
                                if (err) console.log(['unSUBSCRIBE ERROR',err])
                                 mqttClient.subscribe(config.subscribe,function(err) {
                                    if (err) console.log(['SUBSCRIBE ERROR',err])
-                                   //console.log(['init subscribed to '+config.subscribe])
+                                   console.log(['init subscribed to '+config.subscribe])
                                    sendMessage('hermod/'+config.site+'/asr/activate',{})
                                    if (onCallbacks.hasOwnProperty('connect')) {
                                         onCallbacks['connect']()
@@ -8801,16 +8801,19 @@ var HermodWebClient = function(config) {
                         });
                     } else {
                         sendMessage('hermod/'+config.site+'/asr/activate',{})
+                        if (onCallbacks.hasOwnProperty('connect')) {
+                            onCallbacks['connect']()
+                        }
                         resolve()
                     }
                 }
                 //console.log('connect')
                 
                 var options = {
-                  clientId: 'webclient',
+                  clientId: config.username,
                   protocolId: 'MQTT',
                   protocolVersion: 4,
-                  clean: true,
+                  clean: false,
                   username: config.username,
                   password: config.password,
                   rejectUnauthorized: false
@@ -8840,9 +8843,8 @@ var HermodWebClient = function(config) {
                 })
                 mqttClient.on('reconnect', function(e) {
                     console.log('reconnect')
-                    console.log(e)
-                    if (onCallbacks.hasOwnProperty('disconnect')) {
-                        onCallbacks['disconnect']()
+                    if (onCallbacks.hasOwnProperty('reconnect')) {
+                        onCallbacks['reconnect']() 
                     }
                 })
 

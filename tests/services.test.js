@@ -14,7 +14,7 @@ const os = require('os');
 beforeAll(() => {
     return new Promise(function(resolve,reject) {    
         //const exec = require('child_process').exec;
-        //services = exec('../hermod-python/bin/python3 ../hermod-python/services.py', (e, stdout, stderr)=> {
+        //services = exec('../hermod-python/bin/python3 ../hermod-python/hermod.py', (e, stdout, stderr)=> {
             //if (e instanceof Error) {
                 //console.error(e);
                 //throw e;

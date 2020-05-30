@@ -62,7 +62,7 @@ class DeepspeechAsrService(MqttService):
         self.sample_rate = self.RATE_PROCESS
         self.block_size = int(self.RATE_PROCESS / float(self.BLOCKS_PER_SECOND))
         self.frame_duration_ms = 1000 * self.block_size // self.sample_rate
-        self.vad = webrtcvad.Vad(config['services']['DeepspeechAsrService'].get('vad_sensitivity',1))
+        self.vad = webrtcvad.Vad(2) #webrtcvad.Vad(config['services']['DeepspeechAsrService'].get('vad_sensitivity',1))
         
         self.modelFile = 'deepspeech-0.7.0-models.pbmm'
         
@@ -193,7 +193,7 @@ class DeepspeechAsrService(MqttService):
         # self.log('start frame gen')
         while True and self.started[site]:
             #self.log('start frame gen reallyt')
-            if silence_count > 70:
+            if silence_count > 200:
                 self.log('no voice packets timeout  ')
                 # await self.client.publish('hermod/'+site+'/timeout',json.dumps({}))
                 # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
@@ -281,11 +281,11 @@ class DeepspeechAsrService(MqttService):
             await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text,"id":self.last_start_id.get(site,'')}))
             # self.log('sent content '+text)
             self.started[site] = False
-            pass
         else:
             # self.log('incc emtpy')
             self.empty_count[site] = self.empty_count[site]  + 1
-        
+        if self.empty_count[site] > 5:
+            self.started[site] = False
         # self.log('recreate stream')
         if site in self.stream_contexts:
             del self.stream_contexts[site]
@@ -321,7 +321,7 @@ class DeepspeechAsrService(MqttService):
                     #await asyncio.sleep(0.001)
                     # self.log('frame {} {}'.format(site,self.empty_count[site]))
                     # self.log(self.started[site])
-                    if self.empty_count[site] > 8 and self.started[site]:
+                    if self.empty_count[site] > 3 and self.started[site]:
                         self.log('TIMEOUT EMPTY')
                         await self.client.publish('hermod/'+site+'/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
                         await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))

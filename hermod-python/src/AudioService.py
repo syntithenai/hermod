@@ -43,13 +43,18 @@ class AudioService(MqttService):
         self.subscribe_to = 'hermod/rasa/ready,hermod/' + self.site + '/asr/start,hermod/' + self.site + \
             '/microphone/start,hermod/' + self.site + '/microphone/stop,hermod/' + self.site + '/speaker/#'
         self.microphone_buffer=[]
-        self.vad = webrtcvad.Vad(config['services']['AudioService'].get('vad_sensitivity',0))
+        self.vad = webrtcvad.Vad(2) #webrtcvad.Vad(config['services']['AudioService'].get('vad_sensitivity',2))
         self.speaking = False
         self.force_stop_play = False
+        # force start at 75% volume
         self.current_volume = '75%'
         subprocess.call(["amixer", "-D", "pulse", "sset", "Master", "75%"])
         
     async def on_message(self, msg):
+        # self.log("MESSAGE")
+        # self.log(len(self.microphone_buffer))
+        # self.log(msg)
+        #return
         topic = "{}".format(msg.topic)
         #self.log('AUDIO SERVice {}'.format(topic))
         if topic == 'hermod/' + self.site + '/microphone/start':
@@ -115,6 +120,7 @@ class AudioService(MqttService):
             
     async def send_microphone_buffer(self):
        if hasattr(self,'client'):
+            # self.log('SEND MIC BUFFER {}'.format(len(self.microphone_buffer)))
             for a in self.microphone_buffer:
                 topic = 'hermod/' + self.site + '/microphone/audio'
                 await self.client.publish(
@@ -128,6 +134,7 @@ class AudioService(MqttService):
             self.microphone_buffer.pop(0)
 
     async def send_audio_frames(self):
+        #return
         # determine which audio device
         info = self.p.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
@@ -163,19 +170,25 @@ class AudioService(MqttService):
                 rate=16000,
                 input=True,
                 frames_per_buffer=256, input_device_index=useIndex)
+            # self.log('MIC HAVE STREAM:')
             speak_count = 0
             silence_count = 0
             speaking = False
+            # self.log('MIC HAVE STREAM WHILE TRUE:')
             while True:
-                await asyncio.sleep(0.000001)
+                #self.log('MIC HAVE STREAM UIN LOOP  ')
+                #self.log('START LOOP send_audio_frames {} silence {} speech {} is speaking {}'.format(self.started, silence_count,speech_count,speaking))
+                await asyncio.sleep(0.01)
                 frames = stream.read(256, exception_on_overflow = False)
                     
                 if self.started:
+                    #self.log('MIC HAVE STREAM UIN LOOP  IS STARTED')
                     buffer = np.frombuffer(frames, np.int16)
                     frame_slice = buffer[0:160].tobytes()
                     # self.log("valid {}".format(webrtcvad.valid_rate_and_frame_length(16000,len(frame_slice))))
                     is_speech = self.vad.is_speech(frame_slice, 16000)
                     if is_speech:
+                        # self.log('MIC HAVE STREAM UIN LOOP IS SPEECH')
                         # prepend buffer on first speech
                         if speak_count == 0:
                             await self.send_microphone_buffer()
@@ -183,20 +196,24 @@ class AudioService(MqttService):
                         speak_count = speak_count + 1
                         silence_count = 0
                     else:
+                        # self.log('MIC HAVE STREAM UIN LOOP  NOT IS SPEECH')
                         #asyncio.sleep(0.5)
                         silence_count = silence_count + 1
-                        if silence_count > 20:
+                        if silence_count > 3:
                             #self.log('MICROPHONE SILENCE TIMEOUT')
                             speaking = False
                             speak_count = 0
                         
                     if speaking:
+                        # self.log('MIC HAVE STREAM SEND AUDIO PACKET')
                         topic = 'hermod/' + self.site + '/microphone/audio'
                         await self.client.publish(
                             topic, payload=frames, qos=0)
                     else:
+                        # self.log('MIC HAVE STREAM SAVE AUDIO PACKET')
                         self.save_microphone_buffer(frames)
                 else:
+                    # self.log('MIC HAVE STREAM SILENCE')
                     self.silence_count=0
                     self.speak_count=0
             stream.stop_stream()

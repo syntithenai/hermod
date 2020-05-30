@@ -18,7 +18,8 @@ from random import randint
 from MqttService import MqttService
 import unicodedata
 import string
-
+from pathlib import Path
+        
 valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 char_limit = 240
 
@@ -58,6 +59,9 @@ class Pico2wavTtsService(MqttService):
         self.config = config
         # subscribe to all sites
         self.subscribe_to = 'hermod/+/tts/say'
+        cache_path = self.config['services']['Pico2wavTtsService'].get('cache_path','/tmp/tts_cache')
+        Path(cache_path).mkdir(parents=True, exist_ok=True)
+
 
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
@@ -90,7 +94,7 @@ class Pico2wavTtsService(MqttService):
     
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
     async def generate_audio(self, site, text, payload):
-        cache_path = self.config['services']['Pico2wavTtsService']['cache_path']
+        cache_path = self.config['services']['Pico2wavTtsService'].get('cache_path','/tmp/tts_cache')
         value = payload.get('id','no_id')
         
         if len(text) > 0:
@@ -102,7 +106,7 @@ class Pico2wavTtsService(MqttService):
                 path = self.config['services']['Pico2wavTtsService']['binary_path']
                 command = path + ' -w=' + file_name + ' "{}" '.format(text)
                 executor = concurrent.futures.ProcessPoolExecutor(
-                    max_workers=3,
+                    max_workers=1,
                 )
                 await self.loop.run_in_executor(executor,os_system,command)
 
@@ -112,5 +116,5 @@ class Pico2wavTtsService(MqttService):
                 await self.client.publish(
                     'hermod/{}/speaker/play/{}'.format(site, value), payload=bytes(audio_file), qos=0)
                 # cache short texts
-                if len(short_text) > 100:
+                if len(short_text) > self.config.get('cache_max_letters',100):
                      os.remove(file_name)
