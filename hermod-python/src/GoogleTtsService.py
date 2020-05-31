@@ -32,7 +32,8 @@ char_limit = 240
 seed(1)
 
 def write_speech(text,file_name,config):
-           
+    print('WRITE SPEECH')
+    print([text,file_name,config])
     # Instantiates a client
     client = texttospeech.TextToSpeechClient()
 
@@ -51,12 +52,9 @@ def write_speech(text,file_name,config):
 
     # Perform the text-to-speech request on the text input with the selected
     # voice parameters and audio file type
+    print('WRITE SPEECH REQ')
     response = client.synthesize_speech(synthesis_input, voice, audio_config)
-    # async with aiofiles.open(file_name, mode='wb') as f:
-        # await f.write(response.audio_content)
-    # The response's audio_content is binary.
-    with open(file_name, 'wb') as out:
-        out.write(response.audio_content)
+
     return response.audio_content
 
 
@@ -74,6 +72,9 @@ def clean_filename(filename, whitelist=valid_filename_chars, replace=' '):
         # print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
     return cleaned_filename[:char_limit]    
  
+
+def my_run_in_executor(executor, f, *args):
+    return asyncio.wrap_future(executor.submit(f, *args))
 
 class GoogleTtsService(MqttService):
     """ Text to Speech Service Class """
@@ -140,9 +141,16 @@ class GoogleTtsService(MqttService):
             # generate if file doesn't exist in cache
             audio_file = None
             if not os.path.isfile(file_name):
-                # self.log('TTS exec')
-        
-                audio_file = await self.loop.run_in_executor(None,write_speech,text, file_name, self.config)
+                self.log('TTS exec')
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                #audio_file = await self.loop.run_in_executor(None,write_speech,text, file_name, self.config)
+                    audio_file = await my_run_in_executor(executor,write_speech,text, file_name, self.config)
+                async with aiofiles.open(file_name, mode='wb') as f:
+                    await f.write(audio_file)
+                # The response's audio_content is binary.
+                # with open(file_name, 'wb') as out:
+                    # out.write(response.audio_content)
+                    # self.log('TTS DONE exec')
             else:     
                 # self.log('TTS read')
         
