@@ -134,7 +134,10 @@ class GoogleTtsService(MqttService):
         if len(text) > 0:
             # self.log('TTS havetext')
         
+            # filename limits
             short_text = text[0:200].replace(' ','_')
+            # speakable and limited
+            say_text = text[0:300].replace('(','').replace(')','')
             file_name = os.path.join(cache_path, clean_filename('tts-' + str(short_text)) + '.wav')
             # self.log('TTS file '+file_name)
         
@@ -144,7 +147,7 @@ class GoogleTtsService(MqttService):
                 self.log('TTS exec')
                 with concurrent.futures.ProcessPoolExecutor() as executor:
                 #audio_file = await self.loop.run_in_executor(None,write_speech,text, file_name, self.config)
-                    audio_file = await my_run_in_executor(executor,write_speech,short_text, file_name, self.config)
+                    audio_file = await my_run_in_executor(executor,write_speech,say_text , file_name, self.config)
                 async with aiofiles.open(file_name, mode='wb') as f:
                     await f.write(audio_file)
                 # The response's audio_content is binary.
@@ -156,12 +159,12 @@ class GoogleTtsService(MqttService):
         
                 async with aiofiles.open(file_name, mode='rb') as f:
                     audio_file = await f.read()
-            # self.log('TTS now send')
+            self.log('TTS now send')
         
             await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
             await self.client.publish(
                 'hermod/{}/speaker/play/{}'.format(site, value), payload=bytes(audio_file), qos=0)
-            # self.log('TTS sent')
+            self.log('TTS sent')
             # cache short texts
             if len(short_text) > self.config.get('cache_max_letters',100):
                 # self.log('TTS remove file')
