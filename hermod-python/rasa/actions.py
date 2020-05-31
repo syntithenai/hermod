@@ -8,7 +8,7 @@ from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet
 #
 
-import MathsActions 
+#import MathsActions 
 import WikiActions 
 import DateTimeActions 
 
