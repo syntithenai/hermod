@@ -142,7 +142,7 @@ class GoogleTtsService(MqttService):
             audio_file = None
             if not os.path.isfile(file_name):
                 self.log('TTS exec')
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                with concurrent.futures.ProcessPoolExecutor() as executor:
                 #audio_file = await self.loop.run_in_executor(None,write_speech,text, file_name, self.config)
                     audio_file = await my_run_in_executor(executor,write_speech,text, file_name, self.config)
                 async with aiofiles.open(file_name, mode='wb') as f:
@@ -150,7 +150,7 @@ class GoogleTtsService(MqttService):
                 # The response's audio_content is binary.
                 # with open(file_name, 'wb') as out:
                     # out.write(response.audio_content)
-                    # self.log('TTS DONE exec')
+                self.log('TTS DONE write')
             else:     
                 # self.log('TTS read')
         
