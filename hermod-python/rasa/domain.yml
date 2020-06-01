@@ -51,6 +51,7 @@ intents:
 - save_fact
 - affirmative
 - negative
+- speak_mnemonic
 
 responses:
   utter_goodbye:

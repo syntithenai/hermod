@@ -98,8 +98,7 @@ function hideAllDisplays() {
 }
 
 function showSlots(slots) {
-    return
-    content = document.createElement('div')
+   content = document.createElement('div')
     for (slot in slots) {
         slotContent = document.createElement('span')
         slotContent.style.paddingRight = '1em'
@@ -387,7 +386,8 @@ function stopWaiting() {
             //})
         //},100)
             
-    
+    //    <button class="btn"   onClick="client.sendMessage('hermod/'+config.site+'/display/show',{image:'https://images.unsplash.com/photo-1459682687441-7761439a709d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1110&q=80'})" >Image</button>
+        
     
     //console.log('WINDOW MESSAGE')
     //console.log(event)
@@ -398,12 +398,13 @@ function stopWaiting() {
 </script>    
 <div>
     <div id="buttons" style="float: left" >
-        <span class="fixedbuttons" >
+        <span style="float: left; margin-right: 0.5em" class="fixedbuttons" >
             <button class="btn"   onClick="showHome()" >Home</button>
-            <button class="btn"   onClick="client.sendMessage('hermod/'+config.site+'/display/show',{image:'https://images.unsplash.com/photo-1459682687441-7761439a709d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1110&q=80'})" >Image</button>
         </span>
-        <span id="slots" ></span>
-        <span class="dynamicbuttons" id="dynamicbuttons" >
+        <span style="float: left; margin-right: 0.5em" >
+          <form onSubmit="client.sendMessage('hermod/'+config.site+'/asr/text',{text:document.getElementById('text_input').value});document.getElementById('text_input').value=''; return false" ><input style="font-size: 1.8em" id="text_input" type='text' placeholder='Type your question here' /></form>
+        </span>    
+        <span style="float: left; margin-right: 0.5em" class="dynamicbuttons" id="dynamicbuttons" >
         
         </span>
     </div>
@@ -411,7 +412,7 @@ function stopWaiting() {
     <div class="speech-bubble-wrap">
         <div id="speechbubble" class="speech-bubble">this is a bubble </div>
     </div>
-    
+
            
     <button  id='microphone_button'   onClick=onClick() style="position: fixed; top: 0.5em; right: 0.5em; font-size: 1.2em; background-color:grey; border: 2px solid black; border-radius: 2em; height: 4em; width: 4em; text-decoration: none; outline: none">
         <div style="position: relative">
@@ -421,11 +422,12 @@ function stopWaiting() {
         <div>
     </button>
     
-    <div >
-      <form onSubmit="client.sendMessage('hermod/'+config.site+'/asr/text',{text:document.getElementById('text_input').value});document.getElementById('text_input').value=''; return false" ><input style="margin-left: 3em; font-size: 1.8em" id="text_input" type='text' placeholder='Type your question here' /></form>
-    </div> 
+   
 </div>
 
+<div style="clear: both">
+    <span id="slots" ></span>
+</div>
 
 <script>
     document.getElementById("microphone_button").oncontextmenu = function(event) {
@@ -445,40 +447,37 @@ function stopWaiting() {
 <div style="display: none" class="display" id="show_images" >IMAGES</div>
 
 <div style="display: block; font-size: 1em" class="display" id="show_home" >
-
-<h2>Hi, I'm Edison</h2>
-
-    <div>Say <b>"Hey Edison"</b> or click on the microphone to trigger me,  then ask a question.</div>
-    <br/>
-    <div>I know about 
-    <ul>
-        <li>the capital cities and populations of countries</li>
-        <li>the meanings of lots of words (and I can spell them for you)</li>
-        <li>the date and time </li>
-        <li>overviews for many topics from wikipedia</li>
-    </ul>
-</div>
-
-<div>If I don't know, I'll send you to wikipedia to see what your brain can find. Have Fun!  </div>
-<br/>
-<div>Say or click the following examples to see what I can do.
-<br/>
-<br/><br/>
- <div class="helpsamplebuttons" >
-    <button class="btn"  onClick="client.sendNLUMessage(config.site,'ask_date',[])" >What's the date</button>
-    <button class="btn"  onClick="client.sendNLUMessage(config.site,'define',[{entity:'word',value:'glissy'}])" >Define "glissy"</button>
-    <button class="btn"   onClick="client.sendASRTextMessage(config.site,'tell me about aeroplanes')"  >Tell me about aeroplanes</button>
-</div>
-<div class="helpsamplebuttons" >
-    <button class="btn"  onClick="client.sendNLUMessage(config.site,'tell_me_about_place_attribute',[{entity:'place', value:'Poland'},{entity:'attribute', value:'capital'}])" >What's the capital of Poland</button>
-    <button class="btn"  onClick="client.sendNLUMessage(config.site,'spell_word',[{entity:'word',value:'pantheistic'}])" >Spell the word "pantheistic"</button>
     
+    <h2 style="clear: both">Hi, I'm Edison</h2>
+ 
+    
+    <div>Say <b>"Hey Edison"</b> or click on the microphone to trigger me,  then ask a question. I turn <b>Green</b> I'm listening. </div>
+    <br/>
+    <div>I can tell you the date and time, define most words and look on wikipedia for information about a topic. </div>
+    <div>I can even use wikidata to find attributes of things like the "population of London". </div>
+    <br/>
+    <div>When we chat, I remember what you have asked so you can ask follow up questions about a topic.</div>
+    <br/>
+
+    <div><b>WARNING: All voice transcripts are saved to use as training data to improve the language model. Do not use this tool if you can't live with that.</b></div>
+
+    <br/>
+    <div>Say or click the following examples to see what I can do.
+    <br/>
+    <br/><br/>
+     <div class="helpsamplebuttons" >
+        <button class="btn"  onClick="client.sendNLUMessage(config.site,'ask_date',[])" >What's the date</button>
+        <button class="btn"  onClick="client.sendNLUMessage(config.site,'define',[{entity:'word',value:'glissy'}])" >Define "glissy"</button>
+        <button class="btn"   onClick="client.sendASRTextMessage(config.site,'tell me about aeroplanes')"  >Tell me about aeroplanes</button>
+    </div>
+    <div class="helpsamplebuttons" >
+        <button class="btn"  onClick="client.sendNLUMessage(config.site,'tell_me_about_place_attribute',[{entity:'place', value:'Poland'},{entity:'attribute', value:'capital'}])" >What's the capital of Poland</button>
+        <button class="btn"  onClick="client.sendNLUMessage(config.site,'spell_word',[{entity:'word',value:'pantheistic'}])" >Spell the word "pantheistic"</button>
+        
+    </div>
+
 </div>
-
-
-
-
-</div>
+   
 
 
 </div>

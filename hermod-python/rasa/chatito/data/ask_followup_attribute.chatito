@@ -1,6 +1,6 @@
 import ./slot_attribute.chatito
 
-%[ask_follow_attribute]
+%[ask_followup_attribute]
     what about the @[attribute]
     what is the @[attribute]
     and what is the @[attribute]

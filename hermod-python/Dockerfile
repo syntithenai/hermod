@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y libttspico0 libttspico-utils  && rm -rf
 RUN apt-get update && apt-get install -y node-libnpx npm  && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pymongo==3.10.0 
-RUN pip install --upgrade metaphone python-Levenshtein
+RUN pip install --upgrade metaphone python-Levenshtein wikipedia-api
 
 # copy source code
 COPY ./deepspeech-models /app/deepspeech-models
