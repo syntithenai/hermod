@@ -79,7 +79,7 @@ var HermodWebClient = function(config) {
         var messageFunctions = {
             // SPEAKER
             'hermod/+/speaker/play/+' : function(topic,site,payload) {
-               //console.log(['speaker play',site,payload]);
+                console.log(['speaker play',site,payload]);
                 var parts = topic.split("/")
                 var uid = 'no_id'
                 if (parts.length > 4)  {
@@ -87,7 +87,9 @@ var HermodWebClient = function(config) {
                 }
                 if (site && site.length > 0) { 
                     mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({"id":uid})); 
-					playSound(payload).then(function() {
+					console.log(['START speaker play']);
+                    playSound(payload).then(function() {
+                        console.log(['DONE speaker play']);
                         mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
 					}); 
                 }
