@@ -85,9 +85,32 @@ class RasaService(MqttService):
    
     
     async def reset_tracker(self,site):
-        #pass
-        self.log('reset tracker '+site)
-        await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[])
+        pass
+        # backup slots
+        # response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
+        # self.log('TRAKER BEFORE')
+        # self.log(response.get('slots',''))
+        
+        # # reset tracker
+        # # await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[])
+        # # self.log('RESSET tracker '+site)
+        # #await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "restart"}])
+        
+        # # restore slots ?? this should work with event 
+        # slotsets = []
+        # slots = response.get('slots',[])
+        # for slot in slots:
+            # if slots[slot]:
+                # slotsets.append({"event": "slot", "name": slot, "value": slots[slot]})
+        # self.log('RESTORE SLOTS')
+        # self.log(slotsets)
+        # await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",slotsets)
+        
+        # # check and debug
+        # response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
+        # self.log('TRAKER after')
+        # self.log(response.get('slots',''))
+        
         #requests.post(self.rasa_server+"/conversations/"+site+"/tracker/events",json.dumps({"event": "restart"}))
         # #requests.put(self.rasa_server+"/conversations/"+site+"/tracker/events",json.dumps([]),headers = {'content-type': 'application/json'})
         
