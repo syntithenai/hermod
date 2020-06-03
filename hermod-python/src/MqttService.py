@@ -11,7 +11,8 @@ import time
 import uuid
 import types
 from socket import error as socket_error
-from asyncio_mqtt import Client
+#from asyncio_mqtt import Client
+from AsyncioMqttClient import Client
 
 class AuthenticatedMqttClient(Client):
     def __init__(self,hostname,port,username='',password=''):
