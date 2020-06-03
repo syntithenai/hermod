@@ -43,7 +43,7 @@ class AuthenticatedMqttClient(Client):
                 # convert set to object
                 message = types.SimpleNamespace()
                 message.topic = msg.topic
-                message.payload = msg.payload;
+                message.payload = msg.payload
                 messages.put_nowait(message)
             except asyncio.QueueFull:
                 MQTT_LOGGER.warning(f'[{log_context}] Message queue is full. Discarding message.')
@@ -206,7 +206,7 @@ def lookup_wikipedia(word):
             # logger.debug(page_py)
         
             # parts = page.summary.split('. ')
-            # summary = parts[0];
+            # summary = parts[0]
             #summary = page.summary
         logger.debug('WIKI PAGE SEARCH RESTULS FINAL')
         logger.debug(final)
@@ -449,7 +449,22 @@ async def search_word(word):
         e = sys.exc_info()
         logger.debug(e)
 
-                
+def remove_text_inside_brackets(text, brackets="()[]"):
+    count = [0] * (len(brackets) // 2) # count open/close brackets
+    saved_chars = []
+    for character in text:
+        for i, b in enumerate(brackets):
+            if character == b: # found bracket
+                kind, is_close = divmod(i, 2)
+                count[kind] += (-1)**is_close # `+1`: open, `-1`: close
+                if count[kind] < 0: # unbalanced bracket
+                    count[kind] = 0  # keep it
+                else:  # found bracket to remove
+                    break
+        else: # character is not a [balanced] bracket
+            if not any(count): # outside brackets
+                saved_chars.append(character)
+    return ''.join(saved_chars)                
 
 class ActionSearchWiktionary(Action):
 #
@@ -569,8 +584,8 @@ class ActionSearchWikipedia(Action):
             if cached_fact:
                 await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                 parts = cached_fact.get('answer').split('. ')
-                summary = parts[0].ljust(200)[:200].strip();
-                dispatcher.utter_message(text=word + ". " + summary)
+                summary = remove_text_inside_brackets(parts[0]).ljust(200)[:200].strip()
+                dispatcher.utter_message(text=summary)
                 #slotsets.append(FollowupAction('action_end'))  
         
             else:   
@@ -582,7 +597,7 @@ class ActionSearchWikipedia(Action):
                 if result:
                     logger.debug(result)
                     parts = result.get('answer').split('. ')
-                    summary = parts[0].ljust(200)[:200].strip();
+                    summary = remove_text_inside_brackets(parts[0]).ljust(200)[:200].strip()
                     await save_fact('summary',result.get('thing'),result.get('answer'),site,'')
                     await publish('hermod/'+site+'/display/show',{'frame':result.get('url')})
                     await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Tell me more',"text":'tell me more'}]})
@@ -622,7 +637,7 @@ class ActionSearchWikipediaMore(Action):
         last_entities = tracker.current_state()['latest_message']['entities']
         word = ''
         thing_type = ''
-        last_wikipedia_search = 1;
+        last_wikipedia_search = 1
         slotsets = []
         slots = tracker.current_state().get('slots')
         for slot in slots:
@@ -634,7 +649,6 @@ class ActionSearchWikipediaMore(Action):
             if slot == "last_wikipedia_search" and slots[slot] and slots[slot] > 0:
                 last_wikipedia_search = slots[slot] + 1
         
-        slotsets.append(SlotSet('last_wikipedia_search',int(last_wikipedia_search)))
         
         site = tracker.current_state().get('sender_id')        
         if word and len(word) > 0:
@@ -642,11 +656,17 @@ class ActionSearchWikipediaMore(Action):
             if cached_fact:
                 #await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                 parts = cached_fact.get('answer').split('. ')
-                summary = parts[last_wikipedia_search];
+                summary = remove_text_inside_brackets(parts[last_wikipedia_search]).ljust(200)[:200].strip()
+                # two sentences per request for more
+                if len(parts) > (last_wikipedia_search + 1):
+                    summary2 = remove_text_inside_brackets(parts[last_wikipedia_search]).ljust(200)[:200].strip()
+                    summary = ". ".join(summary,summary2)
+                    last_wikipedia_search = last_wikipedia_search + 1
+                    
                 if summary and len(summary) > 0:
-                    dispatcher.utter_message(text=summary+' . Would you like to hear more?')
+                    dispatcher.utter_message(text=summary)
                 else:
-                    dispatcher.utter_message(text='All done')
+                    dispatcher.utter_message(text="I don't know any more information about "+word)
                     slotsets.append(FollowupAction('action_end'))  
                 
                 #slotsets.append(FollowupAction('action_end'))  
@@ -659,7 +679,8 @@ class ActionSearchWikipediaMore(Action):
                 #result = lookup_wikipedia(word)
                 if result:
                     parts = result.get('answer').split('. ')
-                    summary = parts[last_wikipedia_search].ljust(200)[:200].strip();
+                    #summary = parts[last_wikipedia_search].ljust(200)[:200].strip()
+                    summary = remove_text_inside_brackets(parts[last_wikipedia_search]).ljust(200)[:200].strip()
                     await save_fact('summary',result.get('thing'),result.get('answer'),site,'')
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+result.get('thing')})
                     dispatcher.utter_message(text=summary)
@@ -668,6 +689,9 @@ class ActionSearchWikipediaMore(Action):
                     await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                     dispatcher.utter_message(text="I can't find the topic "+word)
                     slotsets.append(FollowupAction('action_end'))  
+            
+            slotsets.append(SlotSet('last_wikipedia_search',int(last_wikipedia_search)))
+        
                 
         else:
             dispatcher.utter_message(text="I didn't hear your question. Try again")
@@ -855,10 +879,11 @@ class ActionSearchWikidata(Action):
         elif  thing and len(thing) > 0:
             cached_fact = await find_fact('summary',thing.lower())
             if cached_fact:
+                word = cached_fact.get('thing')
                 await publish('hermod/'+site+'/display/show',{'frame':'https://en.wikipedia.org/wiki/'+word})
                 parts = cached_fact.get('answer').split('. ')
-                summary = parts[0].ljust(200)[:200].strip();
-                dispatcher.utter_message(text=word + ". " + summary)
+                summary = parts[0].ljust(200)[:200].strip()
+                dispatcher.utter_message(textsummary)
                 #slotsets.append(FollowupAction('action_end'))  
         
             else:   
