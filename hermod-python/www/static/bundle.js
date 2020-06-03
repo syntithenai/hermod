@@ -8665,6 +8665,7 @@ var HermodWebClient = function(config) {
         var microphoneAudioBuffer = []
         var bufferSource = null;
         var currentVolume = null;
+        var speakerCache = []
         var SENSITIVITIES = new Float32Array([
                 0.9 //, // "Hey Edison"
                 //0.5, // "Hot Pink"
@@ -8687,6 +8688,18 @@ var HermodWebClient = function(config) {
         
         var messageFunctions = {
             // SPEAKER
+             //elif topic.startswith('hermod/' + self.site + '/speaker/cache'):
+            ////self.log('CACHE PLAYING')
+            //// limit length of direct audio, alt use url streaming for unlimited
+            //if len(self.speaker_cache) < 800:
+                //self.speaker_cache.append(msg.payload)
+                
+            'hermod/+/speaker/cache/+' : function(topic,site,payload) {
+                console.log(['speaker cache',speakerCache.length,payload]);
+                if (speakerCache.length < 800) {
+                    speakerCache.push(payload)
+                }
+            }, 
             'hermod/+/speaker/play/+' : function(topic,site,payload) {
                 console.log(['speaker play',site,payload]);
                 var parts = topic.split("/")
@@ -8697,12 +8710,13 @@ var HermodWebClient = function(config) {
                 if (site && site.length > 0) { 
                     mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({"id":uid})); 
 					console.log(['START speaker play']);
-                    playSound(payload).then(function() {
+                    speakerCache.push(payload)
+                    playSound(concat_arrays(speakerCache)).then(function() {
                         console.log(['DONE speaker play']);
                         mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
 					}); 
                 }
-            },
+            }, 
             'hermod/+/asr/start': function(topic,site,payload) {
                 // quarter volume for 10 seconds
                 muteVolume()
@@ -8747,6 +8761,25 @@ var HermodWebClient = function(config) {
             }        
         }
         
+        function concat_arrays(arrays) {
+          // sum of individual array lengths
+          let totalLength = arrays.reduce((acc, value) => acc + value.length, 0);
+
+          if (!arrays.length) return null;
+
+           let result = new Uint8Array(totalLength);
+
+              // for each array - copy it over result
+              // next array is copied right after the previous one
+              let length = 0;
+              for(let array of arrays) {
+                    result.set(array, length);
+                    length += array.length;
+              }
+
+              return result;
+        }
+        
         function onMessageArrived(message,payload) {
             //console.log(['MESSAGE ',message,payload])
             if (waitingFor.hasOwnProperty(message)) {
@@ -8759,7 +8792,7 @@ var HermodWebClient = function(config) {
                 // handle messageFunction
                 var parts = message.split("/")
                 // special handling for id in speaker/play/<id>
-                if (parts.length > 4 && parts[2] == "speaker" && parts[3] == "play") {
+                if ((parts.length > 4 && parts[2] == "speaker" && parts[3] == "play") || (parts.length > 4 && parts[2] == "speaker" && parts[3] == "cache")) {
                     //console.log('SPAKE ')
                     parts[4]="+";
                 }
