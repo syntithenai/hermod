@@ -71,7 +71,9 @@ class AudioService(MqttService):
     
         elif topic.startswith('hermod/' + self.site + '/speaker/cache'):
             #self.log('CACHE PLAYING')
-            self.speaker_cache.append(msg.payload)
+            # limit length of direct audio, alt use url streaming for unlimited
+            if len(self.speaker_cache) < 800:
+                self.speaker_cache.append(msg.payload)
         elif topic.startswith('hermod/' + self.site + '/speaker/play'):
             ptl = len('hermod/' + self.site + '/speaker/play') + 1
             playId = topic[ptl:]

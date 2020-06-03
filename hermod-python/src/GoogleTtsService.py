@@ -166,9 +166,16 @@ class GoogleTtsService(MqttService):
             slice_length = 2048
             def chunker(seq, size):
                 return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
+            lc = 0
+            ts = 0
             for slice in chunker(audio_file, slice_length):
+                lc = lc + 1
+                ts = ts + len(slice)
                 await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
             
+            self.log(lc)
+            self.log(ts)
             # finally send play message with empty payload
             await self.client.publish(
                 'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
