@@ -155,16 +155,16 @@ class GoogleTtsService(MqttService):
                     # out.write(response.audio_content)
                 self.log('TTS DONE write')
             else:     
-                # self.log('TTS read')
+                self.log('TTS read')
         
                 async with aiofiles.open(file_name, mode='rb') as f:
                     audio_file = await f.read()
-            self.log('TTS now send')
-        
+            self.log('TTS now send '+len(audio_file))
+            
             await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
             await self.client.publish(
                 'hermod/{}/speaker/play/{}'.format(site, value), payload=bytes(audio_file), qos=0)
-            self.log('TTS sent')
+            self.log('TTS sent ')
             # cache short texts
             if len(short_text) > self.config.get('cache_max_letters',100):
                 # self.log('TTS remove file')
