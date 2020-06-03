@@ -1,3 +1,5 @@
+mosquitto/acl
+src/old/
 certs/
 deepspeech-models/
 rasa/.gitignore
