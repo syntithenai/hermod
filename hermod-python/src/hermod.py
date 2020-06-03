@@ -291,7 +291,7 @@ async def async_start_hermod():
             #del CONFIG['services']['DeepspeechAsrService']
             CONFIG['services'].pop('DeepspeechAsrService',None)
             CONFIG['services']['IbmAsrService'] = {'vad_sensitivity':1 } #'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
-            print(CONFIG['services'])
+            # print(CONFIG['services'])
             
             
     # disable deepspeech and enable google ASR
@@ -311,19 +311,24 @@ async def async_start_hermod():
             #del CONFIG['services']['DeepspeechAsrService']
             CONFIG['services'].pop('Pico2wavTtsService',None)
             CONFIG['services']['GoogleTtsService'] = { 'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU'), 'cache':'/tmp/tts_cache'} #}
-            print(CONFIG['services'])
+            # print(CONFIG['services'])
       
     
     if os.getenv('RASA_URL') and len(os.getenv('RASA_URL')) > 0:
-        CONFIG['services']['RasaService']['rasa_server'] = os.getenv('RASA_URL')
+        #print('SET RASA URL '+os.getenv('RASA_URL'))
+        rasa_service = CONFIG['services'].get('RasaService',{})
+        rasa_service['rasa_server'] = os.getenv('RASA_URL')
+        #print(rasa_service)`    
+        CONFIG['services']['RasaService'] = rasa_service 
         
+    # print(CONFIG['services'])
     # SET SOUND DEVICES FROM ENVIRONMENT VARS
     if os.getenv('SPEAKER_DEVICE') is not None and 'AudioService' in CONFIG['services']:
             CONFIG['services']['AudioService']['outputdevice'] = os.getenv('SPEAKER_DEVICE')
     if os.getenv('MICROPHONE_DEVICE') is not None and 'AudioService' in CONFIG['services']:
             CONFIG['services']['AudioService']['inputdevice'] = os.getenv('MICROPHONE_DEVICE')
-    print('audio override')
-    print(CONFIG['services']['AudioService'])
+    # print('audio override')
+    # print(CONFIG['services'].get('AudioService'))
     # # OVERRIDE SOUND DEVICES FROM  CLI ARGS
     # if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
             # CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice
