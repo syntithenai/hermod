@@ -49,6 +49,7 @@ class AudioService(MqttService):
         # force start at 75% volume
         self.current_volume = '75%'
         subprocess.call(["amixer", "-D", "pulse", "sset", "Master", "75%"])
+        self.speaker_cache=[]
         
     async def on_message(self, msg):
         # self.log("MESSAGE")
@@ -68,7 +69,9 @@ class AudioService(MqttService):
         elif topic == 'hermod/' + self.site + '/asr/text' or topic == 'hermod/' + self.site + '/asr/stop':
             await self.restore_volume()
     
-            
+        elif topic.startswith('hermod/' + self.site + '/speaker/cache'):
+            #self.log('CACHE PLAYING')
+            self.speaker_cache.append(msg.payload)
         elif topic.startswith('hermod/' + self.site + '/speaker/play'):
             ptl = len('hermod/' + self.site + '/speaker/play') + 1
             playId = topic[ptl:]
@@ -78,12 +81,16 @@ class AudioService(MqttService):
             try:
                 payload = json.loads(msg.payload)
             except Exception as e:
-                self.log(e)
-            self.log(payload)
+                pass
+                #self.log(e)
+            #self.log(payload)
             if 'url' in payload:
                 await self.start_playing_url(payload.get('url'), playId)
             else:
-                await self.start_playing(msg.payload, playId)
+                self.log('START PLAYING')
+                self.speaker_cache.append(msg.payload)
+                await self.start_playing(b"".join(self.speaker_cache), playId)
+                self.speaker_cache = []
         elif topic == 'hermod/' + self.site + '/speaker/stop':
             ptl = len('hermod/' + self.site + '/speaker/play') + 1
             playId = topic[ptl:]

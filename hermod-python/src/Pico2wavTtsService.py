@@ -113,8 +113,16 @@ class Pico2wavTtsService(MqttService):
             async with aiofiles.open(file_name, mode='rb') as f:
                 audio_file = await f.read()
                 await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
+                slice_length = 2048
+                def chunker(seq, size):
+                    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+                for slice in chunker(audio_file, slice_length):
+                    await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
+                
+                # finally send play message with empty payload
                 await self.client.publish(
-                    'hermod/{}/speaker/play/{}'.format(site, value), payload=bytes(audio_file), qos=0)
+                    'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
+                  
                 # cache short texts
                 if len(short_text) > self.config.get('cache_max_letters',100):
                      os.remove(file_name)
