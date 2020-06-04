@@ -52,9 +52,11 @@ def write_speech(text,file_name,config):
 
     # Perform the text-to-speech request on the text input with the selected
     # voice parameters and audio file type
-    print('WRITE SPEECH REQ')
-    response = client.synthesize_speech(synthesis_input, voice, audio_config)
-
+    response = client.synthesize_speech(
+        request={"input": input_text, "voice": voice, "audio_config": audio_config}
+    )
+    print('GOT GOO SPEECH REQ')
+    
     return response.audio_content
 
 
@@ -163,7 +165,7 @@ class GoogleTtsService(MqttService):
             
             await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
             
-            slice_length = 2048
+            slice_length = 16000
             def chunker(seq, size):
                 return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
