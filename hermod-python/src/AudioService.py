@@ -14,14 +14,15 @@ import json
 import asyncio
 import webrtcvad
 import numpy as np
+import filetype
 
 import multiprocessing
-#import playsound
-#import simpleaudio 
 import sounddevice as sd
 import soundfile as sf
 from urllib.request import urlopen
 import subprocess
+from pydub import AudioSegment
+from pydub.playback import play
 
 from MqttService import MqttService
 
@@ -94,7 +95,7 @@ class AudioService(MqttService):
                 await self.start_playing(b"".join(self.speaker_cache), playId)
                 self.speaker_cache = []
         elif topic == 'hermod/' + self.site + '/speaker/stop':
-            ptl = len('hermod/' + self.site + '/speaker/play') + 1
+            ptl = len('hermod/' + self.site + '/speaker/stop') + 1
             playId = topic[ptl:]
             await self.stop_playing(playId)
         elif topic == 'hermod/' + self.site + '/speaker/volume':
@@ -257,27 +258,9 @@ class AudioService(MqttService):
         self.log('start playing')
         # self.force_stop_play = False;
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
-        with sf.SoundFile(io.BytesIO(urlopen(url).read()),'r+') as f:
-            # try slow read
-            # while f.tell() < f.__len__():
-                # pos = f.tell()
-                # audio = f.read(1, always_2d=True, dtype='float32')
-                # await self.play_buffer(audio ,samplerate = f.samplerate)
-                
-            
-            # self.log(f)
-            # f.seek(0, 2)
-            # frames = f.tell()
-            # f.seek(0)
-            # self.log('freames {}'.format(frames))
-            # #audio = f.read(64, always_2d=True, dtype='float32')
-            #self.log(audio)
-            # while True:
-                # pos = f.tell()
-            audio = f.read(-1, always_2d=True, dtype='float32')
-            await self.play_buffer(audio ,samplerate = f.samplerate)
-            
-               
+        #with sf.SoundFile(io.BytesIO(urlopen(url).read()),'r+') as f:
+        sound_bytes = urlopen(url).read()
+        await self.play_bytes(sound_bytes)
         await self.client.publish("hermod/" + self.site +
                                  "/speaker/finished", json.dumps({"id": playId}))
         #self.log('sent  p started')
@@ -286,30 +269,34 @@ class AudioService(MqttService):
         #self.log('start playing')
         # self.force_stop_play = False;
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
-        with sf.SoundFile(io.BytesIO(bytes(wav))) as f:
-            # slow read
-            # while f.tell() < f.__len__():
-                # pos = f.tell()
-                # audio = f.read(1024, always_2d=True, dtype='float32')
-                # await self.play_buffer(audio ,samplerate = f.samplerate)
+        sound_bytes = bytes(wav)
 
-            # self.log(f)
-            # f.seek(0, 2)
-            # frames = f.tell()
-            # f.seek(0)
-            # self.log('freames {}'.format(frames))
-            # #audio = f.read(64, always_2d=True, dtype='float32')
-            #self.log(audio)
-            # while True:
-                # pos = f.tell()
-            audio = f.read(-1, always_2d=True, dtype='float32')
-            await self.play_buffer(audio ,samplerate = f.samplerate)
-            
-               
+        await self.play_bytes(sound_bytes)
+        
         await self.client.publish("hermod/" + self.site +
                                  "/speaker/finished", json.dumps({"id": playId}))
         #self.log('sent  p started')
   
+    async def play_bytes(self,sound_bytes):
+        # slow read
+        # while f.tell() < f.__len__():
+            # pos = f.tell()
+            # audio = f.read(1024, always_2d=True, dtype='float32')
+            # await self.play_buffer(audio ,samplerate = f.samplerate)
+        sound_bytesio = io.BytesIO(sound_bytes)
+        kind = filetype.guess(sound_bytes)
+        extension = 'mp3' # default since google TTS sends without header? at least fails to identify as mp3
+        try:
+            extension = kind.extension
+        except:
+            pass
+        song = AudioSegment.from_file(sound_bytesio, format=extension)
+        # using pydub
+        play(song)
+        # OR asycio
+        # audio = sound_bytes.read(-1, always_2d=True, dtype='float32')
+        # await self.play_buffer(audio ,samplerate = f.samplerate)       
+        
                 
     async def stop_playing(self, playId):
         #self.log('stop playing')
@@ -492,3 +479,103 @@ class AudioService(MqttService):
                 # # stream.write(data)
                 # # data = wf.readframes(CHUNK)
                 # # remaining = remaining - CHUNK
+
+
+
+  
+        # FFMPEG example of Blocking Mode Audio I/O https://people.csail.mit.edu/hubert/pyaudio/docs/
+
+# """PyAudio Example: Play a wave file."""
+
+# import pyaudio
+# import wave
+# import sys
+# import subprocess
+
+# CHUNK = 1024
+
+# if len(sys.argv) < 2:
+    # print("Plays an audio file.\n\nUsage: %s filename.wav" % sys.argv[0])
+    # sys.exit(-1)
+
+    # song = subprocess.Popen(["ffmpeg", "-i", sys.argv[1], "-loglevel", "panic", "-vn", "-f", "s16le", "pipe:1"],
+                            # stdout=subprocess.PIPE)
+
+    # # instantiate PyAudio (1)
+    # p = pyaudio.PyAudio()
+
+    # # open stream (2)
+    # stream = p.open(format=pyaudio.paInt16,
+                    # channels=2,         # use ffprobe to get this from the file beforehand
+                    # rate=44100,         # use ffprobe to get this from the file beforehand
+                    # output=True)
+
+    # # read data
+    # data = song.stdout.read(CHUNK)
+
+    # # play stream (3)
+    # while len(data) > 0:
+        # stream.write(data)
+        # data = song.stdout.read(CHUNK)
+
+    # # stop stream (4)
+    # stream.stop_stream()
+    # stream.close()
+
+    # # close PyAudio (5)
+    # p.terminate()
+
+# from subprocess import Popen, PIPE
+
+# with open("test.avi", "rb") as infile:
+    # p=Popen(["ffmpeg", "-i", "-", "-f", "matroska", "-vcodec", "mpeg4",
+        # "-acodec", "aac", "-strict", "experimental", "-"],
+           # stdin=infile, stdout=PIPE)
+    # while True:
+        # data = p.stdout.read(1024)
+        # if len(data) == 0:
+            # break
+        # # do something with data...
+        # print(data)
+    # print p.wait() # should have finisted anyway
+    
+    # # lets save it!
+# with open("%s_minute_playlist.mp3" % playlist_length, 'wb') as out_f:
+    # playlist.export(out_f, format='mp3')
+    
+
+# import io
+
+# data = open('verdi.mp3', 'rb').read()
+
+# song = AudioSegment.from_file(io.BytesIO(data), format="mp3")
+# play(song)
+  
+        
+        # with sf.SoundFile(io.BytesIO(urlopen(url).read()),'r+') as f:
+            # #from __future__ import absolute_import
+            # kind = filetype.guess(f)
+            # self.log(kind)
+            
+            # song = AudioSegment.from_file(f, format="mp3")
+            # play(song)
+            # try slow read
+            # while f.tell() < f.__len__():
+                # pos = f.tell()
+                # audio = f.read(1, always_2d=True, dtype='float32')
+                # await self.play_buffer(audio ,samplerate = f.samplerate)
+                
+            
+            # self.log(f)
+            # f.seek(0, 2)
+            # frames = f.tell()
+            # f.seek(0)
+            # self.log('freames {}'.format(frames))
+            # #audio = f.read(64, always_2d=True, dtype='float32')
+            #self.log(audio)
+            # while True:
+                # pos = f.tell()
+            # audio = f.read(-1, always_2d=True, dtype='float32')
+            # await self.play_buffer(audio ,samplerate = f.samplerate)
+            
+              

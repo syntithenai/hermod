@@ -27,5 +27,7 @@ websocket
 inflect
 google-cloud-texttospeech
 motor
+pydub
+filetype
 
 
