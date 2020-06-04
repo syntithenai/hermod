@@ -53,7 +53,7 @@ def write_speech(text,file_name,config):
     # Perform the text-to-speech request on the text input with the selected
     # voice parameters and audio file type
     response = client.synthesize_speech(
-        request={"input": input_text, "voice": voice, "audio_config": audio_config}
+        request={"input": text, "voice": voice, "audio_config": audio_config}
     )
     print('GOT GOO SPEECH REQ')
     
