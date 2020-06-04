@@ -38,17 +38,17 @@ def write_speech(text,file_name,config):
     client = texttospeech.TextToSpeechClient()
 
     # Set the text input to be synthesized
-    synthesis_input = texttospeech.types.SynthesisInput(text=text)
+    synthesis_input = texttospeech.SynthesisInput(text=text)
 
     # Build the voice request, select the language code ("en-US") and the ssml
     # voice gender ("neutral")
-    voice = texttospeech.types.VoiceSelectionParams(
+    voice = texttospeech.VoiceSelectionParams(
         language_code=config.get('language','en-US'),
-        ssml_gender=texttospeech.enums.SsmlVoiceGender.NEUTRAL)
+        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL)
 
     # Select the type of audio file you want returned
-    audio_config = texttospeech.types.AudioConfig(
-        audio_encoding=texttospeech.enums.AudioEncoding.MP3)
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3)
 
     # Perform the text-to-speech request on the text input with the selected
     # voice parameters and audio file type

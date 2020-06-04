@@ -25,7 +25,7 @@ RUN wget -q https://ftp-master.debian.org/keys/release-10.asc -O- | apt-key add 
 RUN echo "deb http://deb.debian.org/debian buster non-free" >> /etc/apt/sources.list
 RUN apt-get update && apt-get install -y libttspico0 libttspico-utils  && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y node-libnpx npm  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y node-libnpx npm ffmpeg  libavcodec-extra && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pymongo==3.10.0 
 RUN pip install --upgrade metaphone python-Levenshtein wikipedia-api
