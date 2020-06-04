@@ -104,6 +104,7 @@ var HermodWebClient = function(config) {
                     speakerCache.push(payload)
                     playSound(concat_arrays(speakerCache)).then(function() {
                         console.log(['DONE speaker play']);
+                        speakerCache = []
                         mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
 					}); 
                 }
@@ -517,7 +518,7 @@ var HermodWebClient = function(config) {
             return new Promise(function(resolve,reject) {
                 try {
                     if (bytes) {
-                        var myAudio = document.createElement('audio');
+                       // var myAudio = document.createElement('audio');
 
                         //if (myAudio.canPlayType('audio/mpeg')) {
                           //myAudio.setAttribute('src','audiofile.mp3');
