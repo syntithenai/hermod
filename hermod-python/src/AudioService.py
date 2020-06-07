@@ -2,12 +2,13 @@
 This class captures audio from the available hardware and streams mqtt audio packets
 Streaming is enabled by a microphone/start message and stopped by microphone/stop
 The service also acts on speaker/play messages and others...
-This service is preconfigured for a single site.
+This service is preconfigured for a single site suitable for use in standalone or satellite configurations.
 """
 
 import wave
 import io
 import os
+import aiofiles
 import pyaudio
 import time
 import json
@@ -15,7 +16,7 @@ import asyncio
 import webrtcvad
 import numpy as np
 import filetype
-
+import concurrent.futures
 import multiprocessing
 import sounddevice as sd
 import soundfile as sf
@@ -26,7 +27,6 @@ from pydub.playback import play
 
 from MqttService import MqttService
 
-
 class AudioService(MqttService):
     """
     AudioService Service Class
@@ -36,6 +36,8 @@ class AudioService(MqttService):
         self.config = config
         self.p = pyaudio.PyAudio()
         self.site = config['services']['AudioService'].get('site','default')
+        # how many mic frames to send per mqtt message
+        self.FRAMES_PER_BUFFER = 1024 #256
         # self.log('MIC constructor {}'.format(self.site))
         #self.thread_targets.append(self.send_audio_frames)
         self.also_run=[self.send_audio_frames]
@@ -44,13 +46,15 @@ class AudioService(MqttService):
         self.subscribe_to = 'hermod/rasa/ready,hermod/' + self.site + '/asr/start,hermod/' + self.site + \
             '/microphone/start,hermod/' + self.site + '/microphone/stop,hermod/' + self.site + '/speaker/#'
         self.microphone_buffer=[]
-        self.vad = webrtcvad.Vad(2) #webrtcvad.Vad(config['services']['AudioService'].get('vad_sensitivity',2))
+        # integer between 0 and 3. 0 is the least aggressive about filtering out non-speech, 3 is the most aggressive
+        self.vad = webrtcvad.Vad(3) #webrtcvad.Vad(config['services']['AudioService'].get('vad_sensitivity',2))
         self.speaking = False
         self.force_stop_play = False
         # force start at 75% volume
         self.current_volume = '75%'
         subprocess.call(["amixer", "-D", "pulse", "sset", "Master", "75%"])
         self.speaker_cache=[]
+        self.speaker_is_playing = False
         
     async def on_message(self, msg):
         # self.log("MESSAGE")
@@ -71,12 +75,14 @@ class AudioService(MqttService):
             await self.restore_volume()
     
         elif topic.startswith('hermod/' + self.site + '/speaker/cache'):
-            #self.log('CACHE PLAYING')
+            self.log('SPEAKER   CACHE PLAYING')
             # limit length of direct audio, alt use url streaming for unlimited
             if len(self.speaker_cache) < 800:
                 self.speaker_cache.append(msg.payload)
         elif topic.startswith('hermod/' + self.site + '/speaker/play'):
+            self.log('SPEAKER PLAYING')
             ptl = len('hermod/' + self.site + '/speaker/play') + 1
+            self.speaker_is_playing = True
             playId = topic[ptl:]
             if not len(playId) > 0:
                 playId='no_id'
@@ -87,13 +93,18 @@ class AudioService(MqttService):
                 pass
                 #self.log(e)
             #self.log(payload)
-            if 'url' in payload:
+            if payload.get('url',False):
                 await self.start_playing_url(payload.get('url'), playId)
+            
+            elif payload.get('sound',False):
+                await self.play_sound(payload.get('sound'),self.site)
+            
             else:
                 self.log('START PLAYING')
                 self.speaker_cache.append(msg.payload)
                 await self.start_playing(b"".join(self.speaker_cache), playId)
                 self.speaker_cache = []
+            self.speaker_is_playing = False
         elif topic == 'hermod/' + self.site + '/speaker/stop':
             ptl = len('hermod/' + self.site + '/speaker/stop') + 1
             playId = topic[ptl:]
@@ -122,11 +133,25 @@ class AudioService(MqttService):
             self.microphone_buffer = []
         elif topic == 'hermod/'+self.site+'/timeout':
             pass
-            # this_folder = os.path.dirname(os.path.realpath(__file__))
-            # wav_file = os.path.join(this_folder, 'turn_off.wav')
-            # f = open(wav_file, "rb")
-            # wav = f.read();
-            # await self.client.publish('hermod/'+self.site+'/speaker/play',wav)
+           
+    async def play_sound(self,sound,site):
+        self.log('req play sound')
+        if sound and site:
+            sounds = {
+              "off":"turn_off.wav",
+              "on":"turn_on.wav",
+            }
+            this_folder = os.path.dirname(os.path.realpath(__file__))
+            file_name = sounds.get(sound,False)
+            self.log('req play sound '+file_name)
+            if file_name:
+                wav_file = os.path.join(this_folder, file_name)
+                async with aiofiles.open(wav_file, mode='rb') as f:
+                    audio_file = await f.read()
+                    self.log('req play sound read file')
+                    await self.play_bytes(audio_file)
+                    #await self.client.publish('hermod/'+site+'/speaker/play',audio_file)
+                    self.log('req play sound SeNT')
             
     async def send_microphone_buffer(self):
        if hasattr(self,'client'):
@@ -138,6 +163,7 @@ class AudioService(MqttService):
             self.microphone_buffer = []
         
     def save_microphone_buffer(self,frame):
+        return  # disable buffer
         self.microphone_buffer.append(frame)
         # ring buffer
         if len(self.microphone_buffer) > 3:
@@ -179,55 +205,72 @@ class AudioService(MqttService):
                 channels=1,
                 rate=16000,
                 input=True,
-                frames_per_buffer=256, input_device_index=useIndex)
+                frames_per_buffer=self.FRAMES_PER_BUFFER, input_device_index=useIndex)
             # self.log('MIC HAVE STREAM:')
             speak_count = 0
             silence_count = 0
             speaking = False
+            # longest slice for sampling given frames per buffer
+            slice_size = 160
+            silence_limit = 20
+            if self.FRAMES_PER_BUFFER > 320:
+                slice_size = 320
+                silence_limit = 6
+            elif self.FRAMES_PER_BUFFER > 480:
+                slice_size = 480
+                silence_limit = 3
+            
             # self.log('MIC HAVE STREAM WHILE TRUE:')
             while True:
                 #self.log('MIC HAVE STREAM UIN LOOP  ')
                 #self.log('START LOOP send_audio_frames {} silence {} speech {} is speaking {}'.format(self.started, silence_count,speech_count,speaking))
                 await asyncio.sleep(0.01)
-                frames = stream.read(256, exception_on_overflow = False)
+                
+                frames = stream.read(self.FRAMES_PER_BUFFER, exception_on_overflow = False)
                     
                 if self.started:
                     #self.log('MIC HAVE STREAM UIN LOOP  IS STARTED')
                     buffer = np.frombuffer(frames, np.int16)
-                    frame_slice = buffer[0:160].tobytes()
+                    frame_slice = buffer[0:slice_size].tobytes()
                     # self.log("valid {}".format(webrtcvad.valid_rate_and_frame_length(16000,len(frame_slice))))
                     is_speech = self.vad.is_speech(frame_slice, 16000)
                     if is_speech:
                         # self.log('MIC HAVE STREAM UIN LOOP IS SPEECH')
                         # prepend buffer on first speech
-                        if speak_count == 0:
-                            await self.send_microphone_buffer()
+                        # if speak_count == 0:
+                            # await self.send_microphone_buffer()
                         speaking = True
                         speak_count = speak_count + 1
                         silence_count = 0
                     else:
-                        # self.log('MIC HAVE STREAM UIN LOOP  NOT IS SPEECH')
+                        #if speaking:
+                            #self.log('MIC HAVE STREAM UIN LOOP  NOT IS SPEECH')
                         #asyncio.sleep(0.5)
                         silence_count = silence_count + 1
-                        if silence_count > 3:
-                            #self.log('MICROPHONE SILENCE TIMEOUT')
+                        if silence_count == silence_limit:
+                            self.log('MICROPHONE SILENCE TIMEOUT')
                             speaking = False
                             speak_count = 0
                         
                     if speaking:
-                        # self.log('MIC HAVE STREAM SEND AUDIO PACKET')
-                        topic = 'hermod/' + self.site + '/microphone/audio'
-                        await self.client.publish(
-                            topic, payload=frames, qos=0)
+                        if not self.speaker_is_playing:
+                           #self.log('MIC SEND AUDIO PACKET')
+                            topic = 'hermod/' + self.site + '/microphone/audio'
+                            await self.client.publish(
+                                topic, payload=frames, qos=0)
+                        else:
+                            pass
+                            #self.log('MIC ban during speech')
+                            
                     else:
-                        # self.log('MIC HAVE STREAM SAVE AUDIO PACKET')
+                        #self.log('MIC HAVE STREAM SAVE AUDIO PACKET')
                         self.save_microphone_buffer(frames)
                 else:
-                    # self.log('MIC HAVE STREAM SILENCE')
+                    #self.log('MIC NOT STARTED')
                     self.silence_count=0
                     self.speak_count=0
             stream.stop_stream()
-            stream.close();
+            stream.close()
       
     
     async def play_buffer(self,buffer, **kwargs):
@@ -255,19 +298,23 @@ class AudioService(MqttService):
             await event.wait()
 
     async def start_playing_url(self, url, playId):
-        self.log('start playing')
+        self.log('AUD start playing url')
         # self.force_stop_play = False;
+        self.speaker_is_playing = True
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         #with sf.SoundFile(io.BytesIO(urlopen(url).read()),'r+') as f:
         sound_bytes = urlopen(url).read()
         await self.play_bytes(sound_bytes)
         await self.client.publish("hermod/" + self.site +
                                  "/speaker/finished", json.dumps({"id": playId}))
-        #self.log('sent  p started')
+        self.speaker_is_playing = False
+                                 
+        self.log('AUD stop playing url')
                     
     async def start_playing(self, wav, playId = ''):
-        #self.log('start playing')
+        self.log('AUD start playing')
         # self.force_stop_play = False;
+        self.speaker_is_playing = True
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         sound_bytes = bytes(wav)
 
@@ -276,8 +323,12 @@ class AudioService(MqttService):
         await self.client.publish("hermod/" + self.site +
                                  "/speaker/finished", json.dumps({"id": playId}))
         #self.log('sent  p started')
+        self.speaker_is_playing = False
+        self.log('AUD stop playing')
+        
   
     async def play_bytes(self,sound_bytes):
+        #self.log('AUD PLAYBYTES '+str(len(sound_bytes)))
         # slow read
         # while f.tell() < f.__len__():
             # pos = f.tell()
@@ -290,14 +341,25 @@ class AudioService(MqttService):
             extension = kind.extension
         except:
             pass
+        #self.log('PLAYBYTES EXT'+extension)
         song = AudioSegment.from_file(sound_bytesio, format=extension)
+        #self.log('PLAYBYTES SONG')
         # using pydub
-        play(song)
+        # play(song)
         # OR asycio
-        # audio = sound_bytes.read(-1, always_2d=True, dtype='float32')
-        # await self.play_buffer(audio ,samplerate = f.samplerate)       
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1,
+        )
+        await self.loop.run_in_executor(executor,play,song)
+        # OR asycio controllable (not working)
+        # with io.BytesIO() as outfile:
+            # song.export(outfile,format="wav")
+            # with sf.SoundFile(outfile,'r+') as f:
+                # audio = f.read(-1, always_2d=True, dtype='float32')
+                # await self.play_buffer(outfile ,samplerate = f.samplerate)       
+                # self.log('PLAYBYTES DONE PLAY')
         
-                
+                    
     async def stop_playing(self, playId):
         #self.log('stop playing')
         self.force_stop_play = True;
