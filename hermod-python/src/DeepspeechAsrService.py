@@ -13,7 +13,7 @@ import warnings
 import soundfile
 import json
 
-from ThreadHandler import ThreadHandler
+#from ThreadHandler import ThreadHandler
 from MqttService import MqttService
 
 from io_buffer import BytesLoop
@@ -41,8 +41,6 @@ import asyncio
  
 
 class DeepspeechAsrService(MqttService):
-    #FORMAT = pyaudio.paInt16
-    # Network/VAD rate-space
     RATE_PROCESS = 16000
     CHANNELS = 1
     BLOCKS_PER_SECOND = 50           
@@ -57,162 +55,132 @@ class DeepspeechAsrService(MqttService):
         self.loop = loop
 
         super(DeepspeechAsrService, self).__init__(config,loop)
-        #self.thread_targets.append(self.startASR)    
-       
+        
         self.sample_rate = self.RATE_PROCESS
         self.block_size = int(self.RATE_PROCESS / float(self.BLOCKS_PER_SECOND))
         self.frame_duration_ms = 1000 * self.block_size // self.sample_rate
         self.vad = webrtcvad.Vad(2) #webrtcvad.Vad(config['services']['DeepspeechAsrService'].get('vad_sensitivity',1))
-        
+        self.model_path = config['services']['DeepspeechAsrService']['model_path']
         self.modelFile = 'deepspeech-0.7.0-models.pbmm'
+        self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop,hermod/+/hotword/detected'
         
         # TFLITE model for ARM architecture
         system,  release, version, machine, processor = os.uname()                
         #self.log([system,  release, version, machine, processor])
         if processor == 'armv7l': self.modelFile = 'deepspeech-0.7.0-models.tflite'
         
-        self.last_start_id = {}
-        self.audio_stream = {} #BytesLoop()
-        self.started = {} #False
-        self.active = {} #False
-        self.models = {}
-        self.empty_count = {}
-        self.stream_contexts = {}
-        self.ring_buffer = {}
-        self.last_audio = {}
-        self.model_path = config['services']['DeepspeechAsrService']['model_path']
-        self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop,hermod/+/hotword/detected'
-        #self.audio_count = 0;
-        this_folder = os.path.dirname(os.path.realpath(__file__))
-        wav_file = os.path.join(this_folder, 'turn_off.wav')
-        f = open(wav_file, "rb")
-        self.turn_off_wav = f.read();
-        # self.eventloop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(self.eventloop)
-        # self.log('START DS ASR')
-        # self.log(this_folder)
-            
-        #self.startASR()
+        self.last_start_id = {}  # for passing dialog id when not given in message -  per site
+        self.audio_stream = {} #BytesLoop()  buffer for passing mqtt -> deepspeech  -  per site
+        # self.is_speaking = {}  # follow speaker messages to disable text processing when speaking -  per site
+        self.started = {} #False  got started message for sessison -  per site
+        self.active = {} #False  got active message for session -  per site
+        self.empty_count = {}  # tally empty transcripts and bail after 3 empty -  per site
+        self.stream_contexts = {}  # Deepspeech engine stream contexts - per site
+        
+        # preload notification sounds
+        # this_folder = os.path.dirname(os.path.realpath(__file__))
+        # wav_file = os.path.join(this_folder, 'turn_off.wav')
+        # f = open(wav_file, "rb")
+        # self.turn_off_wav = f.read();
+        modelPath = os.path.join(self.model_path, self.modelFile)
+        scorerPath = os.path.join(self.model_path, 'deepspeech-0.7.0-models.scorer')
+        self.models = deepspeech.Model(modelPath)
+        self.models.enableExternalScorer(scorerPath)
+
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
         #self.log("ASR MESSAGE {}".format(topic))
         parts = topic.split("/")
         site = parts[1]
-        activateTopic = 'hermod/' +site+'/asr/activate'
-        deactivateTopic = 'hermod/' +site+'/asr/deactivate'
-        startTopic = 'hermod/' +site+'/asr/start'
-        stopTopic = 'hermod/'+site+'/asr/stop'
-        audioTopic = 'hermod/'+site+'/microphone/audio'       
-        hotwordDetectedTopic = 'hermod/'+site+'/hotword/detected' 
-        if topic == activateTopic:
+
+        if topic == 'hermod/' +site+'/asr/activate':
             self.log('activate ASR '+site)
             await self.activate(site)
-        elif topic == deactivateTopic:
+        elif topic == 'hermod/' +site+'/asr/deactivate':
             self.log('deactivate ASR '+site)
             await self.deactivate(site)
-        elif topic == startTopic:
+        elif topic == 'hermod/' +site+'/asr/start':
+            if not site in self.active and self.active[site]:
+                await self.activate(site)
+            # and not site in self.started:
             self.log('start ASR '+site)
-            if site in self.active: # and not site in self.started:
-                self.log('start ASR active '+site)
-                self.started[site] = True
-                self.last_audio[site] =  time.time()
-                payload = {}
-                try:
-                    payload = json.loads(msg.payload)
-                except Exception as e:
-                    self.log(e)
-                self.last_start_id[site] = payload.get('id','')
-                self.loop.create_task(self.startASRVAD(site))
-                #await self.startASR(site)
-        elif topic == stopTopic:
+            self.started[site] = True
+            # self.is_speaking[site] = False
+            payload = {}
+            try:
+                payload = json.loads(msg.payload)
+            except Exception as e:
+                pass
+            self.last_start_id[site] = payload.get('id','')
+            
+            # start asr processing in background
+            self.loop.create_task(self.startASRVAD(site))
+            #await self.startASR(site)
+                
+        elif topic == 'hermod/'+site+'/asr/stop':
             self.log('stop ASR '+site)
             self.started[site] = False
-            #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
-            
-        elif topic == hotwordDetectedTopic or topic == 'hermod/'+site+'/dialog/continue'  :
-            self.log('clear buffer '+site)
-            if site in self.ring_buffer:
-                self.ring_buffer[site].clear()
-            #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
         
-        elif topic == audioTopic :
-            #self.audio_count = self.audio_count + 1
-            #self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
-            self.audio_stream[site].write(msg.payload) 
+        elif topic == 'hermod/'+site+'/microphone/audio' :
+            if site in self.started and self.started[site]: # and  site in self.is_speaking and not self.is_speaking[site]:
+                self.log('save audio message') # {} {} '.format(len(msg.payload),site))
+                self.audio_stream[site].write(msg.payload) 
+                
+        # elif topic == 'hermod/'+site+'/tts/say'  :
+            # self.is_speaking[site] = True
+            # self.log('ASR at start speaking '+site)
+            
+        # elif topic == 'hermod/'+site+'/tts/finished':
+            # self.is_speaking[site] = False
+            # self.log('ASR at stop speaking '+site)
+            
         
     async def activate(self,site):
-        # self.log('activate')
-        #if not self.active[site]:
         if os.path.isdir(self.model_path):
-            # self.log('START DS ASR')
-        
+            self.log('ACTIVATE DS ASR')
+            # self.is_speaking[site] = False
             self.audio_stream[site] = BytesLoop()
             self.active[site] = True
             self.started[site] = False
             await self.client.subscribe('hermod/'+site+'/microphone/audio')
-              # Load DeepSpeech model
-            # self.log('START DS ASR ACTIVATE '+self.model_path)
+            # extra subscriptions in self.subscribe_to causes subscribe fail? so add these sub on activate
+            # await self.client.subscribe('hermod/'+site+'/tts/say')
+            # await self.client.subscribe('hermod/'+site+'/tts/finished')
             
-        #deepspeech-0.7.0-models.pbmm
-        
-            modelPath = os.path.join(self.model_path, self.modelFile)
-            scorerPath = os.path.join(self.model_path, 'deepspeech-0.7.0-models.scorer')
-            # lm = os.path.join(self.model_path, 'lm.binary')
-            # trie = os.path.join(self.model_path, 'trie')
-            
-            self.log('START DS ASR ACTIVATE '+modelPath)
-
-            # self.models[site] = deepspeech.Model(modelPath, 500)
-            # if lm and trie:
-                # self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
-            self.models[site] = deepspeech.Model(modelPath)
-            self.models[site].enableExternalScorer(scorerPath)
-            self.stream_contexts[site] = self.models[site].createStream()
-            
+            self.stream_contexts[site] = self.models.createStream()
+        else:
+            raise Exception("Could not load Deepspeech model file")    
    
     async def deactivate(self,site):
-        #if self.active[site]:
-            await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
-            self.audio_stream.pop(site, '')
-            self.active[site] = False
-            self.started[site] = False
+        await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
+        # await self.client.unsubscribe('hermod/'+site+'/tts/say')
+        # await self.client.unsubscribe('hermod/'+site+'/tts/finished')
+        self.audio_stream.pop(site, '')
+        self.active[site] = False
+        self.started[site] = False
             
-    # def read(self,site):
-        # a = None
-        # if site in self.audio_stream:
-            # a = self.audio_stream[site].read(self.block_size*2);
-        # else:
-            # self.log('read without activate')
-        # return a
         
     # coroutine
     async def frame_generator(self,site):
         """Generator that yields all audio frames."""
         silence_count = 0;
-        # self.log('start frame gen')
         while True and self.started[site]:
-            #self.log('start frame gen reallyt')
             if silence_count > 200:
-                self.log('no voice packets timeout  ')
-                # await self.client.publish('hermod/'+site+'/timeout',json.dumps({}))
-                # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
+                self.log('DEEPSPEECH no voice packets timeout  ')
                 await self.finish_stream(site)
-                #self.started[site] = False
                 break
                 
             if site in self.audio_stream and self.audio_stream[site].has_bytes(self.block_size*2):
-                # self.log('have audiuo rame')
                 silence_count = 0;
                 yield self.audio_stream[site].read(self.block_size*2)
             else:
                 # hand off control to other frame generators without yielding a value
-                # self.log('NO have audiuo rame '+str(silence_count))
                 silence_count = silence_count + 1;
                 await asyncio.sleep(0.01)
-            #padding_ms=300
             
-    async def vad_collector(self, site,padding_ms=400, ratio_start=0.55, ratio_stop=0.95, frames=None):
+            
+    async def vad_collector(self, site,padding_ms=400, ratio_start=0.55, ratio_stop=0.95, frames=None):  # original padding_ms=300
         """Generator that yields series of consecutive audio frames comprising each utterence, separated by yielding a single None.
             Determines voice activity by ratio of frames in padding_ms. Uses a buffer to include padding_ms prior to being triggered.
             Example: (frame, ..., frame, None, frame, ..., frame, None, ...)
@@ -220,12 +188,12 @@ class DeepspeechAsrService(MqttService):
         """
         #if frames is None: frames = 
         num_padding_frames = padding_ms // self.frame_duration_ms
-        self.ring_buffer[site] = collections.deque(maxlen=num_padding_frames)
+        ring_buffer = collections.deque(maxlen=num_padding_frames)
         triggered = False
-        self.last_audio[site] =  time.time()
+        #self.last_audio[site] =  time.time()
         #last_audio = time.time()           
         async for frame in self.frame_generator(site):
-            now = time.time()
+            #now = time.time()
             #self.log('VADLOOP')
             # self.log(now - last_audio)
             # if (now -  self.last_audio[site]) > 10 and self.active[site] == True and self.started[site]:
@@ -235,7 +203,7 @@ class DeepspeechAsrService(MqttService):
                 # break;
                             
             if len(frame) < 1:  # 640
-                self.log('SHORT FRAME')
+                self.log('WARNING: SHORT FRAME')
                 #pass
                 # yield None
                 # return
@@ -244,29 +212,29 @@ class DeepspeechAsrService(MqttService):
                 # self.log('is speech {}'.format(is_speech))
                 if not triggered:
                     # self.log('not triggered')
-                    self.ring_buffer[site].append((frame, is_speech))
-                    num_voiced = len([f for f, speech in self.ring_buffer[site] if speech])
+                    ring_buffer.append((frame, is_speech))
+                    num_voiced = len([f for f, speech in ring_buffer if speech])
                     #self.log('TEST START {} {} '.format(num_voiced, ratio_start *  self.ring_buffer[site].maxlen))
-                    if num_voiced > ratio_start * self.ring_buffer[site].maxlen:
+                    if num_voiced > ratio_start * ring_buffer.maxlen:
                         #self.log('push trigger')
                         triggered = True
-                        for f, s in self.ring_buffer[site]:
+                        for f, s in ring_buffer:
                             yield f
-                        self.ring_buffer[site].clear()
+                        ring_buffer.clear()
 
                 else:
                     # self.log(' triggered')
-                    self.last_audio[site] = time.time()
+                    #self.last_audio[site] = time.time()
                     yield frame
-                    self.ring_buffer[site].append((frame, is_speech))
-                    num_unvoiced = len([f for f, speech in self.ring_buffer[site] if not speech])
-                    #self.log('TEST STOP {} {} '.format(num_unvoiced, ratio_stop * self.ring_buffer[site].maxlen))
+                    ring_buffer.append((frame, is_speech))
+                    num_unvoiced = len([f for f, speech in ring_buffer if not speech])
+                    #self.log('TEST STOP {} {} '.format(num_unvoiced, ratio_stop * ring_buffer.maxlen))
                     
-                    if num_unvoiced > ratio_stop * self.ring_buffer[site].maxlen:
+                    if num_unvoiced > ratio_stop * ring_buffer.maxlen:
                         #self.log(' untriggered')
                         triggered = False
                         yield None
-                        self.ring_buffer[site].clear()
+                        ring_buffer.clear()
 
     
     async def finish_stream(self,site):
@@ -289,7 +257,7 @@ class DeepspeechAsrService(MqttService):
         # self.log('recreate stream')
         if site in self.stream_contexts:
             del self.stream_contexts[site]
-        self.stream_contexts[site] = self.models[site].createStream()
+        self.stream_contexts[site] = self.models.createStream()
         # self.log('recreated stream')
     
     async def startASRVAD(self, site = ''):
@@ -302,7 +270,7 @@ class DeepspeechAsrService(MqttService):
             return None
             
         self.empty_count[site] = 0;
-        self.stream_contexts[site] = self.models[site].createStream()
+        self.stream_contexts[site] = self.models.createStream()
         while self.started[site] == True:
         #while True and run_event and run_event.is_set(): 
             #await asyncio.sleep(1)
@@ -314,7 +282,8 @@ class DeepspeechAsrService(MqttService):
             # self.log(self.started)
             # self.log(self.models)
             # self.log(self.stream_contexts)
-            if (site in self.active and  site in self.started and site in self.models and site in self.stream_contexts and self.active[site] == True):
+            # and site in self.models
+            if (site in self.active and  site in self.started  and site in self.stream_contexts and self.active[site] == True):
                 # self.log('startASRVAD LOOP OK')
                 
                 async for frame in self.vad_collector(site):
