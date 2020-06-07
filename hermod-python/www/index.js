@@ -10,6 +10,16 @@ var KeywordData =  require('./porcupine/keyword_data')
 
 //console.log('MODULE')
 //console.log(PorcupineModule())
+const Analytics = require('analytics-node');
+ 
+const analyticsClient = new Analytics('UA-3712973-3');
+
+function logAnalyticsEvent(name,user) {
+    analyticsClient.track({
+      event: name,
+      userId: user
+    });
+}
 
 try {
     window.PorcupineManager = PorcupineManager
@@ -39,6 +49,7 @@ var HermodWebClient = function(config) {
         var mqttClient = null;
         var isRecording = false;
         var isSending = false;
+        var isPlaying = false;
         var waitingFor = {}
         var onCallbacks = {}
         var hotwordManager = null;
@@ -87,7 +98,7 @@ var HermodWebClient = function(config) {
                 
             'hermod/+/speaker/cache/+' : function(topic,site,payload) {
                 console.log(['speaker cache',speakerCache.length,payload]);
-                if (speakerCache.length < 800) {
+                if (speakerCache.length < 200) {
                     speakerCache.push(payload)
                 }
             }, 
@@ -109,10 +120,20 @@ var HermodWebClient = function(config) {
 					}); 
                 }
             }, 
+            'hermod/+/nlu/intent': function(topic,site,payload) {
+                 logAnalyticsEvent(JSON.stringify(payload),site)
+ 
+            },
             'hermod/+/asr/start': function(topic,site,payload) {
                 // quarter volume for 10 seconds
                 muteVolume()
-            } ,
+            },
+            'hermod/+/tts/say': function(topic,site,payload) {
+               isPlaying = true 
+            }, 
+            'hermod/+/tts/finished': function(topic,site,payload) {
+               isPlaying = false 
+            }, 
             'hermod/+/asr/stop': function(topic,site,payload) {
                 // quarter volume for 10 seconds
                 console.log('stop message unmute')
@@ -595,7 +616,8 @@ var HermodWebClient = function(config) {
                     speechEvents.on('speaking', function() {
                       clearTimeout(speakingTimeout)
                       //console.log('speaking');
-                      sendAudioBuffer(config.site)
+                      // DISABLE BUFFER   
+                      //sendAudioBuffer(config.site) 
                       speaking = true
                       if (onCallbacks.hasOwnProperty('speaking')) {
                         onCallbacks['speaking']()
@@ -772,14 +794,18 @@ var HermodWebClient = function(config) {
                       if (isRecording  && isSending) { // && speaking) {
                           //console.log(['REC'])
                           resample(e.inputBuffer,16000,function(res) {
-                            if (speaking) {
-                                if (recorderTimeout) clearTimeout(recorderTimeout)
-                                console.log(['SEND '+'hermod/'+site+'/microphone/audio'])
-                                sendAudioMessage('hermod/'+site+'/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
+                            if (! isPlaying) { 
+                                if (speaking) {
+                                    if (recorderTimeout) clearTimeout(recorderTimeout)
+                                    console.log(['SEND '+'hermod/'+site+'/microphone/audio'])
+                                    sendAudioMessage('hermod/'+site+'/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))
+                                } else {
+                                    if (!recorderTimeout) setTimeout(function() {stopMicrophone(); startHotword()},5000)
+                                    console.log(['BUFFER'])
+                                    bufferAudio(Buffer.from(convertFloat32ToInt16(res)));
+                                }
                             } else {
-                                if (!recorderTimeout) setTimeout(function() {stopMicrophone(); startHotword()},5000)
-                                console.log(['BUFFER'])
-                                bufferAudio(Buffer.from(convertFloat32ToInt16(res)));
+                                console.log('BAN DURING PLAY')
                             }
                           });
                       }
