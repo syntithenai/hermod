@@ -254,6 +254,8 @@ class DeepspeechAsrService(MqttService):
             self.empty_count[site] = self.empty_count[site]  + 1
         if self.empty_count[site] > 5:
             self.started[site] = False
+            await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
+            
         # self.log('recreate stream')
         if site in self.stream_contexts:
             del self.stream_contexts[site]
@@ -292,7 +294,7 @@ class DeepspeechAsrService(MqttService):
                     # self.log(self.started[site])
                     if self.empty_count[site] > 3 and self.started[site]:
                         self.log('TIMEOUT EMPTY')
-                        await self.client.publish('hermod/'+site+'/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
+                        await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
                         await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
                         self.started[site] = False
                         break;

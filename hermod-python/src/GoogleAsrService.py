@@ -1,59 +1,159 @@
+
 from __future__ import division
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
 
-import re
+import asyncio
+#import re
 import os
-import struct
-import sys
-from datetime import datetime
+import numpy as np
+
+#from datetime import datetime
 from threading import Thread
 import json
 import time
-import io
+#import io
 
-from socket import error as socket_error
-import paho.mqtt.client as mqtt
-import warnings
-import soundfile
-import json
 
 from ThreadHandler import ThreadHandler
 from MqttService import MqttService
 
 from io_buffer import BytesLoop
 import threading, collections, queue, os, os.path
-import deepspeech
-import numpy as np
-import pyaudio
-import wave
+#import pyaudio
+
 import webrtcvad
-from scipy import signal
-import asyncio
-from google.cloud.speech import enums
+
+class Transcoder(object):
+    """
+    Converts audio chunks to text
+    """
+    def __init__(self, encoding, rate, language, mqtt_client, site, last_dialog_id):
+        self.buff = queue.Queue()
+        self.encoding = encoding
+        self.language = language
+        self.rate = rate
+        self.closed = True
+        self.transcript = None
+        self.error = None
+        self.mqtt_client = mqtt_client
+        self.site = site
+        self.last_dialog_id = last_dialog_id
+
+    def start(self):
+        # print('TRANSCODER START ')
+        """Start up streaming speech call"""
+        threading.Thread(target=self.process).start()
+        
+    
+    def response_loop(self, responses):
+        """
+        Pick up the final result of Speech to text conversion
+        """
+        # print('TRANSCODER RESPONSE LOOP')
+        for response in responses:
+            # print('TRANSCODER RESPONSE')
+            # print([response.speech_event_type])
+            # print([response])
+            # is_end_utterance = False
+            # if response.speech_event_type == 1:
+                # print('GOOGLE END UTTERANCE')
+                # is_end_utterance = True
+                # #break
+            if response.error:
+                # print(response.error.message)
+                self.error = response.error
+                #break
+            if not response.results:
+                continue
+            result = response.results[0]
+            if not result.alternatives:
+                continue
+            transcript = result.alternatives[0].transcript
+            if result.is_final:
+                self.transcript = transcript
+                asyncio.run(self.mqtt_client.publish('hermod/'+self.site+'/asr/text',json.dumps({"id": self.last_dialog_id, 'text':self.transcript})))
+            # end utterance without transcript
+            # else:
+                # if is_end_utterance:
+                    # break
+
+    def process(self):
+        """
+        Audio stream recognition and result parsing
+        """
+        #You can add speech contexts for better recognition
+        cap_speech_context = types.SpeechContext(phrases=[""])
+        client = speech.SpeechClient()
+        config = types.RecognitionConfig(
+            encoding=self.encoding,
+            sample_rate_hertz=self.rate,
+            language_code=self.language
+            # speech_contexts=[cap_speech_context,],
+            # model='command_and_search'
+        )
+        streaming_config = types.StreamingRecognitionConfig(
+            config=config,
+            interim_results=False,
+            single_utterance=True)
+        audio_generator = self.stream_generator()
+        # print('TRANSCODER PROCESS')
+        requests = (types.StreamingRecognizeRequest(audio_content=content)
+                    for content in audio_generator)
+
+        responses = client.streaming_recognize(streaming_config, requests)
+        try:
+            self.response_loop(responses)
+            # print('TRANSCODER DONE LOOP')
+        except Exception as e:
+            print('TRANSCODER ERR')
+            print(e)
+            pass
+            #self.start()
+
+    def stream_generator(self):
+        while not self.closed:
+            chunk = self.buff.get()
+            if chunk is None:
+                return
+            data = [chunk]
+            while True:
+                try:
+                    chunk = self.buff.get(block=False)
+                    if chunk is None:
+                        return
+                    data.append(chunk)
+                except queue.Empty:
+                    break
+            yield b''.join(data)
+
+    def write(self, data):
+        """
+        Writes data to the buffer
+        """
+        self.buff.put(data)
+
 
 
 ######################################
 # This class listens for mqtt audio packets and publishes asr/text messages
 
 # It integrates silence detection to slice up audio and detect the end of a spoken message
-# It is designed to be run as a thread by calling run(run_event) (implemented in MqttService)
-# Based on the deepspeech examples repository python streaming example.
 # To activate the service for a site send a message - hermod/<site>/asr/activate
 # Once activated, the service will start listening for audio packets when you send - hermod/<site>/asr/start
-# The service will continue to listen and emit hermod/<site>/asr/text messages every time the deepspeech engine can recognise some non empty text
-# A hermod/<site>/asr/stop message will disable recognition while still leaving a loaded deepspeech transcription instance for the site so it can be reenabled instantly
+# The service will continue to listen and emit hermod/<site>/asr/text messages every time the recognition engine can recognise some non empty text
+# A hermod/<site>/asr/stop message will disable recognition 
 # A hermod/<site>/asr/deactivate message will garbage collect any resources related to the site.
 
 ###############################################################
  
 
 class GoogleAsrService(MqttService):
-    FORMAT = pyaudio.paInt16
+    #FORMAT = pyaudio.paInt16
     # Network/VAD rate-space
     RATE_PROCESS = 16000
-    CHANNELS = 1
+    #CHANNELS = 1
     BLOCKS_PER_SECOND = 50           
  
     def __init__(
@@ -65,117 +165,201 @@ class GoogleAsrService(MqttService):
         
         self.config = config
         self.loop = loop
-
-        #self.thread_targets.append(self.startASR)    
-        # Create a thread-safe buffer of audio data
-        self._buff = {} 
-        self.closed = {}
+        self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop,hermod/+/hotword/detected'
         
+        # Create a thread-safe buffer of audio data
+        # self._buff = {} 
+        self.transcoders = {}
+        self.audio_stream = {} #BytesLoop()
+        
+        self.closed = {}
+        self.started = {} #False
+        self.active = {} #False
+        self.empty_count = {}
+        self.last_audio = {}
+        self.audio_count = 0;
+        self.non_speech = {}
         self.sample_rate = self.RATE_PROCESS
         self.block_size = int(self.RATE_PROCESS / float(self.BLOCKS_PER_SECOND))
         self.frame_duration_ms = 1000 * self.block_size // self.sample_rate
-        # self.vad = webrtcvad.Vad(config['services']['DeepspeechAsrService'].get('vad_sensitivity',0))
-        # self.modelFile = 'output_graph.pbmm'
-        self.transcoders = {}
+        self.vad = webrtcvad.Vad(config['services']['GoogleAsrService'].get('vad_sensitivity',1))
+        self.no_packet_timeouts = {}
+        self.last_dialog_id = {}
         # # TFLITE model for ARM architecture
         # system,  release, version, machine, processor = os.uname()                
         # #self.log([system,  release, version, machine, processor])
         # if processor == 'armv7l': self.modelFile = 'output_graph.tflite'
-        
-        
-        self.audio_stream = {} #BytesLoop()
-        self.started = {} #False
-        self.active = {} #False
-        self.models = {}
-        self.empty_count = {}
-        self.stream_contexts = {}
-        self.ring_buffer = {}
-        self.last_audio = {}
-        # self.model_path = config['services']['DeepspeechAsrService']['model_path']
-        self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop,hermod/+/hotword/detected'
-        self.audio_count = 0;
-        this_folder = os.path.dirname(os.path.realpath(__file__))
-        wav_file = os.path.join(this_folder, 'turn_off.wav')
-        f = open(wav_file, "rb")
-        self.turn_off_wav = f.read();
-        # self.eventloop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(self.eventloop)
-        # self.log('have loop')
+        self.slice_size = 160
+        if self.block_size > 320:
+            self.slice_size = 320
+        elif self.block_size > 480:
+            self.slice_size = 480
             
-        #self.startASR()
+    async def no_packet_timeout(self,site,msg):
+        payload={}
+        #print('NPT st')
+        await asyncio.sleep(1.5)
+        # print('ASR NO PACKET TIMEOUT')
+        self.transcoders[site].write(msg.payload)
+        self.stop_transcoder(site)
+        # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_dialog_id[site]}))
+        # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
+        await asyncio.sleep(0.5)
+        if not self.transcoders[site].transcript:
+            # await self.got_transcript(site)
+        # else:
+            await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_dialog_id[site]}))
+            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
+                        # self.started[site] = False
+        # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id": self.last_dialog_id[site]}))
+        # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
+    
+    def stop_transcoder(self,site): 
+        if site in self.transcoders:
+            # buffer = np.frombuffer(msg.payload, np.int16)
+            # frame_slice = buffer.tobytes()
+            # self.transcoders[site].write(frame_slice)
+            self.transcoders[site].write(None)
+            self.transcoders[site].closed = True
+            self.transcoders[site].write(None)
+            self.started[site] = False
+            
+    # async def got_transcript(self,site):
+        # print("GOT TEXT "+self.transcoders[site].transcript)
+        # self.no_packet_timeouts[site].cancel()
+        # self.stop_transcoder(site)
+        # await self.client.publish('hermod/'+site+'/asr/text',json.dumps({"id": self.last_dialog_id[site], 'text':self.transcoders[site].transcript}))
+        # self.started[site] = False
+        # self.transcoders[site].transcript = None
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
         #self.log("ASR MESSAGE {}".format(topic))
         parts = topic.split("/")
         site = parts[1]
-        activateTopic = 'hermod/' +site+'/asr/activate'
-        deactivateTopic = 'hermod/' +site+'/asr/deactivate'
-        startTopic = 'hermod/' +site+'/asr/start'
-        stopTopic = 'hermod/'+site+'/asr/stop'
-        audioTopic = 'hermod/'+site+'/microphone/audio'       
-        hotwordDetectedTopic = 'hermod/'+site+'/hotword/detected' 
-        if topic == activateTopic:
-            #self.log('activate ASR '+site)
-            await self.activate(site)
-        elif topic == deactivateTopic:
+        
+        if topic == 'hermod/' +site+'/asr/activate':
+            self.log('activate ASR '+site)
+            #await self.activate(site)
+        elif topic == 'hermod/' +site+'/asr/deactivate':
             #self.log('deactivate ASR '+site)
-            await self.deactivate(site)
-        elif topic == startTopic:
-            self.log('start ASR '+site)
-            if site in self.active: # and not site in self.started:
-                self.log('start ASR active '+site)
-                self.started[site] = True
-                self.last_audio[site] =  time.time()
-                self.audio_stream[site] = BytesLoop()
-                # speech_contexts=[speech.types.SpeechContext(
-                # phrases=['hi', 'good afternoon'],
-                # )])
-                self.transcoders[site] = Transcoder(
-                    encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
-                    rate=16000,
-                    language=self.config['services']['GoogleAsrService']['language']
-                )
-                self.transcoders[site].start()
-                
-                await self.client.subscribe('hermod/'+site+'/microphone/audio')
-                #self.loop.create_task(self.startASRVAD(site))
-                #asyncio.run(self.startASRVAD(site))
-                #await self.startASR(site)
-                #self.loop.run_in_executor(None,self.startASR,site)
-                #await self.startASRVAD(site)
+            self.audio_stream.pop(site, '')
+            self.active[site] = False
+            self.started[site] = False
+        elif topic == 'hermod/' +site+'/asr/start':
+            payload={}
+            payload_text = msg.payload
+            try:
+                payload = json.loads(payload_text)
+            except Exception as e:
+                pass
+            self.last_dialog_id[site] = payload.get('id','')
             
-        elif topic == stopTopic:
+            
+            self.audio_stream[site] = BytesLoop()
+            self.active[site] = True
+            # if not site in self.active and self.active[site]:
+                # await self.activate(site)
+            self.log('start ASR '+site)
+            self.started[site] = True
+            self.last_audio[site] =  time.time()
+            self.audio_stream[site] = BytesLoop()
+            # speech_contexts=[speech.types.SpeechContext(
+            # phrases=['hi', 'good afternoon'],
+            # )])
+            self.transcoders[site] = Transcoder(
+                encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
+                rate=16000,
+                language=self.config['services']['GoogleAsrService']['language'],
+                mqtt_client = self.client,
+                site = site,
+                last_dialog_id = self.last_dialog_id[site]
+            )
+            self.transcoders[site].start()
+            await self.client.subscribe('hermod/'+site+'/microphone/audio')
+            
+        elif topic == 'hermod/'+site+'/asr/stop':
             self.log('stop ASR '+site)
+            #self.transcoders[site].closed = True
+            self.stop_transcoder(site)
             self.started[site] = False
             await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
             #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
             
-        # elif topic == hotwordDetectedTopic:
+        # elif topic == 'hermod/'+site+'/hotword/detected' :
             # self.log('clear buffer '+site)
             # if site in self.ring_buffer:
                 # self.ring_buffer[site].clear()
             #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
         
-        elif topic == audioTopic :
+        elif topic == 'hermod/'+site+'/microphone/audio'  :
             self.audio_count = self.audio_count + 1
-            # self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
-            #self.audio_stream[site].write(msg.payload) 
-            self.last_audio[site] =  time.time()
-            if site in self.transcoders:
-                self.transcoders[site].write(msg.payload)
-                self.transcoders[site].closed = False
+            #self.last_audio[site] =  time.time()
             
-                if self.transcoders[site].transcript:
-                    print("GOT TEXT "+self.transcoders[site].transcript)
-                    payload_text = msg.payload
-                    payload = {}
-                    try:
-                        payload = json.loads(payload_text)
-                    except Exception as e:
-                        self.log(e)
-                    await self.client.publish('hermod/'+site+'/asr/text',json.dumps({"id": payload.get('id',''), 'text':self.transcoders[site].transcript}))
-                    self.transcoders[site].transcript = None
+            # print('CHECK VAD')
+            # print(len(msg.payload))
+            buffer = np.frombuffer(msg.payload, np.int16)
+            frame_slice1 = self.vad.is_speech(buffer[0:480].tobytes(), self.sample_rate)
+            frame_slice2 = self.vad.is_speech(buffer[480:960].tobytes(), self.sample_rate)
+            #frame_slice3 = self.vad.is_speech(buffer[960:1440].tobytes(), self.sample_rate)
+            # frame_slice4 = self.vad.is_speech(buffer[1440:1920].tobytes(), self.sample_rate)
+            # or frame_slice3 or frame_slice4
+            if not (frame_slice1 or frame_slice2 ):
+                self.non_speech[site] = self.non_speech.get(site,0)
+                self.non_speech[site] = self.non_speech[site] + 1
+                # print('NON SPEECH')
+                # print(self.non_speech[site])    
+            else:
+                self.non_speech[site] = 0
+                #print('IS SPEECH')
+            payload = {}
+            # ignore until started
+            #print('SPEECH mess st')
+            if site in self.transcoders and self.started[site]:
+                # print('SPEECH mess s1')
+                if site in self.no_packet_timeouts:
+                    self.no_packet_timeouts[site].cancel()
+                
+                self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site,msg))
+                # print('SPEECH mess task')
+                # restrict empty packets to transcoder
+                silence_cutoff = 100
+                if self.non_speech[site] < silence_cutoff:
+                    # self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
+                    self.transcoders[site].closed = False
+                    self.transcoders[site].write(msg.payload)
+                    # payload_text = msg.payload
+                    
+                    # try:
+                        # payload = json.loads(payload_text)
+                    # except Exception as e:
+                        # pass
+                        # #self.log(e)
+                    
+                    if self.transcoders[site].error and self.transcoders[site].error.code == 11:
+                        # print('SPEECH  err 11')
+                        # easy because no text expected so can send bail out messages directly
+                        self.no_packet_timeouts[site].cancel()
+                        self.stop_transcoder(site)
+                        self.started[site] = False
+                        await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_dialog_id[site]}))
+                        await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
+                    
+                    if self.transcoders[site].transcript:
+                        self.stop_transcoder(site)
+                elif self.non_speech[site] == silence_cutoff:
+                    # print('exceEd non speech')
+                    self.no_packet_timeouts[site].cancel()
+                    self.transcoders[site].write(msg.payload)
+                    self.stop_transcoder(site)
+                    # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_dialog_id[site]}))
+                    # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
+                    #self.transcoders[site].closed = True
+                    #self.transcoders[site].write(None)
+                    # self.started[site] = False
+                    # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id": payload.get('id','no_id')}))
+                    # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": payload.get('id','no_id')}))
+                # print('SPEECH mess done')
             # if len(text) > 0:
                 # self.log("ASR TEXT 3{}".format(text))
                 # # self.empty_count[site] = 0
@@ -185,35 +369,26 @@ class GoogleAsrService(MqttService):
                 
             #self._buff[site].put(msg.payload)
         
-    async def activate(self,site):
-        #if not self.active[site]:
-            self.audio_stream[site] = BytesLoop()
-            self.active[site] = True
-            self.started[site] = False
-            self._buff[site] = queue.Queue()
-            
-            self.closed[site] = False
-            #await self.client.subscribe('hermod/'+site+'/microphone/audio')
-              # Load DeepSpeech model
-            # if os.path.isdir(self.model_path):
-                # modelPath = os.path.join(self.model_path, self.modelFile)
-                # lm = os.path.join(self.model_path, 'lm.binary')
-                # trie = os.path.join(self.model_path, 'trie')
+    # async def activate(self,site):
+        # #if not self.active[site]:
+            # self.audio_stream[site] = BytesLoop()
+            # self.active[site] = True
+            # self.started[site] = False
+            # # self._buff[site] = queue.Queue()
+            # #self.closed[site] = False
+            # #await self.client.subscribe('hermod/'+site+'/microphone/audio')
+    
 
-                # self.models[site] = deepspeech.Model(modelPath, 500)
-                # if lm and trie:
-                    # self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
             
-                # self.stream_contexts[site] = self.models[site].createStream()
+    # async def deactivate(self,site):
+        # #if self.active[site]:
+            # #await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
             
-   
-    async def deactivate(self,site):
-        #if self.active[site]:
-            #await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
-            self.audio_stream.pop(site, '')
-            self.active[site] = False
-            self.started[site] = False
-            self.closed[site] = True
+            # #self.closed[site] = True
+
+
+ 
+ 
  
     # async def run(self):
         # while True:
@@ -264,91 +439,6 @@ class GoogleAsrService(MqttService):
 
     
 
-class Transcoder(object):
-    """
-    Converts audio chunks to text
-    """
-    def __init__(self, encoding, rate, language):
-        self.buff = queue.Queue()
-        self.encoding = encoding
-        self.language = language
-        self.rate = rate
-        self.closed = True
-        self.transcript = None
-
-    def start(self):
-        """Start up streaming speech call"""
-        threading.Thread(target=self.process).start()
-
-    def response_loop(self, responses):
-        """
-        Pick up the final result of Speech to text conversion
-        """
-        for response in responses:
-            if not response.results:
-                continue
-            result = response.results[0]
-            if not result.alternatives:
-                continue
-            transcript = result.alternatives[0].transcript
-            if result.is_final:
-                self.transcript = transcript
-
-    def process(self):
-        """
-        Audio stream recognition and result parsing
-        """
-        #You can add speech contexts for better recognition
-        cap_speech_context = types.SpeechContext(phrases=["Add your phrases here"])
-        client = speech.SpeechClient()
-        config = types.RecognitionConfig(
-            encoding=self.encoding,
-            sample_rate_hertz=self.rate,
-            language_code=self.language
-            # speech_contexts=[cap_speech_context,],
-            # model='command_and_search'
-        )
-        streaming_config = types.StreamingRecognitionConfig(
-            config=config,
-            interim_results=False,
-            single_utterance=False)
-        audio_generator = self.stream_generator()
-        requests = (types.StreamingRecognizeRequest(audio_content=content)
-                    for content in audio_generator)
-
-        responses = client.streaming_recognize(streaming_config, requests)
-        try:
-            self.response_loop(responses)
-        except:
-            self.start()
-
-    def stream_generator(self):
-        while not self.closed:
-            chunk = self.buff.get()
-            if chunk is None:
-                return
-            data = [chunk]
-            while True:
-                try:
-                    chunk = self.buff.get(block=False)
-                    if chunk is None:
-                        return
-                    data.append(chunk)
-                except queue.Empty:
-                    break
-            yield b''.join(data)
-
-    def write(self, data):
-        """
-        Writes data to the buffer
-        """
-        self.buff.put(data)
-
-
-
-
- 
- 
             
     # def dframe_generator(self,site):
         # self.log('FG')

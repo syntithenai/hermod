@@ -23,6 +23,7 @@ import numpy as np
 import pyaudio
 import wave
 import webrtcvad
+
 from scipy import signal
 import asyncio
 
@@ -179,33 +180,28 @@ class IbmAsrService(MqttService):
         #self.log("ASR MESSAGE {}".format(topic))
         parts = topic.split("/")
         site = parts[1]
-        activateTopic = 'hermod/' +site+'/asr/activate'
-        deactivateTopic = 'hermod/' +site+'/asr/deactivate'
-        startTopic = 'hermod/' +site+'/asr/start'
-        stopTopic = 'hermod/'+site+'/asr/stop'
-        audioTopic = 'hermod/'+site+'/microphone/audio'       
-        hotwordDetectedTopic = 'hermod/'+site+'/hotword/detected' 
-        if topic == activateTopic:
+        if topic == 'hermod/' +site+'/asr/activate':
             self.log('activate ASR '+site)
             await self.activate(site)
-        elif topic == deactivateTopic:
+        elif topic == 'hermod/' +site+'/asr/deactivate':
             self.log('deactivate ASR '+site)
             await self.deactivate(site)
-        elif topic == startTopic:
+        elif topic == 'hermod/' +site+'/asr/start':
             #self.log('start ASR '+site)
-            if site in self.active: # and not site in self.started:
-                self.log('start ASR '+site)
-                self.started[site] = True
-                self.last_audio[site] =  time.time()
-                payload = {}
-                try:
-                    payload = json.loads(msg.payload)
-                except Exception as e:
-                    self.log(e)
-                self.last_start_id[site] = payload.get('id','')
-                self.loop.create_task(self.startASRVAD(site))
-                #await self.startASR(site)
-        elif topic == stopTopic:
+            if not self.active.get(site,False): 
+                await self.activate(site)
+            self.log('start ASR '+site)
+            self.started[site] = True
+            self.last_audio[site] =  time.time()
+            payload = {}
+            try:
+                payload = json.loads(msg.payload)
+            except Exception as e:
+                self.log(e)
+            self.last_start_id[site] = payload.get('id','')
+            self.loop.create_task(self.startASRVAD(site))
+            #await self.startASR(site)
+        elif topic == 'hermod/'+site+'/asr/stop':
             self.log('stop ASR '+site)
             if site in self.connections:
                 try:
@@ -215,16 +211,17 @@ class IbmAsrService(MqttService):
             self.started[site] = False
             #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
             
-        elif topic == hotwordDetectedTopic:
+        elif topic == 'hermod/'+site+'/hotword/detected':
             self.log('clear buffer '+site)
             if site in self.ring_buffer:
                 self.ring_buffer[site].clear()
             #self.client.publish('hermod/'+site+'/speaker/play',self.turn_off_wav)
         
-        elif topic == audioTopic :
-            self.audio_count = self.audio_count + 1
-            #self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
-            self.audio_stream[site].write(msg.payload) 
+        elif topic == 'hermod/'+site+'/microphone/audio':
+            if self.started.get(site,False):
+                self.audio_count = self.audio_count + 1
+                #self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
+                self.audio_stream[site].write(msg.payload) 
         
     async def activate(self,site):
         # self.log('activate')
@@ -232,24 +229,6 @@ class IbmAsrService(MqttService):
         self.active[site] = True
         self.started[site] = False
         await self.client.subscribe('hermod/'+site+'/microphone/audio')
-              # # Load DeepSpeech model
-            # self.log('START ibm ASR ACTIVATE '+self.model_path)
-            
-        #deepspeech-0.7.0-models.pbmm
-        
-            # modelPath = os.path.join(self.model_path, self.modelFile)
-            # scorerPath = os.path.join(self.model_path, 'deepspeech-0.7.0-models.scorer')
-            # lm = os.path.join(self.model_path, 'lm.binary')
-            # trie = os.path.join(self.model_path, 'trie')
-            
-            
-            # self.models[site] = deepspeech.Model(modelPath, 500)
-            # if lm and trie:
-                # self.models[site].enableDecoderWithLM(lm, trie, 0.75, 1.85)
-            # self.models[site] = deepspeech.Model(modelPath)
-            # self.models[site].enableExternalScorer(scorerPath)
-            # self.stream_contexts[site] = self.models[site].createStream()
-            
    
     async def deactivate(self,site):
         #if self.active[site]:
@@ -257,32 +236,7 @@ class IbmAsrService(MqttService):
             self.audio_stream.pop(site, '')
             self.active[site] = False
             self.started[site] = False
-            
-    # def read(self,site):
-        # a = None
-        # if site in self.audio_stream:
-            # a = self.audio_stream[site].read(self.block_size*2);
-        # else:
-            # self.log('read without activate')
-        # return a
 
-    async def finish_stream(self,site):
-        try:
-            self.ibmlistening[site] = False
-            if site in self.connections:
-                self.log('FINISH STREAM continue')
-                await self.connections[site].send(json.dumps({'action': 'stop'}))
-                #self.started[site] = False
-            else:
-                self.log('FINISH STREAM exit')
-                self.started[site] = False
-        except Exception as e:
-            self.log('FINISH STREAM error')
-            self.log(type(e))
-            self.log(e)
-            self.started[site] = False
-            #pass
-                    
     # coroutine
     async def frame_generator(self,site):
         """Generator that yields all audio frames."""
@@ -304,7 +258,7 @@ class IbmAsrService(MqttService):
                 # hand off control to other frame generators without yielding a value
                 #self.log('NO have audiuo rame '+str(silence_count))
                 # silence_count = silence_count + 1;
-                await asyncio.sleep(0.0001)
+                await asyncio.sleep(0.01)
             #padding_ms=300
             
     async def vad_collector(self, site,padding_ms=280, ratio=0.75, frames=None):
@@ -359,10 +313,14 @@ class IbmAsrService(MqttService):
                     triggered = False
                     yield None
                     self.ring_buffer[site].clear()
+    
 
-            
+                
     async def startASRVAD(self, site = ''):
         self.log('ASRVAD start')
+        #await self.send_sound('on',site)
+        # await self.client.publish('hermod/'+site+'/speaker/play',json.dumps({"sound":"on"}))        
+        # return
         text = ''
         sender = None
         # reconnect on error while started and no text heard
@@ -382,16 +340,17 @@ class IbmAsrService(MqttService):
                 self.ibmlistening[site] = True
                 # clear task from previous loop
                 if sender:
-                    self.log('ASRVAD CLEAR TASK')
+                    self.log('AUDIO SENDER CLEAR ')
                     sender.cancel()
                 sender = asyncio.create_task(self.send_audio(conn,site))
-
+                # self.log('ASRVAD start sound')
+                # self.log('ASRVAD start sound DONE')
                 # Keeps receiving transcript until we have the final transcript
                 while True :
                     self.log('ASRVAD RESTART LOOP')
                     
                     if self.empty_count[site] >= 4:
-                        await self.client.publish('hermod/'+site+'/timeout',json.dumps({}))
+                        await self.client.publish('hermod/'+site+'/aser/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
                         await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
                         self.started[site] = False
                         break
@@ -475,15 +434,32 @@ class IbmAsrService(MqttService):
             pass    
     
 
+    async def finish_stream(self,site):
+        try:
+            self.ibmlistening[site] = False
+            if site in self.connections:
+                self.log('FINISH STREAM send stop')
+                await self.connections[site].send(json.dumps({'action': 'stop'}))
+                #self.started[site] = False
+            else:
+                self.log('FINISH STREAM no connection')
+                self.started[site] = False
+        except Exception as e:
+            self.log('FINISH STREAM error')
+            self.log(type(e))
+            self.log(e)
+            self.started[site] = False
+            #pass
+                    
     async def send_audio(self,ws,site):
         # Starts recording of microphone
-        print("AUDIOLOOP * READY *"+site)
+        print("AUDIOSENDER * READY *"+site)
         have_frame = False;
         async for frame in self.vad_collector(site):
-            self.log('AUDIOLOOP frame {} {}'.format(site,self.empty_count[site]))
+            #self.log('AUDIOLOOP frame {} {}'.format(site,self.empty_count[site]))
             if self.empty_count[site] > 2 and self.started[site]:
-                self.log('AUDIOLOOP TIMEOUT EMPTY')
-                await self.client.publish('hermod/'+site+'/timeout',json.dumps({}))
+                self.log('AUDIOSENDER END    TIMEOUT EMPTY')
+                await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
                 await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
                 self.started[site] = False
                 break
@@ -504,12 +480,12 @@ class IbmAsrService(MqttService):
                         #self.log('fed content')
                     except Exception as e:
                         pass
-                        # self.log('error feeding content')
-                        # self.log(e)
+                        self.log('AUDIOSENDER error feeding content')
+                        self.log(e)
                         #break
                 # ignore None from vad_collector if it's the first    
                 elif have_frame:
-                    print('AUDIOLOOP NOFRAME  -END BY VAD COLLECTOR')
+                    print('AUDIOSENDER END     NOFRAME  -END BY VAD COLLECTOR')
                     #text = self.stream_contexts[site].finishStream()
                     await self.finish_stream(site)
                     #break
