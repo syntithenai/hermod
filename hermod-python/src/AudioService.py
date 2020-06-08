@@ -43,7 +43,7 @@ class AudioService(MqttService):
         self.also_run=[self.send_audio_frames]
         self.started = False
         # hermod/' + self.site + '/asr/start,hermod/' + self.site + '/asr/stop,
-        self.subscribe_to = 'hermod/rasa/ready,hermod/' + self.site + '/asr/start,hermod/' + self.site + \
+        self.subscribe_to = 'hermod/rasa/ready,hermod/' + self.site + '/asr/#,hermod/' + self.site + \
             '/microphone/start,hermod/' + self.site + '/microphone/stop,hermod/' + self.site + '/speaker/#'
         self.microphone_buffer=[]
         # integer between 0 and 3. 0 is the least aggressive about filtering out non-speech, 3 is the most aggressive
@@ -75,12 +75,12 @@ class AudioService(MqttService):
             await self.restore_volume()
     
         elif topic.startswith('hermod/' + self.site + '/speaker/cache'):
-            self.log('SPEAKER   CACHE PLAYING')
+            #self.log('SPEAKER   CACHE PLAYING')
             # limit length of direct audio, alt use url streaming for unlimited
             if len(self.speaker_cache) < 800:
                 self.speaker_cache.append(msg.payload)
         elif topic.startswith('hermod/' + self.site + '/speaker/play'):
-            self.log('SPEAKER PLAYING')
+            # self.log('SPEAKER PLAYING')
             ptl = len('hermod/' + self.site + '/speaker/play') + 1
             self.speaker_is_playing = True
             playId = topic[ptl:]
@@ -100,7 +100,7 @@ class AudioService(MqttService):
                 await self.play_sound(payload.get('sound'),self.site)
             
             else:
-                self.log('START PLAYING')
+                # self.log('START PLAYING')
                 self.speaker_cache.append(msg.payload)
                 await self.start_playing(b"".join(self.speaker_cache), playId)
                 self.speaker_cache = []
@@ -131,11 +131,15 @@ class AudioService(MqttService):
             await self.client.publish('hermod/'+self.site+'/speaker/play',wav)
         elif topic == 'hermod/'+self.site+'/hotword/detected' or topic == 'hermod/'+self.site+'/dialog/continue':
             self.microphone_buffer = []
-        elif topic == 'hermod/'+self.site+'/timeout':
+        elif topic == 'hermod/'+self.site+'/asr/timeout':
+            # self.log('AUDIO SERVICE HEARD TIMEOUT')
+            await self.restore_volume()
+            await asyncio.sleep(1)
+            await self.play_sound('off',self.site)
             pass
            
     async def play_sound(self,sound,site):
-        self.log('req play sound')
+        # self.log('req play sound')
         if sound and site:
             sounds = {
               "off":"turn_off.wav",
@@ -143,15 +147,15 @@ class AudioService(MqttService):
             }
             this_folder = os.path.dirname(os.path.realpath(__file__))
             file_name = sounds.get(sound,False)
-            self.log('req play sound '+file_name)
+            # self.log('req play sound '+file_name)
             if file_name:
                 wav_file = os.path.join(this_folder, file_name)
                 async with aiofiles.open(wav_file, mode='rb') as f:
                     audio_file = await f.read()
-                    self.log('req play sound read file')
+                    # self.log('req play sound read file')
                     await self.play_bytes(audio_file)
                     #await self.client.publish('hermod/'+site+'/speaker/play',audio_file)
-                    self.log('req play sound SeNT')
+                    # self.log('req play sound SeNT')
             
     async def send_microphone_buffer(self):
        if hasattr(self,'client'):
@@ -248,7 +252,7 @@ class AudioService(MqttService):
                         #asyncio.sleep(0.5)
                         silence_count = silence_count + 1
                         if silence_count == silence_limit:
-                            self.log('MICROPHONE SILENCE TIMEOUT')
+                            # self.log('MICROPHONE SILENCE TIMEOUT')
                             speaking = False
                             speak_count = 0
                         
@@ -298,7 +302,7 @@ class AudioService(MqttService):
             await event.wait()
 
     async def start_playing_url(self, url, playId):
-        self.log('AUD start playing url')
+        # self.log('AUD start playing url')
         # self.force_stop_play = False;
         self.speaker_is_playing = True
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
@@ -309,10 +313,10 @@ class AudioService(MqttService):
                                  "/speaker/finished", json.dumps({"id": playId}))
         self.speaker_is_playing = False
                                  
-        self.log('AUD stop playing url')
+        # self.log('AUD stop playing url')
                     
     async def start_playing(self, wav, playId = ''):
-        self.log('AUD start playing')
+        # self.log('AUD start playing')
         # self.force_stop_play = False;
         self.speaker_is_playing = True
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
@@ -324,11 +328,11 @@ class AudioService(MqttService):
                                  "/speaker/finished", json.dumps({"id": playId}))
         #self.log('sent  p started')
         self.speaker_is_playing = False
-        self.log('AUD stop playing')
+        # self.log('AUD stop playing')
         
   
     async def play_bytes(self,sound_bytes):
-        #self.log('AUD PLAYBYTES '+str(len(sound_bytes)))
+        # self.log('AUD PLAYBYTES '+str(len(sound_bytes)))
         # slow read
         # while f.tell() < f.__len__():
             # pos = f.tell()
@@ -341,9 +345,9 @@ class AudioService(MqttService):
             extension = kind.extension
         except:
             pass
-        #self.log('PLAYBYTES EXT'+extension)
+        # self.log('PLAYBYTES EXT'+extension)
         song = AudioSegment.from_file(sound_bytesio, format=extension)
-        #self.log('PLAYBYTES SONG')
+        # self.log('PLAYBYTES SONG done read')
         # using pydub
         # play(song)
         # OR asycio
@@ -351,6 +355,7 @@ class AudioService(MqttService):
             max_workers=1,
         )
         await self.loop.run_in_executor(executor,play,song)
+        # self.log('PLAYBYTES SONG done play')
         # OR asycio controllable (not working)
         # with io.BytesIO() as outfile:
             # song.export(outfile,format="wav")
