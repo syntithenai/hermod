@@ -73,7 +73,9 @@ class Transcoder(object):
             transcript = result.alternatives[0].transcript
             if result.is_final:
                 self.transcript = transcript
+                print('GOT TEXT '+transcript)
                 asyncio.run(self.mqtt_client.publish('hermod/'+self.site+'/asr/text',json.dumps({"id": self.last_dialog_id, 'text':self.transcript})))
+                self.closed = True
             # end utterance without transcript
             # else:
                 # if is_end_utterance:
@@ -184,6 +186,7 @@ class GoogleAsrService(MqttService):
         self.frame_duration_ms = 1000 * self.block_size // self.sample_rate
         self.vad = webrtcvad.Vad(config['services']['GoogleAsrService'].get('vad_sensitivity',1))
         self.no_packet_timeouts = {}
+        self.total_time_timeouts = {}
         self.last_dialog_id = {}
         # # TFLITE model for ARM architecture
         # system,  release, version, machine, processor = os.uname()                
@@ -195,25 +198,30 @@ class GoogleAsrService(MqttService):
         elif self.block_size > 480:
             self.slice_size = 480
             
-    async def no_packet_timeout(self,site,msg):
-        payload={}
-        #print('NPT st')
-        await asyncio.sleep(1.5)
-        # print('ASR NO PACKET TIMEOUT')
+    async def total_time_timeout(self,site,msg):     
+        await asyncio.sleep(12)
+        print('TOTAL TIMEOUT')
+        if site in self.no_packet_timeouts:
+            self.no_packet_timeouts[site].cancel()  
         self.transcoders[site].write(msg.payload)
         self.stop_transcoder(site)
-        # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_dialog_id[site]}))
-        # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
         await asyncio.sleep(0.5)
         if not self.transcoders[site].transcript:
-            # await self.got_transcript(site)
-        # else:
             await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_dialog_id[site]}))
             await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
-                        # self.started[site] = False
-        # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id": self.last_dialog_id[site]}))
-        # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
-    
+        
+            
+    async def no_packet_timeout(self,site,msg):
+        await asyncio.sleep(1.5)
+        if site in self.total_time_timeouts:
+            self.total_time_timeouts[site].cancel()  
+        self.transcoders[site].write(msg.payload)
+        self.stop_transcoder(site)
+        await asyncio.sleep(0.5)
+        if not self.transcoders[site].transcript:
+            await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_dialog_id[site]}))
+            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
+        
     def stop_transcoder(self,site): 
         if site in self.transcoders:
             # buffer = np.frombuffer(msg.payload, np.int16)
@@ -277,6 +285,15 @@ class GoogleAsrService(MqttService):
             )
             self.transcoders[site].start()
             await self.client.subscribe('hermod/'+site+'/microphone/audio')
+            # timeout if no packets
+            if site in self.no_packet_timeouts:
+                self.no_packet_timeouts[site].cancel()            
+            self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site,msg))
+            # total time since start
+            if site in self.total_time_timeouts:
+                self.total_time_timeouts[site].cancel()            
+            self.total_time_timeouts[site] = self.loop.create_task(self.total_time_timeout(site,msg))
+            
             
         elif topic == 'hermod/'+site+'/asr/stop':
             self.log('stop ASR '+site)
@@ -325,7 +342,7 @@ class GoogleAsrService(MqttService):
                 # restrict empty packets to transcoder
                 silence_cutoff = 100
                 if self.non_speech[site] < silence_cutoff:
-                    # self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
+                    self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
                     self.transcoders[site].closed = False
                     self.transcoders[site].write(msg.payload)
                     # payload_text = msg.payload
