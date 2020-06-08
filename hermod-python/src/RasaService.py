@@ -39,14 +39,15 @@ class RasaService(MqttService):
                 # self.log('rasa service GOT '+self.rasa_server)
                 if response.status_code == 200:
                     self.log('FOUND rasa service')
+                    await self.client.publish('hermod/rasa/ready',json.dumps({}))
                     break
                 time.sleep(3)
             except Exception as e: 
                 self.log(e)
                 pass
-            #asyncio.sleep(3)
+            await asyncio.sleep(3000)
             time.sleep(2)
-        await self.client.publish('hermod/rasa/ready',json.dumps({}))
+        
                    
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
