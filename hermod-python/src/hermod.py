@@ -27,7 +27,7 @@ import os
 from flask import Flask, redirect, url_for, cli, redirect
 from flask_dance.contrib.google import make_google_blueprint, google
 from subprocess import call, run
-import AuthService
+#import AuthService
 import WebService
 from dotenv import load_dotenv
 load_dotenv()
