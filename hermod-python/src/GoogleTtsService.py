@@ -147,7 +147,7 @@ class GoogleTtsService(MqttService):
             audio_file = None
             if not os.path.isfile(file_name):
                 self.log('TTS exec')
-                with concurrent.futures.ProcessPoolExecutor() as executor:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
                 #audio_file = await self.loop.run_in_executor(None,write_speech,text, file_name, self.config)
                     audio_file = await my_run_in_executor(executor,write_speech,say_text , file_name, self.config)
                 async with aiofiles.open(file_name, mode='wb') as f:
