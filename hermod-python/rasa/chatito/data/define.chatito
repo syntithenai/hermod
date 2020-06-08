@@ -1,6 +1,6 @@
 import ./slot_word.chatito
 
-%[define]('training': '200')
+%[define]('training': '250')
     define @[word]
     what does @[word] mean
     what is the meaning of @[word]

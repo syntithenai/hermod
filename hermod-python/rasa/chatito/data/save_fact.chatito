@@ -2,7 +2,7 @@ import ./slot_number.chatito
 import ./alias_cities.chatito
 import ./alias_countries.chatito
 
-%[save_fact]('training':'200')
+%[save_fact]('training':'250')
     keep the fact that the  [population](attribute) of ~[country](place) is [~[number]](answer)
     save the fact that the  [population](attribute) of ~[country](place) is [~[number]](answer)
     remember the fact that the [population](attribute) of ~[country](place) is [~[number]](answer)
