@@ -79,9 +79,9 @@ ARGS = PARSER.parse_args()
 #print(ARGS) 
 
 
-F = open(os.path.join(os.path.dirname(__file__), 'config-all.yaml'), "r")
-CONFIG = yaml.load(F.read(), Loader=yaml.FullLoader)
-
+# F = open(os.path.join(os.path.dirname(__file__), 'config-all.yaml'), "r")
+# CONFIG = yaml.load(F.read(), Loader=yaml.FullLoader)
+CONFIG = {'services':{}}
 # F = open(os.path.join(os.path.dirname(__file__), 'secrets.yaml'), "r")
 # secrets = yaml.load(F.read(), Loader=yaml.FullLoader)
 # if not secrets: secrets = {}
@@ -264,76 +264,87 @@ async def async_start_hermod():
     MODULE_DIR = os.getcwd()
     sys.path.append(MODULE_DIR)
     
-    # OVERRIDE CONFIG
     # admin mqtt connection
-    if os.getenv('MQTT_HOSTNAME') is not None:
-        CONFIG['mqtt_hostname'] = os.getenv('MQTT_HOSTNAME')
+    CONFIG['mqtt_hostname'] = os.getenv('MQTT_HOSTNAME','localhost')
+    CONFIG['mqtt_port'] = int(os.getenv('MQTT_PORT',1883))
+    CONFIG['mqtt_user'] = os.getenv('MQTT_USER','hermod_admin')
+    CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD','talk2mebaby')
     # MQTT  host from args
     # if len(ARGS.mqttserver_host) > 0 :
         # CONFIG['mqtt_hostname']= ARGS.mqttserver_host
 
-    if os.getenv('MQTT_PORT') is not None:
-            CONFIG['mqtt_port'] = int(os.getenv('MQTT_PORT'))
-    if os.getenv('MQTT_USER') is not None:
-            CONFIG['mqtt_user'] = os.getenv('MQTT_USER')
-    if os.getenv('MQTT_PASSWORD') is not None:
-            CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD')
-    
-    
-    if os.getenv('DEEPSPEECH_MODELS') is not None and 'DeepSpeechAsrService' in CONFIG['services']:
-        CONFIG['services']['DeepSpeechAsrService']['model_path'] = os.getenv('DEEPSPEECH_MODELS')
+     # SET SOUND DEVICES
+    CONFIG['services']['AudioService'] = {"site":CONFIG.get('mqtt_user'), "inputdevice":"pulse", "outputdevice":"pulse"}
+    if os.getenv('SPEAKER_DEVICE') is not None and 'AudioService' in CONFIG['services']:
+            CONFIG['services']['AudioService']['outputdevice'] = os.getenv('SPEAKER_DEVICE')
+    if os.getenv('MICROPHONE_DEVICE') is not None and 'AudioService' in CONFIG['services']:
+            CONFIG['services']['AudioService']['inputdevice'] = os.getenv('MICROPHONE_DEVICE')
     
 
+    CONFIG['services']['DialogManagerService']={}
+    CONFIG['services']['DataLoggerService']={}
+    
+    # HOTWORD
+    # #,bumblebee,porcupine"
+    CONFIG['services']['PicovoiceHotwordService']={"hotwords":os.getenv('PICOVOICE_HOTWORDS',"picovoice"),  "sensitivity": 0.9}
+    
+    # ASR 
+    # Deepspeech
+    using_asr = None
+    if os.getenv('DEEPSPEECH_MODELS') is not None and  os.path.exists(os.getenv('DEEPSPEECH_MODELS')):
+        if not 'DeepspeechAsrService' in CONFIG['services']:
+            CONFIG['services']['DeepspeechAsrService'] = {}
+        CONFIG['services']['DeepspeechAsrService']['model_path'] = os.getenv('DEEPSPEECH_MODELS')
+        using_asr = 'Deepspeech'
+    
     # disable deepspeech and enable IBM ASR
-    
     if os.getenv('IBM_SPEECH_TO_TEXT_APIKEY',None) is not None and len(os.getenv('IBM_SPEECH_TO_TEXT_APIKEY','')) > 0 :
-            print('EENABLE ibm ASR')
-            #del CONFIG['services']['DeepspeechAsrService']
-            CONFIG['services'].pop('DeepspeechAsrService',None)
-            CONFIG['services']['IbmAsrService'] = {'vad_sensitivity':1 } #'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
-            # print(CONFIG['services'])
+        CONFIG['services'].pop('DeepspeechAsrService',None)
+        CONFIG['services']['IbmAsrService'] = {'vad_sensitivity':1 } #'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+        using_asr = 'IBM'
             
-            
-    # disable deepspeech and enable google ASR
+    # disable deepspeech,ibm and enable google ASR
     if os.getenv('GOOGLE_ENABLE_ASR',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
-            print('ENABLE GOOGLE ASR')
-            CONFIG['services'].pop('DeepspeechAsrService',None)
-            CONFIG['services'].pop('IbmAsrService',None)
-            #del CONFIG['services']['DeepspeechAsrService']
-            #print(CONFIG)
-            CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+        CONFIG['services'].pop('DeepspeechAsrService',None)
+        CONFIG['services'].pop('IbmAsrService',None)
+        CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+        using_asr = 'Google'
+    print("ASR ENABLED using {}".format(using_asr))
     
-    print('CHECK GOOGLE TTS')
-    print(os.getenv('GOOGLE_ENABLE_TTS',''))
-    print(os.getenv('GOOGLE_ENABLE_APPLICATION_CREDENTIALS',''))
-    if os.getenv('GOOGLE_ENABLE_TTS',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and len(os.getenv('GOOGLE_APPLICATION_CREDENTIALS','')) > 0 :
-            print('ENABLE GOOGLE TTS')
-            #del CONFIG['services']['DeepspeechAsrService']
-            CONFIG['services'].pop('Pico2wavTtsService',None)
-            CONFIG['services']['GoogleTtsService'] = { 'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU'), 'cache':'/tmp/tts_cache'} #}
-            # print(CONFIG['services'])
-      
+    # require asr
+    if not using_asr:
+        print('ASR CONFIGURATION MISSING')
+        exit()
+    
+    ## TTS
+    if os.getenv('GOOGLE_ENABLE_TTS',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
+        print('TTS ENABLED USING GOOGLE')
+        CONFIG['services'].pop('Pico2wavTtsService',None)
+        CONFIG['services']['GoogleTtsService'] = { 'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU'), 'cache':'/tmp/tts_cache'} #}
+    else:
+        CONFIG['services'].pop('GoogleTtsService',None)
+        CONFIG['services']['Pico2wavTtsService'] = { 'binary_path': os.environ.get('TTS_BINARY','/usr/bin/pico2wave'), 'cache_path':os.environ.get('TTS_CACHE','/tmp/tts_cache')} #}
+        print('TTS ENABLED USING PICO2WAV')
     
     if os.getenv('RASA_URL') and len(os.getenv('RASA_URL')) > 0:
-        #print('SET RASA URL '+os.getenv('RASA_URL'))
+        print('RASA ENABLED USING URL '+os.getenv('RASA_URL'))
         rasa_service = CONFIG['services'].get('RasaService',{})
         rasa_service['rasa_server'] = os.getenv('RASA_URL')
         #print(rasa_service)`    
         CONFIG['services']['RasaService'] = rasa_service 
         
     # print(CONFIG['services'])
-    # SET SOUND DEVICES FROM ENVIRONMENT VARS
-    if os.getenv('SPEAKER_DEVICE') is not None and 'AudioService' in CONFIG['services']:
-            CONFIG['services']['AudioService']['outputdevice'] = os.getenv('SPEAKER_DEVICE')
-    if os.getenv('MICROPHONE_DEVICE') is not None and 'AudioService' in CONFIG['services']:
-            CONFIG['services']['AudioService']['inputdevice'] = os.getenv('MICROPHONE_DEVICE')
-    # print('audio override')
-    # print(CONFIG['services'].get('AudioService'))
-    # # OVERRIDE SOUND DEVICES FROM  CLI ARGS
-    # if len(ARGS.speakerdevice) > 0 and 'AudioService' in CONFIG['services']:
-            # CONFIG['services']['AudioService']['outputdevice'] = ARGS.speakerdevice
-    # if len(ARGS.microphonedevice) > 0 and 'AudioService' in CONFIG['services']:
-            # CONFIG['services']['AudioService']['inputdevice'] = ARGS.microphonedevice
+   
+    # satellite mode restrict to audio and hotword services
+    if ARGS.satellite:
+        services = {'AudioService': CONFIG['services']['AudioService'], 'PicovoiceHotwordService':CONFIG['services']['PicovoiceHotwordService']}
+        CONFIG['services']= services
+    # no local audio/hotword
+    if ARGS.nolocalaudio:
+        if 'AudioService' in CONFIG['services']: 
+            del CONFIG['services']['AudioService']
+        if 'PicovoiceHotwordService' in CONFIG['services']: 
+            del CONFIG['services']['PicovoiceHotwordService']
     
     # satellite mode
     if ARGS.satellite:
