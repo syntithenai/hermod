@@ -122,7 +122,7 @@ class RasaService(MqttService):
         response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
         # self.log('resp RASA TRIGGER')
         messages = response.get('messages')
-        # self.log('HANDLE INTENT MESSAGES')
+        self.log('HANDLE INTENT MESSAGES')
         # self.log(messages)
         if messages and len(messages) > 0:
             # self.log('SEND MESSAGES')
@@ -145,37 +145,55 @@ class RasaService(MqttService):
         #self.log('finish')
         #response = requests.get(self.rasa_server+"/conversations/"+site+"/tracker",json.dumps({}))
         response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
-        # self.log('TRAKER')
-        # self.log(response)
         events = response.get('events',[])
         slots = response.get('slots',[])
+        self.log('RASA TRAKER FINSIH')
+        self.log(slots)
+        self.log('RASA TRAKER')
+        
         # end conversation
-        await self.client.publish('hermod/'+site+'/dialog/slots',json.dumps(slots));
-        response['id'] = payload.get("id","")
-        if len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_end':
-            # restart hotword
-            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps(response));
+        # await self.client.publish('hermod/'+site+'/dialog/slots',json.dumps(slots));
+        # response['id'] = payload.get("id","")
+        # self.log('RASA TRAKER ID'+str(response['id']))
+        
+        #if len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_end':
+        if  slots.get('hermod_force_continue',False)  == 'true':
+            self.log('RASA TRAKER restart mic')
+            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''}])
+            await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
+        elif  slots.get('hermod_force_end',False) == 'true':
+            self.log('RASA TRAKER restart hotword')
+            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_end', "value": ''}])
+            await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
+        #elif len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_continue':
+        # fallback to configured default
         else:
-            # restart asr
-            await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps(response));
-    
+            self.log('RASA TRAKER fallback to default')
+            if (self.config.get('keep_listening') == "true"):
+                await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
+            else:
+                await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
+                
 # event_loop = asyncio.get_event_loop()
 # Then later, inside your Thread:
 
 # asyncio.ensure_future(my_coro(), loop=event_loop)
 
     async def nlu_parse_request(self,site,text,payload):
-        # self.log('PARSE REQUEST')
-        # self.log(text)
+        self.log('PARSE REQUEST')
+        self.log(text)
+        self.log(payload)
         # self.log(self.rasa_server+"/model/parse")
         # self.log(json.dumps({"text":text,"message_id":site})    )
         response = await self.request_post(self.rasa_server+"/model/parse",{"text":text,"message_id":site})
         #response = requests.post(self.rasa_server+"/model/parse",data = json.dumps({"text":text,"message_id":site}),headers = {'content-type': 'application/json'})
-        # self.log('PARSE RESPONSE')
-        # self.log(response)
-        if 'id' in payload:
-            response['id'] = payload.get('id','')
+        self.log('PARSE RESPONSE')
+        self.log(response)
+        # if payload and 'id' in payload:
+            # response['id'] = payload.get('id','')
+        self.log('PARSE RESPONSE presend')
         await self.client.publish('hermod/'+site+'/nlu/intent',json.dumps(response))
+        self.log('PARSE RESPONSE sent')
 
     async def request_get(self,url,json):
         with async_timeout.timeout(10):

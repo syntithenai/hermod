@@ -8,17 +8,18 @@ from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet
 
 # dummy action when using voice interface to signal switch back to hotword mode
-class ActionEnd(Action):
+class ActionDefault(Action):
 #
     def name(self) -> Text:
-        return "action_end"
+        return "action_custom_fallback"
 #
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
-        logger.debug('ACTION_END')
-        return [SlotSet("hermod_force_end", "true")] 
+        logger.debug('ACTION_DEFAULT')
+        dispatcher.utter_message(text="I didn't really hear your question. Please try again.")
+        return [SlotSet("hermod_force_continue", "true")] 
         # logger = logging.getLogger(__name__)    
         # last_entities = tracker.current_state()['latest_message']['entities']
         # answer = 0
