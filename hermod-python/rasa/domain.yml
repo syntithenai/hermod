@@ -1,5 +1,7 @@
 actions:
 - action_end
+- action_continue
+- action_custom_fallback
 - action_maths_add_numbers
 - action_maths_divide_numbers
 - action_maths_multiply_numbers
@@ -79,6 +81,10 @@ session_config:
   session_expiration_time: 60
 
 slots:
+  hermod_force_end:
+    type: unfeaturized
+  hermod_force_continue:
+    type: unfeaturized
   last_wikipedia_search:
     type: unfeaturized
   last_wiktionary_search:
