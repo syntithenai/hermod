@@ -9308,7 +9308,7 @@ var HermodWebClient = function(config) {
                 }
             }
             devices['FINAL'] = device
-            showSlots(devices)
+            //showSlots(devices)
           }
           activateRecording(site,device)
         }
