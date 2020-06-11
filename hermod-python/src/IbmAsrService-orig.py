@@ -108,9 +108,6 @@ class IbmAsrService(MqttService):
         self.last_audio = {}
         self.ibmlistening = {}
         self.connections = {}
-        self.no_packet_timeouts = {}
-        self.total_time_timeouts = {}
-        self.last_dialog_id = {}
                 
         self.subscribe_to='hermod/+/asr/activate,hermod/+/asr/deactivate,hermod/+/asr/start,hermod/+/asr/stop,hermod/+/hotword/detected'
         self.audio_count = 0;
@@ -176,6 +173,7 @@ class IbmAsrService(MqttService):
             "background_audio_suppression": 0.5,
         }
             
+    
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
@@ -193,21 +191,6 @@ class IbmAsrService(MqttService):
             if not self.active.get(site,False): 
                 await self.activate(site)
             self.log('start ASR '+site)
-            # timeout if no packets
-            if site in self.no_packet_timeouts:
-                self.no_packet_timeouts[site].cancel()            
-            self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site))
-            # total time since start
-            if site in self.total_time_timeouts:
-                self.total_time_timeouts[site].cancel()            
-            self.total_time_timeouts[site] = self.loop.create_task(self.total_time_timeout(site))
-            payload={}
-            payload_text = msg.payload
-            try:
-                payload = json.loads(payload_text)
-            except Exception as e:
-                pass
-            self.last_dialog_id[site] = payload.get('id','')
             self.started[site] = True
             self.last_audio[site] =  time.time()
             payload = {}
@@ -220,13 +203,6 @@ class IbmAsrService(MqttService):
             #await self.startASR(site)
         elif topic == 'hermod/'+site+'/asr/stop':
             self.log('stop ASR '+site)
-            # clear timeouts
-            if site in self.no_packet_timeouts:
-                self.no_packet_timeouts[site].cancel()            
-            # total time since start
-            if site in self.total_time_timeouts:
-                self.total_time_timeouts[site].cancel()  
-            # TODO - should be   finish_stream ?  
             if site in self.connections:
                 try:
                     await self.connections[site].close()
@@ -260,219 +236,6 @@ class IbmAsrService(MqttService):
             self.audio_stream.pop(site, '')
             self.active[site] = False
             self.started[site] = False
-
-            
-    async def total_time_timeout(self,site):     
-        await asyncio.sleep(12)
-        print('TOTAL TIMEOUT')
-        if site in self.no_packet_timeouts:
-            self.no_packet_timeouts[site].cancel()  
-        await self.finish_stream(site)
-       
-            
-    async def no_packet_timeout(self,site):
-        await asyncio.sleep(3.5)
-        print('SILENCE TIMEOUT')
-        if site in self.total_time_timeouts:
-            self.total_time_timeouts[site].cancel()  
-        await self.finish_stream(site)
-        
-    async def timeout(self,site,conn):
-        await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
-        await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))   
-        self.started[site] = False
-        await conn.close()
-                          
-    async def finish_stream(self,site):
-        try:
-            self.ibmlistening[site] = False
-            if site in self.connections:
-                self.log('FINISH STREAM send stop')
-                await self.connections[site].send(json.dumps({'action': 'stop'}))
-                #self.started[site] = False
-            else:
-                self.log('FINISH STREAM no connection')
-                self.started[site] = False
-        except Exception as e:
-            self.log('FINISH STREAM error')
-            self.log(type(e))
-            self.log(e)
-            self.started[site] = False
-            #pass
-                       
-
-                                        
-    async def startASRVAD(self, site = ''):
-        self.log('ASRVAD start')
-        #await self.send_sound('on',site)
-        # await self.client.publish('hermod/'+site+'/speaker/play',json.dumps({"sound":"on"}))        
-        # return
-        text = ''
-        sender = None
-        # reconnect on error while started and no text heard
-        self.empty_count[site] = 0;
-        #while site in self.started and self.started[site] and not len(text) > 0 and self.empty_count[site] < 4:
-        #self.empty_count[site] = 0
-        # clear stream buffer
-        self.audio_stream[site] = BytesLoop()
-        # NEW
-        self.log('ASRVAD CONNECT')
-        async with websockets.connect(self.get_url(), extra_headers=self.get_headers()) as conn:
-            # CONFIGURE SOCKET SESSION
-            self.connections[site] = conn
-            send = await conn.send(json.dumps(self.get_init_params()))
-            rec = await conn.recv()
-            #print(rec)
-            self.ibmlistening[site] = True
-            # SEND AUDIO PACKETS 
-            # clear task from previous loop
-            if sender:
-                self.log('AUDIO SENDER CLEAR ')
-                sender.cancel()
-            sender = asyncio.create_task(self.send_audio(conn,site))
-            # self.log('ASRVAD start sound')
-            # self.log('ASRVAD start sound DONE')
-            # Keeps receiving transcript until we have the final transcript
-            while True :
-                self.log('ASRVAD LOOP')
-                
-                # if self.empty_count[site] >= 4:
-                    # await self.client.publish('hermod/'+site+'/aser/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
-                    # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
-                    # self.started[site] = False
-                    # break
-                try:
-                    rec = await conn.recv()
-                    parsed = json.loads(rec)
-                    
-                    #print(parsed)
-                    #if 
-                    #transcript = parsed["results"][0]["alternatives"][0]["transcript"]
-                    #print(transcript)
-                    print('=============================')
-                    print(parsed)
-                    print('=============================')
-                    
-                    if parsed.get("error",False):
-                        self.log('ASRVAD ERROR FROM IBM')
-                        self.log(parsed.get('error'))
-                        # self.empty_count[site] = self.empty_count[site]  + 1
-                        # self.ibmlistening[site] = False
-                        # try:
-                            # #await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
-                            # await conn.close()
-                        # except Exception:
-                            # pass
-                        await self.timeout(site,conn)
-                        break
-                        
-                    if parsed.get('state',False) and parsed.get('state') == 'listening':
-                        self.log('ASRVAD SET LISTENING '+site)
-                        self.ibmlistening[site] = True;
-                    
-                    have_results = False
-                    if "results" in parsed:
-                        self.log('RESULTS')
-                        self.log(parsed["results"])
-                        if len(parsed["results"]) > 0:
-                            if "final" in parsed["results"][0]:
-                                if parsed["results"][0]["final"]:
-                                    if len(parsed["results"][0]['alternatives']) > 0:                                        
-                                        text = str(parsed["results"][0]["alternatives"][0].get("transcript",""))
-                                        self.log('ASRVAD got text [{}]'.format(text))
-                                        if len(text) > 0:
-                                            # self.log('send content '+site)
-                                            # self.log(self.client)
-                                            # self.log('hermod/'+site+'/asr/text')
-                                            # self.log(json.dumps({'text':text}))
-                                            have_results = True
-                                            self.empty_count[site] = 0
-                                            await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text,"id":self.last_start_id.get(site,'')}))
-                                            # self.log('sent content '+text)
-                                            self.started[site] = False
-                                            await conn.close()
-                                            break
-                        else:
-                            if self.empty_count[site] < 3:
-                                self.empty_count[site] = self.empty_count[site] + 1
-                            else:
-                                self.timeout(site)
-                            # await self.timeout(site,conn)
-                            # break                      
-                        # if not have_results:               
-                            # self.log('ASRVAD incc emtpy f'+ str(self.empty_count[site]))
-                            # self.empty_count[site] = self.empty_count[site]  + 1
-                            # self.ibmlistening[site] = False
-                                    
-                                        #conn.close()
-                                        #return False
-                                        # pass
-                except KeyError as e:
-                    await self.timeout(site,conn)
-                    # self.log('ASRVAD KEYERROR')
-                    # await conn.close()
-                    break
-                except Exception as e:
-                    await self.timeout(site,conn)
-                    break       
-        
-        # cleanup
-        self.started[site] = False
-        self.ibmlistening[site] = False
-        if sender:
-            sender.cancel()
-        try: 
-            await conn.close()
-        except Exception as e:
-            pass    
-    
-
-                    
-    async def send_audio(self,ws,site):
-        # Starts recording of microphone
-        print("AUDIOSENDER * READY *"+site)
-        have_frame = False;
-        async for frame in self.vad_collector(site):
-            #self.log('AUDIOLOOP frame {} {}'.format(site,self.empty_count[site]))
-            # if self.empty_count[site] > 2 and self.started[site]:
-                # self.log('AUDIOSENDER END    TIMEOUT EMPTY')
-                # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
-                # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
-                # self.started[site] = False
-                # break
-            
-            if self.started[site] == True  and self.ibmlistening.get(site,False):
-                # self.log('is started '+site)
-                # self.started[site] == False
-                if frame is not None:
-                    # self.log('feed content '+site)
-                    # self.log(self.models)
-                    # self.log(self.stream_contexts)
-                    try:
-                        print(len(frame))
-                        # data = stream.read(CHUNK)
-                        if (len(frame) > 100):
-                            await ws.send(frame) #np.frombuffer(frame, np.int16))
-                            if site in self.no_packet_timeouts:
-                                self.no_packet_timeouts[site].cancel()
-                            self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site))
-                        else:
-                            self.log('skip tiny frame')
-                        have_frame = True;
-                        # self.stream_contexts[site].feedAudioContent(np.frombuffer(frame, np.int16))
-                        #self.log('fed content')
-                    except Exception as e:
-                        pass
-                        self.log('AUDIOSENDER error feeding content')
-                        self.log(e)
-                        break
-                # ignore None from vad_collector if it's the first    
-                elif have_frame:
-                    print('AUDIOSENDER END     NOFRAME  -END BY VAD COLLECTOR')
-                    #text = self.stream_contexts[site].finishStream()
-                    await self.finish_stream(site)
-                    #break
-
 
     # coroutine
     async def frame_generator(self,site):
@@ -552,6 +315,181 @@ class IbmAsrService(MqttService):
                     self.ring_buffer[site].clear()
     
 
+                
+    async def startASRVAD(self, site = ''):
+        self.log('ASRVAD start')
+        #await self.send_sound('on',site)
+        # await self.client.publish('hermod/'+site+'/speaker/play',json.dumps({"sound":"on"}))        
+        # return
+        text = ''
+        sender = None
+        # reconnect on error while started and no text heard
+        self.empty_count[site] = 0;
+        #while site in self.started and self.started[site] and not len(text) > 0 and self.empty_count[site] < 4:
+        #self.empty_count[site] = 0
+        # clear stream buffer
+        self.audio_stream[site] = BytesLoop()
+        # NEW
+        self.log('ASRVAD CONNECT')
+        async with websockets.connect(self.get_url(), extra_headers=self.get_headers()) as conn:
+            # CONFIGURE SOCKET SESSION
+            self.connections[site] = conn
+            send = await conn.send(json.dumps(self.get_init_params()))
+            rec = await conn.recv()
+            #print(rec)
+            self.ibmlistening[site] = True
+            # SEND AUDIO PACKETS 
+            # clear task from previous loop
+            if sender:
+                self.log('AUDIO SENDER CLEAR ')
+                sender.cancel()
+            sender = asyncio.create_task(self.send_audio(conn,site))
+            # self.log('ASRVAD start sound')
+            # self.log('ASRVAD start sound DONE')
+            # Keeps receiving transcript until we have the final transcript
+            while True :
+                self.log('ASRVAD RESTART LOOP')
+                
+                if self.empty_count[site] >= 4:
+                    await self.client.publish('hermod/'+site+'/aser/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
+                    await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
+                    self.started[site] = False
+                    break
+                try:
+                    rec = await conn.recv()
+                    parsed = json.loads(rec)
+                    
+                    #print(parsed)
+                    #if 
+                    #transcript = parsed["results"][0]["alternatives"][0]["transcript"]
+                    #print(transcript)
+                    # print('=============================')
+                    # print(parsed)
+                    # print('=============================')
+                    
+                    if parsed.get("error",False):
+                        self.log('ASRVAD ERROR FROM IBM')
+                        self.log(parsed.get('error'))
+                        self.empty_count[site] = self.empty_count[site]  + 1
+                        self.ibmlistening[site] = False
+                        try:
+                            #await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
+                            await conn.close()
+                        except Exception:
+                            pass
+                        break
+                        
+                    if parsed.get('state',False) and parsed.get('state') == 'listening':
+                        self.log('ASRVAD SET LISTENING '+site)
+                        self.ibmlistening[site] = True;
+                    
+                    have_results = False
+                    if "results" in parsed:
+                        self.log('RESULTS')
+                        self.log(parsed["results"])
+                        if len(parsed["results"]) > 0:
+                            if "final" in parsed["results"][0]:
+                                if parsed["results"][0]["final"]:
+                                    if len(parsed["results"][0]['alternatives']) > 0:                                        
+                                        text = str(parsed["results"][0]["alternatives"][0].get("transcript",""))
+                                        self.log('ASRVAD got text [{}]'.format(text))
+                                        if len(text) > 0:
+                                            # self.log('send content '+site)
+                                            # self.log(self.client)
+                                            # self.log('hermod/'+site+'/asr/text')
+                                            # self.log(json.dumps({'text':text}))
+                                            have_results = True
+                                            self.empty_count[site] = 0
+                                            await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text,"id":self.last_start_id.get(site,'')}))
+                                            # self.log('sent content '+text)
+                                            self.started[site] = False
+                                            await conn.close()
+                                            break
+                                            
+                        if not have_results:               
+                            self.log('ASRVAD incc emtpy f'+ str(self.empty_count[site]))
+                            self.empty_count[site] = self.empty_count[site]  + 1
+                            self.ibmlistening[site] = False
+                                    
+                                        #conn.close()
+                                        #return False
+                                        # pass
+                except KeyError as e:
+                    self.log('ASRVAD KEYERROR')
+                    await conn.close()
+                    break
+                except Exception as e:
+                    self.log('ASRVAD OTHERR')
+                    self.log(e)
+                    await conn.close()
+                    break
+        
+        # cleanup
+        self.started[site] = False
+        self.ibmlistening[site] = False
+        if sender:
+            sender.cancel()
+        try: 
+            await conn.close()
+        except Exception as e:
+            pass    
+    
+
+    async def finish_stream(self,site):
+        try:
+            self.ibmlistening[site] = False
+            if site in self.connections:
+                self.log('FINISH STREAM send stop')
+                await self.connections[site].send(json.dumps({'action': 'stop'}))
+                #self.started[site] = False
+            else:
+                self.log('FINISH STREAM no connection')
+                self.started[site] = False
+        except Exception as e:
+            self.log('FINISH STREAM error')
+            self.log(type(e))
+            self.log(e)
+            self.started[site] = False
+            #pass
+                    
+    async def send_audio(self,ws,site):
+        # Starts recording of microphone
+        print("AUDIOSENDER * READY *"+site)
+        have_frame = False;
+        async for frame in self.vad_collector(site):
+            #self.log('AUDIOLOOP frame {} {}'.format(site,self.empty_count[site]))
+            if self.empty_count[site] > 2 and self.started[site]:
+                self.log('AUDIOSENDER END    TIMEOUT EMPTY')
+                await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
+                await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
+                self.started[site] = False
+                break
+            
+            if self.started[site] == True  and self.ibmlistening.get(site,False):
+                # self.log('is started '+site)
+                # self.started[site] == False
+                if frame is not None:
+                    # self.log('feed content '+site)
+                    # self.log(self.models)
+                    # self.log(self.stream_contexts)
+                    try:
+                        # print(".")
+                        # data = stream.read(CHUNK)
+                        await ws.send(frame) #np.frombuffer(frame, np.int16))
+                        have_frame = True;
+                        # self.stream_contexts[site].feedAudioContent(np.frombuffer(frame, np.int16))
+                        #self.log('fed content')
+                    except Exception as e:
+                        pass
+                        self.log('AUDIOSENDER error feeding content')
+                        self.log(e)
+                        #break
+                # ignore None from vad_collector if it's the first    
+                elif have_frame:
+                    print('AUDIOSENDER END     NOFRAME  -END BY VAD COLLECTOR')
+                    #text = self.stream_contexts[site].finishStream()
+                    await self.finish_stream(site)
+                    #break
 
         # start = time.time()
         # while True:

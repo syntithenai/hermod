@@ -76,7 +76,8 @@ class DeepspeechAsrService(MqttService):
         self.active = {} #False  got active message for session -  per site
         self.empty_count = {}  # tally empty transcripts and bail after 3 empty -  per site
         self.stream_contexts = {}  # Deepspeech engine stream contexts - per site
-        
+        self.no_packet_timeouts = {}
+        self.total_time_timeouts = {}
         # preload notification sounds
         # this_folder = os.path.dirname(os.path.realpath(__file__))
         # wav_file = os.path.join(this_folder, 'turn_off.wav')
@@ -113,6 +114,14 @@ class DeepspeechAsrService(MqttService):
             except Exception as e:
                 pass
             self.last_start_id[site] = payload.get('id','')
+            # timeout if no packets
+            if site in self.no_packet_timeouts:
+                self.no_packet_timeouts[site].cancel()            
+            self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site))
+            # total time since start
+            if site in self.total_time_timeouts:
+                self.total_time_timeouts[site].cancel()            
+            self.total_time_timeouts[site] = self.loop.create_task(self.total_time_timeout(site))
             
             # start asr processing in background
             self.loop.create_task(self.startASRVAD(site))
@@ -121,7 +130,13 @@ class DeepspeechAsrService(MqttService):
         elif topic == 'hermod/'+site+'/asr/stop':
             self.log('stop ASR '+site)
             self.started[site] = False
-        
+            # clear timeouts
+            if site in self.no_packet_timeouts:
+                self.no_packet_timeouts[site].cancel()            
+            # total time since start
+            if site in self.total_time_timeouts:
+                self.total_time_timeouts[site].cancel()  
+                
         elif topic == 'hermod/'+site+'/microphone/audio' :
             if site in self.started and self.started[site]: # and  site in self.is_speaking and not self.is_speaking[site]:
                 self.log('save audio message') # {} {} '.format(len(msg.payload),site))
@@ -160,16 +175,183 @@ class DeepspeechAsrService(MqttService):
         self.active[site] = False
         self.started[site] = False
             
+      
+    async def total_time_timeout(self,site):     
+        await asyncio.sleep(12)
+        print('TOTAL TIMEOUT tt')
+        if site in self.no_packet_timeouts:
+            self.no_packet_timeouts[site].cancel()  
+        await self.finish_stream(site)
+       
+            
+    async def no_packet_timeout(self,site):
+        await asyncio.sleep(3)
+        print('SILENCE TIMEOUT np')
+        if site in self.total_time_timeouts:
+            self.total_time_timeouts[site].cancel()  
+        await self.finish_stream(site)
+        
+    async def timeout(self,site):
+        await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
+        await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))   
+        self.started[site] = False
+        
+    
+    async def finish_stream(self,site):
+        text = self.stream_contexts[site].finishStream()
+        self.log('got text [{}]'.format(text))
+        if len(text) > 0:
+            #self.log('send content '+site)
+            # self.log(self.client)
+            # self.log('hermod/'+site+'/asr/text')
+            # self.log(json.dumps({'text':text}))
+            self.empty_count[site] = 0
+            await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text,"id":self.last_start_id.get(site,'')}))
+            # self.log('sent content '+text)
+            self.started[site] = False
+            del self.stream_contexts[site]
+        else:
+            if self.empty_count[site] > 2:
+                self.started[site] = False
+                await self.timeout(site)
+                
+            self.log('incc emtpy '+str(self.empty_count[site]))
+            self.empty_count[site] = self.empty_count[site]  + 1
+            self.stream_contexts[site] = self.models.createStream()
+        # if self.empty_count[site] > 5:
+            # self.started[site] = False
+            # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
+            
+        # self.log('recreate stream')
+        # if site in self.stream_contexts:
+            # del self.stream_contexts[site]
+        #self.stream_contexts[site] = self.models.createStream()
+        # self.log('recreated stream')
+    
+    async def startASRVAD(self, site = ''):
+        # self.log('startASRVAD ')
+        # self.log(site)
+        # self.log(self.started[site])
+        if not site in self.active or not self.active[site]:
+            await self.activate(site)
+            # self.log('NOT ACTIVE CANNOT START ASR DS')
+            # return None
+            
+        self.empty_count[site] = 0;
+        self.stream_contexts[site] = self.models.createStream()
+        while self.started[site] == True:
+        #while True and run_event and run_event.is_set(): 
+            #await asyncio.sleep(1)
+           # self.log('startASRVAD LOOP '+site)
+            #self.started[site] = False
+           # time.sleep(1)
+            # self.log(site)
+            # self.log(self.active)
+            # self.log(self.started)
+            # self.log(self.models)
+            # self.log(self.stream_contexts)
+            # and site in self.models
+            if (site in self.active and  site in self.started  and site in self.stream_contexts and self.active[site] == True):
+                # self.log('startASRVAD LOOP OK')
+                
+                async for frame in self.vad_collector(site):
+                    #await asyncio.sleep(0.001)
+                    # self.log('frame {} {}'.format(site,self.empty_count[site]))
+                    # self.log(self.started[site])
+                    # if self.empty_count[site] > 3 and self.started[site]:
+                        # self.log('TIMEOUT EMPTY')
+                        # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
+                        # await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
+                        # self.started[site] = False
+                        # break;
+                    
+                    if self.started[site] == True:
+                     #   self.log('is started '+site)
+                        # self.started[site] == False
+                        if frame is not None:
+                            # self.log('feed content '+site)
+                            # self.log(self.models)
+                            # self.log(self.stream_contexts)
+                            try:
+                                self.stream_contexts[site].feedAudioContent(np.frombuffer(frame, np.int16))
+                                if site in self.no_packet_timeouts:
+                                    self.no_packet_timeouts[site].cancel()
+                                self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site))
+                                
+                                # self.log('fed content')
+                            except:
+                                self.log('error feeding content')
+                                pass
+                            
+                        else:
+                            self.log('VAD NONE')
+                            await self.finish_stream(site)
+                        
+                        
+                        # # self.log('done started')
+                        # #await asyncio.sleep(1)   
+                        # # self.log('done sleep')
+                    # self.log('done frame')
+                # self.log('done frames')
+            # self.log('done for')
+       # self.log('done while')
+                #del frames
+
+    # async def waitASec(self,duration,label):
+        # #self.log('wait a '+label)
+        # #while True:
+        # await asyncio.sleep(duration)
+       # # self.log('waited a '+label)
+    
+    async def startASR(self, site):
+        # self.log('start asr' +site)
+        empty_count = {}
+        if os.path.isdir(self.model_path):
+            # self.log('start task '+site)
+            self.started[site] = True;
+            # #self.thread_handler.run(self.startASRVAD,kwargs=dict(site=site))
+            await self.startASRVAD(site)
+            # #self.log('done loop')
+        
+            # self.eventloop.create_task(self.startASRVAD(site))
+            # self.log('task started')
+            # # #self.eventloop = asyncio.get_event_loop()
+            # self.eventloop = asyncio.new_event_loop()
+            # asyncio.set_event_loop(self.eventloop)
+            # self.log('have loop')
+            
+            #self.eventloop.create_task(self.waitASec(3,'sec'))
+            # self.log('added task')
+            
+            # self.eventloop.create_task(self.waitASec(5,'moment'))
+            # self.log('added task')
+            # self.eventloop.run_forever()
+            # self.log('done loop')
+            # self.eventloop.close()
+            # self.log('loop closed')
+            # while True and run_event.is_set():
+                # time.sleep(0.001)
+                # try:
+                    # for site in self.active:
+                        # self.log('site '+site)
+                        # empty_count[site] = 0;
+                        # self.startASRVAD(site,empty_count)
+                # except Exception as e:
+                    # self.log(e)
+        else:
+            self.log('missing model files at '+self.model_path) 
+    
+  
         
     # coroutine
     async def frame_generator(self,site):
         """Generator that yields all audio frames."""
         silence_count = 0;
         while True and self.started[site]:
-            if silence_count > 200:
-                self.log('DEEPSPEECH no voice packets timeout  ')
-                await self.finish_stream(site)
-                break
+            # if silence_count > 200:
+                # self.log('DEEPSPEECH no voice packets timeout  ')
+                # await self.finish_stream(site)
+                # break
                 
             if site in self.audio_stream and self.audio_stream[site].has_bytes(self.block_size*2):
                 silence_count = 0;
@@ -235,141 +417,5 @@ class DeepspeechAsrService(MqttService):
                         triggered = False
                         yield None
                         ring_buffer.clear()
-
-    
-    async def finish_stream(self,site):
-        text = self.stream_contexts[site].finishStream()
-        self.log('got text [{}]'.format(text))
-        if len(text) > 0:
-            #self.log('send content '+site)
-            # self.log(self.client)
-            # self.log('hermod/'+site+'/asr/text')
-            # self.log(json.dumps({'text':text}))
-            self.empty_count[site] = 0
-            await self.client.publish('hermod/'+site+'/asr/text',json.dumps({'text':text,"id":self.last_start_id.get(site,'')}))
-            # self.log('sent content '+text)
-            self.started[site] = False
-        else:
-            # self.log('incc emtpy')
-            self.empty_count[site] = self.empty_count[site]  + 1
-        if self.empty_count[site] > 5:
-            self.started[site] = False
-            await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
-            
-        # self.log('recreate stream')
-        if site in self.stream_contexts:
-            del self.stream_contexts[site]
-        self.stream_contexts[site] = self.models.createStream()
-        # self.log('recreated stream')
-    
-    async def startASRVAD(self, site = ''):
-        # self.log('startASRVAD ')
-        # self.log(site)
-        # self.log(self.started[site])
-        if not site in self.active or not self.active[site]:
-            #await self.activate(site)
-            self.log('NOT ACTIVE CANNOT START ASR DS')
-            return None
-            
-        self.empty_count[site] = 0;
-        self.stream_contexts[site] = self.models.createStream()
-        while self.started[site] == True:
-        #while True and run_event and run_event.is_set(): 
-            #await asyncio.sleep(1)
-           # self.log('startASRVAD LOOP '+site)
-            #self.started[site] = False
-           # time.sleep(1)
-            # self.log(site)
-            # self.log(self.active)
-            # self.log(self.started)
-            # self.log(self.models)
-            # self.log(self.stream_contexts)
-            # and site in self.models
-            if (site in self.active and  site in self.started  and site in self.stream_contexts and self.active[site] == True):
-                # self.log('startASRVAD LOOP OK')
-                
-                async for frame in self.vad_collector(site):
-                    #await asyncio.sleep(0.001)
-                    # self.log('frame {} {}'.format(site,self.empty_count[site]))
-                    # self.log(self.started[site])
-                    if self.empty_count[site] > 3 and self.started[site]:
-                        self.log('TIMEOUT EMPTY')
-                        await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))
-                        await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":self.last_start_id.get(site,'')}))
-                        self.started[site] = False
-                        break;
-                    
-                    if self.started[site] == True:
-                     #   self.log('is started '+site)
-                        # self.started[site] == False
-                        if frame is not None:
-                            # self.log('feed content '+site)
-                            # self.log(self.models)
-                            # self.log(self.stream_contexts)
-                            try:
-                                self.stream_contexts[site].feedAudioContent(np.frombuffer(frame, np.int16))
-                                # self.log('fed content')
-                            except:
-                                self.log('error feeding content')
-                                pass
-                            
-                        else:
-                            await self.finish_stream(site)
-                        
-                        
-                        # # self.log('done started')
-                        # #await asyncio.sleep(1)   
-                        # # self.log('done sleep')
-                    # self.log('done frame')
-                # self.log('done frames')
-            # self.log('done for')
-       # self.log('done while')
-                #del frames
-
-    # async def waitASec(self,duration,label):
-        # #self.log('wait a '+label)
-        # #while True:
-        # await asyncio.sleep(duration)
-       # # self.log('waited a '+label)
-    
-    async def startASR(self, site):
-        # self.log('start asr' +site)
-        empty_count = {}
-        if os.path.isdir(self.model_path):
-            # self.log('start task '+site)
-            self.started[site] = True;
-            # #self.thread_handler.run(self.startASRVAD,kwargs=dict(site=site))
-            await self.startASRVAD(site)
-            # #self.log('done loop')
-        
-            # self.eventloop.create_task(self.startASRVAD(site))
-            # self.log('task started')
-            # # #self.eventloop = asyncio.get_event_loop()
-            # self.eventloop = asyncio.new_event_loop()
-            # asyncio.set_event_loop(self.eventloop)
-            # self.log('have loop')
-            
-            #self.eventloop.create_task(self.waitASec(3,'sec'))
-            # self.log('added task')
-            
-            # self.eventloop.create_task(self.waitASec(5,'moment'))
-            # self.log('added task')
-            # self.eventloop.run_forever()
-            # self.log('done loop')
-            # self.eventloop.close()
-            # self.log('loop closed')
-            # while True and run_event.is_set():
-                # time.sleep(0.001)
-                # try:
-                    # for site in self.active:
-                        # self.log('site '+site)
-                        # empty_count[site] = 0;
-                        # self.startASRVAD(site,empty_count)
-                # except Exception as e:
-                    # self.log(e)
-        else:
-            self.log('missing model files at '+self.model_path) 
-    
-  
 
 

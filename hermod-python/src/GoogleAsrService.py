@@ -212,7 +212,7 @@ class GoogleAsrService(MqttService):
         
             
     async def no_packet_timeout(self,site,msg):
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(3.5)
         if site in self.total_time_timeouts:
             self.total_time_timeouts[site].cancel()  
         self.transcoders[site].write(msg.payload)
@@ -297,6 +297,12 @@ class GoogleAsrService(MqttService):
             
         elif topic == 'hermod/'+site+'/asr/stop':
             self.log('stop ASR '+site)
+            # clear timeouts
+            if site in self.no_packet_timeouts:
+                self.no_packet_timeouts[site].cancel()            
+            # total time since start
+            if site in self.total_time_timeouts:
+                self.total_time_timeouts[site].cancel()  
             #self.transcoders[site].closed = True
             self.stop_transcoder(site)
             self.started[site] = False

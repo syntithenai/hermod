@@ -159,11 +159,11 @@ class RasaService(MqttService):
         #if len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_end':
         if  slots.get('hermod_force_continue',False)  == 'true':
             self.log('RASA TRAKER restart mic')
-            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''}])
+            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''},{"event": "slot", "name": 'hermod_force_end', "value": ''}])
             await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
         elif  slots.get('hermod_force_end',False) == 'true':
             self.log('RASA TRAKER restart hotword')
-            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_end', "value": ''}])
+            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''},{"event": "slot", "name": 'hermod_force_end', "value": ''}])
             await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
         #elif len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_continue':
         # fallback to configured default

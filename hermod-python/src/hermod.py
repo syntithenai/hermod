@@ -57,6 +57,10 @@ PARSER.add_argument('-r', '--rasaserver', action='store_true',
                     
 PARSER.add_argument('-t', '--train', action='store_true',
 					help="Train RASA models when starting local RASA server")
+
+                    
+PARSER.add_argument('-g', '--generate', action='store_true',
+					help="Generate Chatito data when training RASA model")
                     
 PARSER.add_argument('-w', '--webserver', action='store_true',
 					help="Run hermod web server")
@@ -134,10 +138,11 @@ def start_rasa_server(run_event):
 def train_rasa():
     print('TRAIN RASA')
     
-    cmd = ['npx chatito --format rasa data/']
-    p = call(cmd, shell=True, cwd=os.path.join(os.path.dirname(__file__),'../rasa/chatito'))
-                    
-    convert_training_data(data_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/rasa_dataset_training.json'), out_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/nlu.md'), output_format="md", language="")
+    if ARGS.generate:
+        cmd = ['npx chatito --format rasa data/']
+        p = call(cmd, shell=True, cwd=os.path.join(os.path.dirname(__file__),'../rasa/chatito'))
+                        
+        convert_training_data(data_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/rasa_dataset_training.json'), out_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/nlu.md'), output_format="md", language="")
 
     
     train(
@@ -157,7 +162,7 @@ if not os.environ.get('DUCKLING_URL'):
 if ARGS.train:
     train_rasa()
     
-if ARGS.rasaserver and CONFIG['services'].get('RasaService',False):
+if ARGS.rasaserver:
     THREAD_HANDLER.run(start_rasa_server)
     
 # use recent version of mosquitto
@@ -330,6 +335,7 @@ async def async_start_hermod():
         print('RASA ENABLED USING URL '+os.getenv('RASA_URL'))
         rasa_service = CONFIG['services'].get('RasaService',{})
         rasa_service['rasa_server'] = os.getenv('RASA_URL')
+        rasa_service['keep_listening'] = os.getenv('HERMOD_KEEP_LISTENING','false')
         #print(rasa_service)`    
         CONFIG['services']['RasaService'] = rasa_service 
         
