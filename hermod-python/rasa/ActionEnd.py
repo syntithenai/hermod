@@ -18,7 +18,7 @@ class ActionEnd(Action):
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
         logger.debug('ACTION_END')
-        return [SlotSet("hermod_force_end", "true")] 
+        return [SlotSet("hermod_force_end", "true"),SlotSet("hermod_force_continue", None)] 
         # logger = logging.getLogger(__name__)    
         # last_entities = tracker.current_state()['latest_message']['entities']
         # answer = 0

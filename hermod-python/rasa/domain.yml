@@ -1,7 +1,6 @@
 actions:
 - action_end
 - action_continue
-- action_custom_fallback
 - action_maths_add_numbers
 - action_maths_divide_numbers
 - action_maths_multiply_numbers
@@ -44,12 +43,7 @@ intents:
 - what_can_i_say
 - ask_time
 - ask_date
-- maths_add_numbers
-- maths_divide_numbers
-- maths_subtract_numbers
-- maths_multiply_numbers
 - quit
-- convert_units
 - save_fact
 - affirmative
 - negative

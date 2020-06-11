@@ -18,4 +18,4 @@ class ActionContinue(Action):
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
         logger.debug('ACTION_CONTINUE')
-        return [SlotSet("hermod_force_continue", "true")] 
+        return [SlotSet("hermod_force_continue", "true"), SlotSet("hermod_force_end", None)] 

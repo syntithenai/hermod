@@ -43,24 +43,7 @@
   - slot{"thing": "Paris"}
   - action_search_wikidata
   
-## ask attribute and mneemonic
-* ask_attribute{"attribute":"capital","thing":"Paris"}
-  - slot{"attribute": "capital"}
-  - slot{"thing": "Paris"}
-  - action_search_wikidata
-  - slot{"mnemonic": "Help me to remember"}
-* affirmative
-  - action_speak_mnemonic
-  
-## ask attribute and deny mneemonic
-* ask_attribute{"attribute":"capital","thing":"Paris"}
-  - slot{"attribute": "capital"}
-  - slot{"thing": "Paris"}
-  - action_search_wikidata
-  - slot{"mnemonic": "Help me to remember"}
-* negative
-  - utter_ok
-  - action_end
+
 
 ## tell me about person attribute
 * ask_attribute{"person":"fred","attribute":"age"}
@@ -125,23 +108,7 @@
 * tell_me_more
   - slot{"last_wikipedia_search": "2::::::fred"}
   - action_tell_me_more
-  
-## tell me more yes
-* tell_me_about{"thing":"fred"}
-  - slot{"thing": "fred"}
-  - slot{"last_wikipedia_search": "1::::::fred"}
-  - action_search_wikipedia
-* affirmative
-  - slot{"last_wikipedia_search": "2::::::fred"}
-  - action_tell_me_more
 
-## tell me more no
-* tell_me_about{"thing":"fred"}
-  - slot{"thing": "fred"}
-  - slot{"last_wikipedia_search": "1::::::fred"}
-  - action_search_wikipedia
-* negative
-  - action_end
 
 ## tell me more 2
 * tell_me_about{"thing":"fred"}
@@ -180,13 +147,11 @@
 ## ask the date
 * ask_date
   - action_tell_date
-  
-
     
 ## say goodbye
 * quit
   - utter_goodbye
-  - action_end    
+  - action_end
   
   
 ## save fact success
@@ -195,6 +160,7 @@
     - slot{"attribute": "meaning"}
     - slot{"thing": "life"}
     - slot{"answer": "42"}
+    - action_continue
 * affirmative
     - action_save_fact
     
@@ -204,6 +170,7 @@
     - slot{"attribute": "meaning"}
     - slot{"thing": "life"}
     - slot{"answer": "42"}
+    - action_continue
 * negative
     - utter_cancelled
 

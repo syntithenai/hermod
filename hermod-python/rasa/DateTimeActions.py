@@ -22,7 +22,8 @@ class ActionTellTime(Action):
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         slotsets = []
         dispatcher.utter_message(text="The time is {}".format(strftime("%I:%M %p", localtime())))
-        slotsets.append(SlotSet("hermod_force_continue", "true"))
+        slotsets.append(SlotSet("hermod_force_end", None ))
+        slotsets.append(SlotSet("hermod_force_continue","true"))
         return slotsets
 
 class ActionTellDate(Action):
@@ -36,5 +37,6 @@ class ActionTellDate(Action):
         slotsets = []
         dispatcher.utter_message(text="The date is {}".format(strftime("%d %B", localtime())))
         slotsets.append(SlotSet("hermod_force_end", "true"))
+        slotsets.append(SlotSet("hermod_force_continue", None))
         return slotsets
  
