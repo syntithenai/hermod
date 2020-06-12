@@ -57,8 +57,9 @@ class Pico2wavTtsService(MqttService):
             Pico2wavTtsService,
             self).__init__(config,loop)
         self.config = config
+        self.clients = {}
         # subscribe to all sites
-        self.subscribe_to = 'hermod/+/tts/say'
+        self.subscribe_to = 'hermod/+/tts/say,hermod/+/dialog/init'
         cache_path = self.config['services']['Pico2wavTtsService'].get('cache_path','/tmp/tts_cache')
         Path(cache_path).mkdir(parents=True, exist_ok=True)
 
@@ -82,16 +83,26 @@ class Pico2wavTtsService(MqttService):
             self.log('SPEAKER FINISHED')
             self.log(payload)
             #self.play_requests[payload.get('id')] = value;
-            
+          
             message = {"id": payload.get('id')}
             await asyncio.sleep(0.5)
             await self.client.publish(
                 'hermod/{}/tts/finished'.format(site),
                 json.dumps(message))
             await self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
+        elif topic == 'hermod/' + site + '/dialog/init':
+            self.log('PICO TTS CLIENT INIT')
+            self.log(payload)
+            self.log(site)
+            self.clients[site] = payload
 
- 
-    
+    async def cleanup_file(self,short_text,file_name):
+        await asyncio.sleep(10)
+         # cache short texts
+        if len(short_text) > self.config.get('cache_max_letters',100):
+             os.remove(file_name)
+        self.log('CLEANUP TTS '+file_name)
+
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
     async def generate_audio(self, site, text, payload):
         cache_path = self.config['services']['Pico2wavTtsService'].get('cache_path','/tmp/tts_cache')
@@ -99,7 +110,8 @@ class Pico2wavTtsService(MqttService):
         
         if len(text) > 0:
             short_text = text[0:200].replace(' ','_')
-            file_name = os.path.join(cache_path, clean_filename('tts-' + str(short_text) + '.wav'))
+            short_file_name =clean_filename('tts-' + str(short_text) + '.wav')
+            file_name = os.path.join(cache_path, short_file_name)
             
             # generate if file doesn't exist in cache
             if not os.path.isfile(file_name):
@@ -113,16 +125,22 @@ class Pico2wavTtsService(MqttService):
             async with aiofiles.open(file_name, mode='rb') as f:
                 audio_file = await f.read()
                 await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
-                slice_length = 2048
-                def chunker(seq, size):
-                    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
-                for slice in chunker(audio_file, slice_length):
-                    await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
+                self.log(self.clients)
+                if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
+                    self.log('SEND TTS AS URL'+self.clients[site].get('url')+"/"+short_file_name)
+                    await self.client.publish(
+                        'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/tts/"+short_file_name}), qos=0)
+                else:
+                    self.log('SEND TTS AS packets')
+                    slice_length = 2048
+                    def chunker(seq, size):
+                        return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+                    for slice in chunker(audio_file, slice_length):
+                        await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
+                    
+                    # finally send play message with empty payload
+                    await self.client.publish(
+                        'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
                 
-                # finally send play message with empty payload
-                await self.client.publish(
-                    'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
-                  
-                # cache short texts
-                if len(short_text) > self.config.get('cache_max_letters',100):
-                     os.remove(file_name)
+                await self.cleanup_file(short_text,file_name)
+             

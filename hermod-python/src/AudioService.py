@@ -52,6 +52,8 @@ class AudioService(MqttService):
         subprocess.call(["amixer", "-D", "pulse", "sset", "Master", "75%"])
         self.speaker_cache=[]
         self.speaker_is_playing = False
+        # await self.client.publish('hermod/'+self.site+'/dialog/init',json.dumps({"platform":"python","supports":["audio"]}))
+            
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
@@ -107,10 +109,6 @@ class AudioService(MqttService):
                 self.log(e)
             
         elif topic == 'hermod/rasa/ready':
-            await self.client.publish('hermod/'+self.site+'/hotword/activate',json.dumps({}))
-            await self.client.publish('hermod/'+self.site+'/asr/activate',json.dumps({}))
-            await self.client.publish('hermod/'+self.site+'/microphone/start',json.dumps({}))
-            await self.client.publish('hermod/'+self.site+'/hotword/start',json.dumps({}))
             this_folder = os.path.dirname(os.path.realpath(__file__))
             wav_file = os.path.join(this_folder, 'loaded.wav')
             f = open(wav_file, "rb")
@@ -121,7 +119,7 @@ class AudioService(MqttService):
         elif topic == 'hermod/'+self.site+'/asr/timeout':
             # self.log('AUDIO SERVICE HEARD TIMEOUT')
             await self.restore_volume()
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.01)
             await self.play_sound('off',self.site)
             pass
            

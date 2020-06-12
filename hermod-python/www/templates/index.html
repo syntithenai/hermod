@@ -85,8 +85,8 @@ function showSpeechBubble() {
     document.getElementById("speechbubble").innerHTML = wrap.innerHTML
     document.getElementById("speechbubble").style.display = 'block'
     bonus_time = lastText.length * 500
-    console.log(lastText)
-    console.log(5000 + bonus_time)
+    //console.log(lastText)
+    //console.log(5000 + bonus_time)
     bubbleTimeout = setTimeout(hideSpeechBubble,5000 + bonus_time)
 }
 
@@ -94,11 +94,11 @@ function showSpeechBubble() {
  UI control - frames, buttons, ..
  */
 function hideAllDisplays() {
-    console.log('hideaolol')
+    //console.log('hideaolol')
     displays = document.getElementsByClassName('display')
-    console.log(displays)
+    //console.log(displays)
     for (var i = 0; i< displays.length; i++) {
-        console.log(displays[i])
+        //console.log(displays[i])
         displays[i].style.display = 'none'
     }
 }
@@ -132,17 +132,17 @@ function showImages() {
 }
 
 function showButtons(buttons) {
-    console.log('show buttons')
-    console.log(buttons.length)
-    console.log(buttons)
+    //console.log('show buttons')
+    //console.log(buttons.length)
+    //console.log(buttons)
     document.getElementById('dynamicbuttons').style.display='block'
     buttonsList = document.createElement('span')
     buttonsList.id = 'dynamicbuttons'
     for (var i = 0; i< buttons.length; i++) {
         button = document.createElement('button')
         button.innerText = buttons[i].label ? buttons[i].label : 'Missing Label'
-        console.log('loop button')
-        console.log(buttons[i])
+        //console.log('loop button')
+        //console.log(buttons[i])
         function appendbutton(thebutton,buttonsList) {
             if (thebutton.text) {
                 button.onclick=function() {client.sendASRTextMessage(config.site,thebutton.text)}
@@ -158,14 +158,14 @@ function showButtons(buttons) {
         }
         appendbutton(buttons[i],buttonsList)
     }
-    console.log(buttonsList)
+    //console.log(buttonsList)
     document.getElementById('dynamicbuttons').innerHTML=''
     document.getElementById('dynamicbuttons').append(buttonsList)
 }
 
 function showUrl(url) {
     hideAllDisplays()
-    console.log('show URL '+url)
+    //console.log('show URL '+url)
     if (displayWindow) {
         displayWindow.close()
     }
@@ -176,7 +176,7 @@ function showUrl(url) {
 function showFrame(url) {
     // show_frame
     hideAllDisplays()
-    console.log('show URL '+url+frameUrl)
+    //console.log('show URL '+url+frameUrl)
     if (frameUrl.length == 0 || url != frameUrl) {
         frameUrl = url
         document.getElementById('show_frame').src = url;
@@ -186,7 +186,7 @@ function showFrame(url) {
 
 
 function flashText(text) {
-    console.log(['FLASH',text])
+    //console.log(['FLASH',text])
     if (text && text.length > 0) {
         clearBubbleData()
         lastText = text
@@ -195,7 +195,7 @@ function flashText(text) {
 }
 
 function flashSpeech(text) {
-    console.log(['FLASH',text])
+    //console.log(['FLASH',text])
     if (text && text.length > 0) {
         lastSpeech = text
         showSpeechBubble()
@@ -203,7 +203,7 @@ function flashSpeech(text) {
 }
 
 function flashIntent(text) {
-    console.log(['FLASH',text])
+    //console.log(['FLASH',text])
     if (text && text.length > 0) {
         lastIntent = text
         showSpeechBubble()
@@ -227,7 +227,7 @@ function stopWaiting() {
 
 
         function onClick() {
-            console.log('onclick '+state)
+            //console.log('onclick '+state)
             // state 0 - disconnected no click
             if (state == 0) { // connected
                 client.connect().then(function() {
@@ -311,13 +311,13 @@ function stopWaiting() {
                 } catch (e) {
                 }
                 //console.log('payload')
-                console.log(payload)
+                //console.log(payload)
                 return payload;
             }
             
             
             if (parts.length > 3 && parts[2] == "display" && parts[3] == "show" ) {
-                console.log('DISPLAYMESSAGE')
+                //console.log('DISPLAYMESSAGE')
                 payload = jsonPayload()
                 if (payload.url && payload.url.length > 0) {
                     showUrl(payload.url)
@@ -340,11 +340,11 @@ function stopWaiting() {
                 
         
             } else if (parts.length > 3 && parts[2] == "dialog"  && parts[3] == "slots") {
-                console.log('slots')
+                //console.log('slots')
                 payload = jsonPayload()
                 //showSlots(payload)
             } else if (parts.length > 3 && parts[2] == "asr"  && parts[3] == "text") {
-                console.log('asr text')
+                //console.log('asr text')
                 payload = jsonPayload()
                 text = payload.text
                 if (text && text.length > 0) {
@@ -352,7 +352,7 @@ function stopWaiting() {
                     flashText(text)   
                 }
             } else if (parts.length > 3 && parts[2] == "nlu"  && parts[3] == "intent") {
-                console.log('nlu intent')
+                //console.log('nlu intent')
                 var payload = jsonPayload()
                 var intentName = payload.intent && payload.intent.name ? payload.intent.name : '' 
                 var cleanEntities = {}
@@ -367,17 +367,17 @@ function stopWaiting() {
                     flashIntent(intentName + JSON.stringify(cleanEntities))   
                 }
             }  else if (parts.length > 3 && parts[2] == "tts"  && parts[3] == "say") {
-                console.log('say text')
+                //console.log('say text')
                 payload = jsonPayload()
                 text = payload.text
                 if (text && text.length > 0) {
                     flashSpeech(text)   
                 }
             }  else if (parts.length > 3  && parts[2] == "display" && parts[3] == "startwaiting") {
-                console.log('start wait')
+                //console.log('start wait')
                 startWaiting()
             }  else if (parts.length > 3  && parts[2] == "display" && parts[3] == "stopwaiting") {
-                console.log('stop wait')
+                //console.log('stop wait')
                 stopWaiting()
             }
            //console.log([message,payload]) 
@@ -446,9 +446,9 @@ function stopWaiting() {
 
 <script>
     document.getElementById("microphone_button").oncontextmenu = function(event) {
-        console.log('context menu')
-        console.log(event.which)
-        console.log(event)
+        //console.log('context menu')
+        //console.log(event.which)
+        //console.log(event)
         if (event.which == 3) {
             stopAll()
         }
@@ -467,7 +467,7 @@ function stopWaiting() {
         <h2 style="clear: both">Hi, I'm Edison</h2>
      
         
-        <div>Say <b>"Hey Edison"</b> or click on the microphone to trigger me,  then ask a question. I turn <b>Green</b> I'm listening. </div>
+        <div>Say <b>"Hey Edison"</b> or click on the microphone to trigger me,  then ask a question. I turn <b>Green</b> when I'm listening. </div>
         <br/>
         <div>I can tell you the date and time, define most words and look on Wikipedia for information about a topic. </div>
         <div>I can use Wikidata to find attributes of things like the "population of London". </div>
@@ -494,6 +494,8 @@ function stopWaiting() {
          <button class="btn"  onClick="client.sendASRTextMessage(config.site,'Remember that the capital of Australia is Tamworth')" >Remember that the capital of Australia is Tamworth</button>
      </div>
      <div class="content-block">
+         <h2 >Capital Cities Crossword</h2>
+         <div>Ask me for help if you need it solve this crossword puzzle.</div>
         <div id="puzzle-wrapper"><!-- crossword puzzle appended here --></div>
     </divdiv>
 

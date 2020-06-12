@@ -90,8 +90,9 @@ class GoogleTtsService(MqttService):
             GoogleTtsService,
             self).__init__(config,loop)
         self.config = config
+        self.clients = {}
         # subscribe to all sites
-        self.subscribe_to = 'hermod/+/tts/say'
+        self.subscribe_to = 'hermod/+/tts/say,hermod/+/dialog/init'
         cache_path = self.config['services']['GoogleTtsService'].get('cache_path','/tmp/tts_cache')
         Path(cache_path).mkdir(parents=True, exist_ok=True)
 
@@ -125,8 +126,19 @@ class GoogleTtsService(MqttService):
                 'hermod/{}/tts/finished'.format(site),
                 json.dumps(message))
             await self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
-
-    
+        elif topic == 'hermod/' + site + '/dialog/init':
+            self.log('G TTS CLIENT INIT')
+            self.log(payload)
+            self.clients[site] = payload
+      
+    async def cleanup_file(self,short_text,file_name):
+        await asyncio.sleep(10)
+         # cache short texts
+        if len(short_text) > self.config.get('cache_max_letters',100):
+             os.remove(file_name)
+        self.log('CLEANUP TTS '+file_name)
+        
+        
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
     async def generate_audio(self, site, text, payload):
         cache_path = self.config['services']['GoogleTtsService'].get('cache_path','/tmp/tts_cache')
@@ -140,7 +152,7 @@ class GoogleTtsService(MqttService):
             short_text = text[0:200].replace(' ','_')
             # speakable and limited
             say_text = text[0:300].replace('(','').replace(')','')
-            file_name = os.path.join(cache_path, clean_filename('tts-' + str(short_text)) + '.wav')
+            file_name = os.path.join(cache_path, clean_filename('tts-' + str(short_text)) + '.mp3')
             # self.log('TTS file '+file_name)
         
             # generate if file doesn't exist in cache
@@ -164,26 +176,32 @@ class GoogleTtsService(MqttService):
             self.log('TTS now send {}'.format(len(audio_file)))
             
             await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
-            
-            slice_length = 16000
-            def chunker(seq, size):
-                return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+            if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
+                    self.log('SEND TTS AS URL')
+                    await self.client.publish(
+                        'hermod/{}/speaker/play/{}'.format(site, value), payload={"url":self.clients[site].get('url')+"/"+short_file_name}, qos=0)
+            else: 
+                slice_length = 16000
+                def chunker(seq, size):
+                    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-            lc = 0
-            ts = 0
-            for slice in chunker(audio_file, slice_length):
-                lc = lc + 1
-                ts = ts + len(slice)
-                await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
-            
-            self.log(lc)
-            self.log(ts)
-            # finally send play message with empty payload
-            await self.client.publish(
-                'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
+                lc = 0
+                ts = 0
+                for slice in chunker(audio_file, slice_length):
+                    lc = lc + 1
+                    ts = ts + len(slice)
+                    await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
                 
+                self.log(lc)
+                self.log(ts)
+                # finally send play message with empty payload
+                await self.client.publish(
+                    'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
+                    
             self.log('TTS sent ')
-            # cache short texts
-            if len(short_text) > self.config.get('cache_max_letters',100):
-                # self.log('TTS remove file')
-                os.remove(file_name)
+            await   self.cleanup_file(short_text,file_name)
+      
+            # # cache short texts
+            # if len(short_text) > self.config.get('cache_max_letters',100):
+                # # self.log('TTS remove file')
+                # os.remove(file_name)

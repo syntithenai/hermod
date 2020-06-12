@@ -75,6 +75,8 @@ session_config:
   session_expiration_time: 60
 
 slots:
+  hermod_client:
+    type: unfeaturized
   hermod_force_end:
     type: unfeaturized
   hermod_force_continue:

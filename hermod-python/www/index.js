@@ -10,15 +10,16 @@ var KeywordData =  require('./porcupine/keyword_data')
 
 //console.log('MODULE')
 //console.log(PorcupineModule())
-const Analytics = require('analytics-node');
+//const Analytics = require('analytics-node');
  
-const analyticsClient = new Analytics('UA-3712973-3');
+//const analyticsClient = new Analytics('UA-3712973-3');
 
 function logAnalyticsEvent(name,user) {
-    analyticsClient.track({
-      event: name,
-      userId: user
-    });
+    console.log(['LOG ANLYT',name,user])
+    //analyticsClient.track({
+      //event: name,
+      //userId: user
+    //});
 }
 
 try {
@@ -52,14 +53,24 @@ var HermodWebClient = function(config) {
         var isPlaying = false;
         var waitingFor = {}
         var onCallbacks = {}
+        
         var hotwordManager = null;
         var hotwordInitialised = false;
         var hotwordStarted = false;
+        // default volumes
         var inputvolume = 1.0  // TODO also hotword volume?
         var outputvolume = 1.0
-        var site = null;
-        var inputGainNodes=[];
-        var gainNode=null;
+        
+        //var site = null;
+        
+        //var inputGainNodes=[];
+        
+        let audioContext = window.AudioContext || window.webkitAudioContext;
+        let microphoneContext = null
+        var microphoneGainNode = null;
+        let speakerContext = null
+        var speakerGainNode = null;
+                                  
         
         var porcupineManager;
         var speakingTimeout = null;     
@@ -67,7 +78,22 @@ var HermodWebClient = function(config) {
         var microphoneAudioBuffer = []
         var bufferSource = null;
         var currentVolume = null;
+        
         var speakerCache = []
+        var streamingAudioQueue = []
+        var streamingTimeout = null
+        //var WAV_HEADER = 'RIFF$\xe2\x04\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x80>\x00\x00\x00}\x00\x00\x02\x00\x10\x00data\x00\xe2\x04\x00' 
+             
+        //var streamingGainNode = null;
+        //var streamingTimeout = null;
+        var is_streaming = false;
+        var bufferSize = 256
+        var silence = new Uint8Array(bufferSize);
+        var scriptNode = null;
+        var startTime = 0;
+        var streamCount = 0
+        
+    
         var SENSITIVITIES = new Float32Array([
                 0.9 //, // "Hey Edison"
                 //0.5, // "Hot Pink"
@@ -85,9 +111,6 @@ var HermodWebClient = function(config) {
                 //0.5 // "Dim Gray"
             ]);
         
-        
-        
-        
         var messageFunctions = {
             // SPEAKER
              //elif topic.startswith('hermod/' + self.site + '/speaker/cache'):
@@ -97,10 +120,17 @@ var HermodWebClient = function(config) {
                 //self.speaker_cache.append(msg.payload)
                 
             'hermod/+/speaker/cache/+' : function(topic,site,payload) {
-                console.log(['speaker cache',speakerCache.length,payload]);
-                if (speakerCache.length < 200) {
-                    speakerCache.push(payload)
-                }
+                //console.log(['speaker cache',speakerCache.length,payload]);
+                speakerCache.push(payload)
+                
+                //if (speakerCache.length >5) {
+                    //playNow = speakerCache.splice(0, 4); 
+                    //playSound(concat_arrays(playNow)).then(function() {
+                        //console.log(['DONE speaker play part']);
+                    //});    
+                //}
+
+                 
             }, 
             'hermod/+/speaker/play/+' : function(topic,site,payload) {
                 console.log(['speaker play',site,payload]);
@@ -110,18 +140,81 @@ var HermodWebClient = function(config) {
                     uid = parts[4]
                 }
                 if (site && site.length > 0) { 
-                    mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({"id":uid})); 
-					console.log(['START speaker play']);
-                    speakerCache.push(payload)
-                    playSound(concat_arrays(speakerCache)).then(function() {
-                        console.log(['DONE speaker play']);
-                        speakerCache = []
-                        mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
-					}); 
+                    json = {}
+                    try {
+                        json = JSON.parse(payload)
+                    } catch(e) {}
+                    if (json && json.url) {
+                        playUrl(json.url)
+                    } else {
+                        mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({"id":uid})); 
+                        //console.log(['START speaker play']);
+                        speakerCache.push(payload)
+                        playSound(concat_arrays(speakerCache)).then(function() {
+                            //console.log(['DONE speaker play']);
+                            speakerCache = []
+                            mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
+                        }); 
+                    }
                 }
             }, 
+            //'hermod/+/speaker/stream_mp3/+' : function(topic,site,payload) {
+                //console.log('STREAM')
+                //console.log(typeof payload)
+                //console.log(payload.length)
+                ////if (payload instanceof Blob) {
+                //var parts = topic.split("/")
+                //var uid = 'no_id'
+                //if (parts.length > 4)  {
+                    //uid = parts[4]
+                //}
+                    //////audioQueue.write(payload);
+                //var reader = new FileReader();
+                //reader.onload = function() {
+                    ////console.log('RR')
+                    ////console.log(reader.result)
+                    ////audioQueue.write(new Uint8Array(reader.result));
+                    //// On the first message set the startTime to the currentTime from the audio context
+                    //if (streamCount ==0){
+                        //startTime = speakerAudioContext.currentTime;
+                    //}
+
+                    //speakerAudioContext.decodeAudioData(reader.result, function(data) {
+                        //streamCount ++; // Keep a count of how many messages have been received
+                        //var playTime = startTime + (streamCount *0.2) //Play each at file 200ms
+                        //playSound(data, playTime); //call the function to play the sample at the appropriate time
+                    //});
+
+                //};
+                //reader.readAsArrayBuffer(new Blob([new Uint8Array(payload)], { type: 'audio/wav' }));
+                
+                   
+                
+
+                //function playSoundSegment(buffer, playTime) {
+                    //var source = streamingAudioContext.createBufferSource(); //Create a new BufferSource fr the
+                    //source.buffer = buffer; // Put the sample content into the buffer
+                    //source.start(playTime); // Set the starting time of the sample to the scheduled play time
+                    //source.connect(streamingAudioContext.destination); // Also Connect the source to the audio output
+                    //if (streamingTimeout) clearTimeout(streamingTimeout)
+                    //streamingTimeout = setTimeout(function() {
+                        //mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid}));
+                    //},2000)
+                //}
+            //},  
             'hermod/+/nlu/intent': function(topic,site,payload) {
-                 logAnalyticsEvent(JSON.stringify(payload),site)
+                //console.log('NLU INTENT')
+                json = JSON.parse(payload)
+                message = json.intent.name
+                entities = []
+                for (i in json.entities) {
+                    entities.push(json.entities[i].entity)
+                }
+                if (entities.length > 0) {
+                    message += '::'+entities.join("__")
+                }
+                //console.log(JSON.parse(payload))
+                logAnalyticsEvent(message,site)
  
             },
             'hermod/+/asr/start': function(topic,site,payload) {
@@ -174,6 +267,280 @@ var HermodWebClient = function(config) {
             }        
         }
         
+        
+      
+        
+ //function playSound(byteArray) {
+            //console.log('play sopuid')
+            //console.log(byteArray)
+            //return new Promise(function(resolve,reject) {
+                //console.log('in prom')
+                //// Create blob from Uint8Array & Object URL.
+                //const blob = new Blob([new Uint8Array(byteArray)], { type: 'audio/wav' });
+                //const url = URL.createObjectURL(blob);
+                //console.log('got url')
+                //console.log(url);
+                //// Get DOM elements.
+                //const audio = document.createElement('audio');
+                //const source = document.createElement('source');
+
+                //// Insert blob object URL into audio element & play.
+                //source.src = url;
+                    //console.log('set src')
+                
+                //audio.load();
+                    //console.log('loaded')
+                //audio.play();
+                    //console.log('played')
+                //audio.on('ended',function() {
+                    //console.log('ended')
+                    //resolve()
+                //})
+
+                
+            //})
+        //}
+        
+        function stopPlaying() {
+            //console.log('STOP PLAY')
+             if (bufferSource) {
+                 //console.log('STOP PLAY real')
+                 bufferSource.stop()
+             }
+        };
+        
+        
+                
+        //var startTime; // Make startTime a global var
+
+        //ws.onmessage = function(event) {
+            //// On the first message set the startTime to the currentTime from the audio context
+            //if (count ==0){
+            //startTime = audioContext.currentTime;
+            //}
+
+            //audioContext.decodeAudioData(event.data, function(data) {
+            //count ++; // Keep a count of how many messages have been received
+            //var playTime = startTime + (count *0.2) //Play each at file 200ms
+            //playSound(data, playTime); //call the function to play the sample at the appropriate time
+            //});
+            //};
+
+            //function playSound(buffer, playTime) {
+            //var source = audioContext.createBufferSource(); //Create a new BufferSource fr the
+            //source.buffer = buffer; // Put the sample content into the buffer
+            //source.start(playTime); // Set the starting time of the sample to the scheduled play time
+            //source.connect(analyserNode); //Connect the source to the visualiser
+            //source.connect(audioContext.destination); // Also Connect the source to the audio output
+        //}
+ 
+        
+        function playSound(bytes,playTime) {
+            if (!playTime) playTime = 0;
+            // console.log('PLAY SOUND BYTES')
+            return new Promise(function(resolve,reject) {
+                try {
+                    if (bytes) {
+                       // var myAudio = document.createElement('audio');
+
+                        //if (myAudio.canPlayType('audio/mpeg')) {
+                          //myAudio.setAttribute('src','audiofile.mp3');
+                        //}
+                        
+                       // console.log('PLAY SOUND BYTES have bytes'+bytes.length)
+                        var buffer = new Uint8Array( bytes.length );
+                        buffer.set( new Uint8Array(bytes), 0 );
+                        //speakerGainNode = context.createGain();
+                        speakerContext = new audioContext();
+                        speakerGainNode = speakerContext.createGain();
+        
+                        speakerGainNode.gain.value =  outputvolume; //config.speakervolume/100 ? config.speakervolume/100 :
+                        //console.log('PLAY SOUND BYTES decode')
+                        speakerContext.decodeAudioData(buffer.buffer, function(audioBuffer) {
+                            //console.log('PLAY SOUND BYTES decoded')
+                           // console.log(audioBuffer);
+                            // global bufferSource for share with stopPlaying
+                            bufferSource = speakerContext.createBufferSource();
+                            bufferSource.buffer = audioBuffer;
+                            bufferSource.connect(speakerGainNode);
+                            speakerGainNode.connect( speakerContext.destination );
+                            try {
+                                bufferSource.start(0);
+                                //resolve()
+                            } catch (e) {
+                                console.log('play sound error starting')
+                                console.log(e)
+                                resolve()
+                            }
+                            bufferSource.onended = function() {
+                                console.log('PLAY SOUND BYTES source ended')
+                                //setTimeout(stopPlaying,100)
+                                resolve();
+                            };
+                            bufferSource.onerror = function() {
+                                console.log('PLAY SOUND BYTES source error')
+                                resolve();
+                            };
+                        },function(e) {
+                             console.log('PLAY SOUND BYTES decode FAIL')
+                             console.log(e)
+                             resolve()   
+                        });
+                        //resolve()
+                    } else {
+                        console.log('PLAY SOUND BYTES no bytes')
+                        resolve();
+                    }
+                } catch (e) {
+                    console.log('PLAY SOUND BYTES err')
+                    console.log(e)
+                    resolve()
+                }
+            });                        
+        }
+        
+                
+        //function createAudioQueue() {
+            //var buffer = new Float32Array(0)
+
+            //write = function(newAudio) {
+                //console.log('AQ WRITE ')
+                ////console.log(newAudio.byteLength)
+                ////console.log(newAudio)
+                ////console.log(buffer.length)
+                ////console.log(buffer)
+                ////var buffer = new Uint8Array( bytes.length );
+                ////buffer.set( new Uint8Array(bytes), 0 );
+                //var currentQLength = buffer.length;
+                ////newAudio = sampler.resampler(newAudio);
+                //var newBuffer = new Uint8Array(currentQLength + newAudio.byteLength);
+                //newBuffer.set(buffer, 0);
+                //newBuffer.set(newAudio, currentQLength);
+                //buffer = newBuffer;
+                //if (!is_streaming && buffer.length > 10000) {
+                    //startStreaming()
+                //}
+                //console.log('AQ DONE WRITE ')
+                //console.log(buffer.length)
+            //}
+
+            //read = function(nSamples) {
+                //console.log('AQ READ')
+                //var samplesToPlay = buffer.subarray(0, nSamples);
+                //buffer = buffer.subarray(nSamples, buffer.length);
+                //return samplesToPlay;
+            //}
+
+            //length = function() {
+                //console.log('AQ LEN '+buffer.length )
+                //return buffer.length;
+            //}
+            //return {write:write,read:read,length:length}
+        //};
+        //audioQueue = createAudioQueue()
+        //console.log('AQ CREATED')
+        //console.log(audioQueue)
+       
+        
+        //function startStreaming(uid) {
+            //console.log('START STREAMING')
+            //if (streamingTimeout) clearTimeout(streamingTimeout)
+            //streamingTimeout = setTimeout(function() {stopStreaming(uid)},3000)
+            //console.log('START STREAMING a' )
+            //console.log(bufferSize)
+            
+            
+            //function play_recursive() {
+                //console.log('play recurse' )
+              ////end of stream has been reached
+              //if (audioQueue.length() === 0) { return; }
+              //console.log('play recurse real' )
+              //let source = streamingAudioContext.createBufferSource();
+
+              ////get the latest buffer that should play next
+              //source.buffer = audioQueue.read(bufferSize);
+              //source.connect(streamingAudioContext.destination);
+
+              ////add this function as a callback to play next buffer
+              ////when current buffer has reached its end 
+              //source.onended = play_recursive;
+              //console.log('play now start' )
+              //source.start();
+            //}
+            //play_recursive();
+            
+            ////scriptNode = streamingAudioContext.createScriptProcessor(bufferSize, 1, 1);
+            ////console.log('START STREAMING b')
+            ////scriptNode.onaudioprocess = function(e) {
+                ////console.log('oAP')
+                ////if (audioQueue.length()) {
+                    ////console.log('send' + bufferSize)
+                    ////e.outputBuffer.getChannelData(0).set(audioQueue.read(bufferSize));
+                    ////if (streamingTimeout) clearTimeout(streamingTimeout)
+                    ////streamingTimeout = setTimeout(function() {stopStreaming(uid)},3000)
+                ////} else {
+                    ////console.log('silent')
+                    ////e.outputBuffer.getChannelData(0).set(silence);
+                ////}
+            ////};
+            
+            ////streamingGainNode = streamingAudioContext.createGain();
+            ////console.log('START STREAMING gain')
+            ////scriptNode.connect(streamingGainNode);
+            ////console.log('START STREAMING connect')
+            ////streamingGainNode.connect(streamingAudioContext.destination);
+            ////console.log('START STREAMING connected')
+            //is_streaming = true;
+        //}
+        
+        //function getStreamingVolume() {
+            //return streamingGainNode ? streamingGainNode.gain.value : 0;
+        //};
+
+        //function setStreamingVolume(value) {
+            //if (streamingGainNode) streamingGainNode.gain.value = value;
+        //};
+
+        //function stopStreaming(uid) {
+            //if (is_streaming) {
+                //console.log('STOP STREAMING')
+                //audioQueue = null;
+                //scriptNode.disconnect();
+                //scriptNode = null;
+                //streamingGainNode.disconnect();
+                //streamingGainNode = null;
+                //is_streaming = false;
+                //mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid}));
+            //}
+        //};
+        
+        function playUrl(url) {
+            console.log('PLAY url '+ url)
+            var audio = new Audio(url);
+            audio.play();
+            //return new Promise(function(resolve,reject) {
+                //console.log('PLAY url')
+                //console.log(url);
+                //// Get DOM elements.
+                //const audio = document.createElement('audio');
+                //const source = document.createElement('source');
+
+                //// Insert blob object URL into audio element & play.
+                //source.src = url;
+                //console.log('set src')
+                
+                //audio.load();
+                    //console.log('loaded')
+                //audio.play();
+                    //console.log('played')
+                ////audio.on('ended',function() {
+                    ////console.log('ended')
+                    //resolve()
+                ////})
+            //})
+
+        }       
+        
         function concat_arrays(arrays) {
           // sum of individual array lengths
           let totalLength = arrays.reduce((acc, value) => acc + value.length, 0);
@@ -194,7 +561,7 @@ var HermodWebClient = function(config) {
         }
         
         function onMessageArrived(message,payload) {
-            //console.log(['MESSAGE ',message,payload])
+            console.log(['MESSAGE ',message,payload])
             if (waitingFor.hasOwnProperty(message)) {
                 // callback for sendAndWaitFor
                 //console.log('run callback')
@@ -205,7 +572,7 @@ var HermodWebClient = function(config) {
                 // handle messageFunction
                 var parts = message.split("/")
                 // special handling for id in speaker/play/<id>
-                if ((parts.length > 4 && parts[2] == "speaker" && parts[3] == "play") || (parts.length > 4 && parts[2] == "speaker" && parts[3] == "cache")) {
+                if ((parts.length > 4 && parts[2] == "speaker" && parts[3] == "play") || (parts.length > 4 && parts[2] == "speaker" && parts[3] == "cache") || (parts.length > 4 && parts[2] == "speaker" && parts[3] == "stream_mp3") || (parts.length > 4 && parts[2] == "speaker" && parts[3] == "stream_wav")) {
                     //console.log('SPAKE ')
                     parts[4]="+";
                 }
@@ -243,6 +610,7 @@ var HermodWebClient = function(config) {
                                    if (onCallbacks.hasOwnProperty('connect')) {
                                         onCallbacks['connect']()
                                     }
+                                    sendMessage('hermod/'+config.site+'/dialog/init',{"platform":"web","url":window.location.origin,"supports":["audio","display"]})
                                    resolve()
                                 });
                             });
@@ -365,32 +733,32 @@ var HermodWebClient = function(config) {
         }
 
         function setVolume(volume) {
-            console.log('set volume '+volume)
-            if (gainNode && gainNode.gain) gainNode.gain.value = volume/100;
+            //console.log('set volume '+volume)
+            if (speakerGainNode && speakerGainNode.gain) speakerGainNode.gain.value = volume/100;
         }
         
         function muteVolume() {
-            console.log('mute')
-            if (gainNode && gainNode.gain) {
-                currentVolume = gainNode.gain.value
-                gainNode.gain.value = 0.05;
+            //console.log('mute')
+            if (speakerGainNode && speakerGainNode.gain) {
+                currentVolume = speakerGainNode.gain.value
+                speakerGainNode.gain.value = 0.05;
             }
             
         }
         
         function unmuteVolume() {
-            console.log('unmute to '+ currentVolume)
+            //console.log('unmute to '+ currentVolume)
             if (currentVolume != null) {
-                if (gainNode && gainNode.gain) {
-                    gainNode.gain.value = currentVolume;
-                    currentVolume = gainNode.gain.value;
+                if (speakerGainNode && speakerGainNode.gain) {
+                    speakerGainNode.gain.value = currentVolume;
+                    currentVolume = speakerGainNode.gain.value;
                 }
             }
         }
          
-        function addInputGainNode(node) {
-            inputGainNodes.push(node);
-        };
+        //function addInputGainNode(node) {
+            //inputGainNodes.push(node);
+        //};
 
         // event functions
         // accept callback for trigger on lifecycle events
@@ -462,7 +830,7 @@ var HermodWebClient = function(config) {
                             onCallbacks['hotwordDetected'](keyword)
                         }
                         
-                        startMicrophone()
+                        //startMicrophone()
                     }
                 };
 
@@ -495,127 +863,26 @@ var HermodWebClient = function(config) {
         /**
          * HELPER FUNCTIONS
          */
-        //function playSound(byteArray) {
-            //console.log('play sopuid')
-            //console.log(byteArray)
-            //return new Promise(function(resolve,reject) {
-                //console.log('in prom')
-                //// Create blob from Uint8Array & Object URL.
-                //const blob = new Blob([new Uint8Array(byteArray)], { type: 'audio/wav' });
-                //const url = URL.createObjectURL(blob);
-                //console.log('got url')
-                //console.log(url);
-                //// Get DOM elements.
-                //const audio = document.createElement('audio');
-                //const source = document.createElement('source');
-
-                //// Insert blob object URL into audio element & play.
-                //source.src = url;
-                    //console.log('set src')
-                
-                //audio.load();
-                    //console.log('loaded')
-                //audio.play();
-                    //console.log('played')
-                //audio.on('ended',function() {
-                    //console.log('ended')
-                    //resolve()
-                //})
-
-                
-            //})
-        //}
-        
-        function stopPlaying() {
-            console.log('STOP PLAY')
-             if (bufferSource) {
-                 console.log('STOP PLAY real')
-                 bufferSource.stop()
-             }
-        };
-        
-        function playSound(bytes) {
-            // console.log('PLAY SOUND BYTES')
-            return new Promise(function(resolve,reject) {
-                try {
-                    if (bytes) {
-                       // var myAudio = document.createElement('audio');
-
-                        //if (myAudio.canPlayType('audio/mpeg')) {
-                          //myAudio.setAttribute('src','audiofile.mp3');
-                        //}
-                        
-                       // console.log('PLAY SOUND BYTES have bytes'+bytes.length)
-                        var buffer = new Uint8Array( bytes.length );
-                        buffer.set( new Uint8Array(bytes), 0 );
-                        let audioContext = window.AudioContext || window.webkitAudioContext;
-                        let context = new audioContext();
-                        gainNode = context.createGain();
-                        
-                        gainNode.gain.value =  outputvolume; //config.speakervolume/100 ? config.speakervolume/100 :
-                        //console.log('PLAY SOUND BYTES decode')
-                            context.decodeAudioData(buffer.buffer, function(audioBuffer) {
-                            //console.log('PLAY SOUND BYTES decoded')
-                           // console.log(audioBuffer);
-                            // global bufferSource for share with stopPlaying
-                            bufferSource = context.createBufferSource();
-                            bufferSource.buffer = audioBuffer;
-                            bufferSource.connect(gainNode);
-                            gainNode.connect( context.destination );
-                            try {
-                                bufferSource.start(0);
-                                //resolve()
-                            } catch (e) {
-                                console.log('play sound error starting')
-                                console.log(e)
-                                resolve()
-                            }
-                            bufferSource.onended = function() {
-                                console.log('PLAY SOUND BYTES source ended')
-                                //setTimeout(stopPlaying,100)
-                                resolve();
-                            };
-                            bufferSource.onerror = function() {
-                                console.log('PLAY SOUND BYTES source error')
-                                resolve();
-                            };
-                        },function(e) {
-                             console.log('PLAY SOUND BYTES decode FAIL')
-                             console.log(e)
-                             resolve()   
-                        });
-                        //resolve()
-                    } else {
-                        console.log('PLAY SOUND BYTES no bytes')
-                        resolve();
-                    }
-                } catch (e) {
-                    console.log('PLAY SOUND BYTES err')
-                    console.log(e)
-                    resolve()
-                }
-            });                        
-        }
-        
+       
            
         /**
          * Bind silence recognition events to set speaking state
          */ 
         function bindSpeakingEvents() {
-             //console.log('bind speaking')
+             console.log('bind speaking')
              if (!navigator.getUserMedia) {
                 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
              }
              try {
                 if (navigator.getUserMedia) {
                   navigator.getUserMedia({audio:true}, function(stream) {
-                    //console.log('bind speaking have audoi')
+                    console.log('bind speaking have audoi')
                     var options = {};
                     var speechEvents = hark(stream, options);
 
                     speechEvents.on('speaking', function() {
                       clearTimeout(speakingTimeout)
-                      //console.log('speaking');
+                      console.log('speaking');
                       // DISABLE BUFFER   
                       //sendAudioBuffer(config.site) 
                       speaking = true
@@ -670,7 +937,7 @@ var HermodWebClient = function(config) {
         
         
         function startMicrophone() {
-            console.log('start rec -'+config.site)
+            //console.log('start rec -'+config.site)
             isSending = true;
             //stopPlaying()
             muteVolume()
@@ -684,7 +951,7 @@ var HermodWebClient = function(config) {
             
         function gotDevices(deviceInfos,site) {
           // Handles being called several times to update labels. Preserve values.
-          console.log(['GOT DEV',site,deviceInfos])
+          //console.log(['GOT DEV',site,deviceInfos])
           device = 'default'
           devices={}
           for (let i = 0; i !== deviceInfos.length; ++i) {
@@ -694,7 +961,7 @@ var HermodWebClient = function(config) {
                 console.log(deviceInfo.deviceId)
                 devices[deviceInfo.label] = deviceInfo.deviceId
                 if (deviceInfo.label && deviceInfo.label.toLowerCase().indexOf('speakerphone') !== -1) {
-                    console.log('found speakerphone')
+                    //console.log('found speakerphone')
                     device = deviceInfo.deviceId
                 }
             }
@@ -710,7 +977,7 @@ var HermodWebClient = function(config) {
         
         
         function activateRecording(site,deviceId) {
-            console.log('activate rec'+site + deviceId)
+            //console.log('activate rec'+site + deviceId)
             //this.setState({sending:true});
             //if (onCallbacks.hasOwnProperty('microphoneStart')) {
                 //onCallbacks['microphoneStart']()
@@ -740,13 +1007,12 @@ var HermodWebClient = function(config) {
                  console.log(e);
              }
             function success(e) {
-                  console.log('got navigator')
-                  var audioContext = window.AudioContext || window.webkitAudioContext;
-                  var context = new audioContext();
-                  var gainNode = context.createGain();
-                  gainNode.gain.value = inputvolume;
-                  var audioInput = context.createMediaStreamSource(e);
+                  //console.log('got navigator')
+                  microphoneContext = new audioContext();
+                  microphoneGainNode = microphoneContext.createGain();
+                  microphoneGainNode.gain.value = inputvolume;
                   
+                  var audioInput = microphoneContext.createMediaStreamSource(e);
                   
                   var bufferSize = 4096;
                   
@@ -785,14 +1051,14 @@ var HermodWebClient = function(config) {
                     }
          
                   let recorderTimeout = null;  
-                  let recorder = context.createScriptProcessor(bufferSize, 1, 1);
+                  let recorder = microphoneContext.createScriptProcessor(bufferSize, 1, 1);
                   recorder.onaudioprocess = function(e){
                       //console.log(['onaudio',isRecording  ,isSending ])
                         
                       //  var left = e.inputBuffer.getChannelData(0);
                       // && that.state.speaking && that.state.started
                       if (isRecording  && isSending) { // && speaking) {
-                          //console.log(['REC'])
+                          console.log(['REC'])
                           resample(e.inputBuffer,16000,function(res) {
                             if (! isPlaying) { 
                                 if (speaking) {
@@ -811,9 +1077,9 @@ var HermodWebClient = function(config) {
                       }
                   }
                   
-                gainNode.connect(recorder);
-                audioInput.connect(gainNode);
-                recorder.connect(context.destination); 
+                microphoneGainNode.connect(recorder);
+                audioInput.connect(microphoneGainNode);
+                recorder.connect(microphoneContext.destination); 
                //   console.log(['REC started'])
                         
             }
@@ -826,7 +1092,7 @@ var HermodWebClient = function(config) {
                 onCallbacks['microphoneStop']()
             }
             //sendMessage('hermod/'+config.site+'/asr/stop',{})
-            console.log('stop mic unmute')
+            //console.log('stop mic unmute')
             unmuteVolume()
         }
         function stopAll() {

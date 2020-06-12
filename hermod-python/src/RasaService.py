@@ -21,7 +21,7 @@ class RasaService(MqttService):
         self.config = config
         # self.recursion_depth = {}
         self.rasa_server = self.config['services']['RasaService'].get('rasa_server','http://localhost:5005/')
-        self.subscribe_to = 'hermod/+/dialog/ended,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
+        self.subscribe_to = 'hermod/+/dialog/ended,hermod/+/dialog/init,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
         
         
     async def connect_hook(self):
@@ -83,6 +83,11 @@ class RasaService(MqttService):
         elif topic == 'hermod/' + site + '/dialog/started':
             # await self.client.publish('hermod/'+site+'/display/stopwaiting',{})
             await self.reset_tracker(site) 
+        
+        elif topic == 'hermod/' + site + '/dialog/init':
+            pass
+            # save dialog init data to slots for custom actions
+            # await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": "hermod_client", "value": json.dumps(payload)}])
    
     
     async def reset_tracker(self,site):
@@ -117,21 +122,22 @@ class RasaService(MqttService):
         
     async def handle_intent(self,topic,site,payload):
         await self.client.publish('hermod/'+site+'/core/started',json.dumps({}));
-        # self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))
+        self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))
         #response = requests.post(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')}),headers = {'content-type': 'application/json'})
         response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
-        # self.log('resp RASA TRIGGER')
+        self.log('resp RASA TRIGGER')
+        self.log(response)
         messages = response.get('messages')
         self.log('HANDLE INTENT MESSAGES')
-        # self.log(messages)
+        self.log(messages)
         if messages and len(messages) > 0:
             # self.log('SEND MESSAGES')
             message = '. '.join(map(lambda x: x.get('text',''   ),messages))
             # self.log(message)
             await self.client.subscribe('hermod/'+site+'/tts/finished')
-            # self.log('SEND MESSAGES sub finish')
+            self.log('SEND MESSAGES sub finish')
             await self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message, "id":payload.get('id','')}))
-            # self.log('SEND MESSAGES sent text')
+            self.log('SEND MESSAGES sent text '+message)
             # send action messages from server actions to client action
             # for message in messages:
                 # self.log(message)

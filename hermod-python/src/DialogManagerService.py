@@ -39,7 +39,7 @@ class DialogManagerService(MqttService):
             self).__init__(config,loop)
         # self.log('dm init ')
         self.config = config
-        self.subscribe_to = 'hermod/+/hotword/detected,hermod/+/dialog/continue,hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent,hermod/+/nlu/fail,hermod/+/dialog/end' 
+        self.subscribe_to = 'hermod/+/hotword/detected,hermod/+/dialog/continue,hermod/+/dialog/init,hermod/+/dialog/start,hermod/+/asr/text,hermod/+/nlu/intent,hermod/+/nlu/fail,hermod/+/dialog/end' 
         self.dialogs = {}
         self.waiters = {}
         self.subscriptions = {}
@@ -247,5 +247,11 @@ class DialogManagerService(MqttService):
             if site in self.dialogs: 
                 del self.dialogs[site]
             await self.client.publish(prep + 'hotword/start', json.dumps({}))
-
+            
+        elif topic == prep + 'dialog/init':
+            await self.client.publish('hermod/'+site+'/hotword/activate',json.dumps({}))
+            await self.client.publish('hermod/'+site+'/asr/activate',json.dumps({}))
+            await self.client.publish('hermod/'+site+'/microphone/start',json.dumps({}))
+            await self.client.publish('hermod/'+site+'/hotword/start',json.dumps({}))
+            
      
