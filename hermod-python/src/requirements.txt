@@ -29,5 +29,9 @@ google-cloud-texttospeech
 motor
 pydub
 filetype
+pymongo==3.10.0
+metaphone 
+python-Levenshtein 
+wikipedia-api
 
 

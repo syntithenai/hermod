@@ -2,7 +2,7 @@ FROM python:3.7.7-buster
 USER root
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y  nodejs mosquitto-clients mosquitto entr libc-ares-dev libwebsockets-dev libssl-dev  xsltproc docbook-xsl wget curl pulseaudio python3-dev nano libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y  nodejs mosquitto-clients node-libnpx npm ffmpeg  libavcodec-extra mosquitto entr libc-ares-dev libwebsockets-dev libssl-dev  xsltproc docbook-xsl wget curl pulseaudio python3-dev nano libportaudiocpp0 portaudio19-dev alsa-utils libasound2-dev python-pyaudio python3-pyaudio sox && rm -rf /var/lib/apt/lists/*
 
 # for pi4 need 
 # RUN apt install libatlas-base-dev libatlas3-base libjlapack-java liblapack-dev liblapack3 liblapacke liblapacke-dev libopenblas-base libopenblas-base-dev liblapack-dev liblapack3 liblapacke liblapacke-dev libtmglib3 libjlapack-java gfortran liblapack-dev musl musl-dev libgfortran4 libgcc1
@@ -25,10 +25,9 @@ RUN wget -q https://ftp-master.debian.org/keys/release-10.asc -O- | apt-key add 
 RUN echo "deb http://deb.debian.org/debian buster non-free" >> /etc/apt/sources.list
 RUN apt-get update && apt-get install -y libttspico0 libttspico-utils  && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y node-libnpx npm ffmpeg  libavcodec-extra && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pymongo==3.10.0 
-RUN pip install --upgrade metaphone python-Levenshtein wikipedia-api
+#RUN pip install --upgrade pymongo==3.10.0 
+#RUN pip install --upgrade metaphone python-Levenshtein wikipedia-api
 
 # copy source code
 COPY ./deepspeech-models /app/deepspeech-models
