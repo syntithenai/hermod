@@ -8754,7 +8754,10 @@ var HermodWebClient = function(config) {
                         json = JSON.parse(payload)
                     } catch(e) {}
                     if (json && json.url) {
-                        playUrl(json.url)
+                        playUrl(json.url).then(function() {
+                            //console.log(['DONE speaker play']);
+                            mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
+                        }); 
                     } else {
                         mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({"id":uid})); 
                         //console.log(['START speaker play']);
@@ -9125,8 +9128,20 @@ var HermodWebClient = function(config) {
         
         function playUrl(url) {
             console.log('PLAY url '+ url)
-            var audio = new Audio(url);
-            audio.play();
+            return new Promise(function(resolve,reject) {
+                var audio = new Audio(url);
+                audio.addEventListener("canplaythrough", event => {
+                  /* the audio is now playable; play it if permissions allow */
+                    
+                  audio.play();
+                });
+                audio.addEventListener("ended", event => {
+                    resolve()
+                })
+                audio.addEventListener("error", event => {
+                    resolve()
+                })
+            })
             //return new Promise(function(resolve,reject) {
                 //console.log('PLAY url')
                 //console.log(url);
