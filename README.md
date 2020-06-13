@@ -5,6 +5,8 @@ It was created to simplify integrating custom speech services into a website.
 It can also be used to build standalone alexa like devices that do not need the Internet. 
 
 
+Demo [https://edison.syntithenai.com](https://edison.syntithenai.com)
+
 > **This project has recently been ported from nodejs to python.**
 > In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
 > Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
@@ -54,6 +56,9 @@ git clone https://github.com/syntithenai/hermod.git
 
 # change directory into it so relative paths in docker-compose.yml to host mounts work correctly
 cd hermod
+
+# copy environment from sample (edit as required)
+cp .env-sample .env
 
 # start services
 sudo docker-compose up
@@ -120,6 +125,16 @@ The folder hermod-python contains a number of shell scripts for various developm
 *See the source code for details.*
 
 
+### Installation on AWS
+
+Demo [https://edison.syntithenai.com](https://edison.syntithenai.com) runs on 
+
+t3a.small instance (2 cores, 2G memory)
+with a 16G root file system
+
+
+
+
 ### Mosquitto
 
 Newer versions (1.6+) of mosquitto include an option to restrict the header size
@@ -133,7 +148,7 @@ The docker image includes a build of mosquitto 1.6.7
 
 ## Configuration
 
-The entrypoint for the source code is the file hermod.py which has a number of command line arguments to enable and disable various features of the software suite.
+The entrypoint for the source code is the file services.py which has a number of command line arguments to enable and disable various features of the software suite.
 
 Environment variables are also used to configure the hermod services.
 
@@ -142,7 +157,7 @@ The file hermod-python/src/config-all.yml provides base configuration which is m
 
 ### Arguments
 
-Arguments to hermod.py are mainly used to specify which services should be activated.
+Arguments to services.py are mainly used to specify which services should be activated.
 
 Arguments include
 
@@ -156,11 +171,11 @@ Arguments include
 -  **t (train)**  train RASA model when starting local server
 
 For example to start the mosquitto, web and action servers as well as the main hermod services.
-```python hermod.py -dwarm```
+```python services.py -dwarm```
 
 
 To start just the RASA server
-```python hermod.py -r```
+```python services.py -r```
 
 ### Environment
 
@@ -170,7 +185,7 @@ The .env file is excluded from git and is a good place to store secrets.  To ena
 
 ```cp .env-sample  .env```
 
-Without docker compose, environment variables should be present in the shell that runs ```python hermod.py```
+Without docker compose, environment variables should be present in the shell that runs ```python services.py```
 
 
 
@@ -208,15 +223,15 @@ GOOGLE_ENABLE_ASR=true
 If google credentials are provided, the DeepSpeechASR and IBMASR services will be automatically disabled.
 
 
-Pricing is calculated in 15s increments rounded up. 100 requests costs $0.60 USD.
-
-Because most utterances are only a fraction of 15s, the rounding up approach means Google is likely to be more expensive than IBM Watson speech recognition.
 
 Because the microphone is often restarted after executing an action, some requests to the service are very short bursts of silence which still incur the 15s minimum cost.
 
 **22/05/2020**
 The first 240 (< 15s) requests are free.
 After than $0.024 USD/minute.
+Pricing is calculated in 15s increments rounded up. 100 requests costs a minimum of $0.60 USD.
+
+Because most utterances are only a fraction of 15s, the rounding up approach means Google is likely to be more expensive than IBM Watson speech recognition.
 
 Google is noticably more able to accurately capture uncommon words and names than the IBM service ( or deepspeech )
 
@@ -347,7 +362,7 @@ Using docker-compose, SSL_CERTIFICATES_FOLDER is set to /app/certs/.
 Edit docker-compose.yml to host mount a folder to that path in both the mqtt and hermodweb containers.
 
 
-When hermod.py starts mosquitto, it checks if the files exist. If they do it rewrites mosquitto-ssl.conf to reflect the path and starts mosquitto using mosquitto-ssl.conf.
+When services.py starts mosquitto, it checks if the files exist. If they do it rewrites mosquitto-ssl.conf to reflect the path and starts mosquitto using mosquitto-ssl.conf.
 If the certificate files are not available, mosquitto starts without SSL.
 In both cases, mosquitto web sockets is exposed on port 9001.
 
@@ -364,7 +379,7 @@ To enable local audio and hotword services is easiest using the default setup re
 
 Depending on your host, you may need to use paprefs or some other method to allow network access to your host pulse audio installation.
 
-To use pulse, the hermod hermod.py file needs to run with 
+To use pulse, the hermod services.py file needs to run with 
 - environment variables PULSE_SERVER and PULSE_COOKIE
 - access (? volume mount) to cookie file from host
 
@@ -422,7 +437,7 @@ Notably,the duckling URL is built into the RASA model when it is trained.
 
 Hermod uses environment variables in these configuration files to allow dynamic assignment. (Although changes to the duckling url  will require model training)
 
-- **DUCKLING_URL** default http://localhost:8000 set in hermod.py 
+- **DUCKLING_URL** default http://localhost:8000 set in services.py 
 eg
 ```
   - name: DucklingHTTPExtractor                                                     
@@ -431,13 +446,13 @@ eg
 
 
 
-- **RASA_ACTIONS_URL**  default http://localhost:5055 set in hermod.py 
+- **RASA_ACTIONS_URL**  default http://localhost:5055 set in services.py 
   eg
 ```
 action_endpoint:
   url: "${RASA_ACTIONS_URL}"
 ```
-If RASA_ACTIONS_URL is present in the environment when starting hermod.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable.
+If RASA_ACTIONS_URL is present in the environment when starting services.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable.
 
 
 
@@ -446,8 +461,6 @@ If RASA_ACTIONS_URL is present in the environment when starting hermod.py, the e
 Building a good model requires lots of samples. While generation from a DSL runs the risk of overfitting if comprehensive data sets are provided, samples of a generated data set can be helpful in quickly building initial training and testing data. 
 
 In particular entity matching from a large set defined as a lookup file, benefits from (integrating more samples of lookup values)[https://blog.bitext.com/improving-rasas-results-with-artificial-training-data-ii]
-
-
 
 
 To build training data from the chatito files
@@ -480,14 +493,98 @@ Any text messages returned by RASA are collated and a hermod/siteid/tts/say mess
 Because hermod runs in the context of an mqtt server, actions can also communicate with the client in real time by sending messages. For example, the action can send an mqtt message 
 to the topic hermod/myhsite/tts/say to have speech generated and spoken immediately (eg looking now) while the action continues to collate and process data before giving a final response.
 
-In a speech dialog, a conversation can end and switch the microphone back to hotword mode OR it can continue and leave the microphone active for a response from a user.
-By default, the microphone will remain active. 
 
-Two possible approaches to ending a dialog immediately include
-- the action can send a hermod/myhsite/dialog/end message.
-- use the ActionEnd.py class found in the example model. The action will need to be included in your domain and in your stories as the last item in the story that is to be forcibly ended.
+### Client initialisation
+
+The AudioService and the javascript client send an initialisation message `hermod/site>/dialog/init `  with a JSON payload including information about the client including supported features and platform.
+
+The DialogManagerService listens for these messages and sends appropriate activate and start messages for asr, hotword and microphone.
+
+The TTS services also listen for these messages and cache the client information so that clients who have registered via a web platform are sent TTS audio as a url rather than the default of splitting into mqtt audio packets for final reassembly and playback.  Streaming playback using MQTT by reconstructing audio streams is difficult. A web server is designed for the job.
+
+The RASA service also listens for these messages and saves the payload as a slot hermod_client so that the information is available to custom actions to respond based on supported features of the client.
+
+### Automatically restarting the microphone
+
+In a speech dialog, a conversation can end and switch the microphone back to hotword mode OR it can continue and leave the microphone active for a response from a user.
+
+The default is set by the environment variable ```HERMOD_KEEP_LISTENING=true```
+
+More fine tuned control can be applied through stories or custom actions.
+
+When hermod is configured to keep listening, an action_end as the last action in your story will force the microphone to return to the hotword.
+```
+## say goodbye
+* quit
+  - utter_goodbye
+  - action_end   
+```
+
+When hermod is configured not to keep listening, action_continue can be used as the last action to force the microphone to restart for an intent that needs further input
+
+```
+## save fact success
+* save_fact{"attribute": "meaning","thing": "life","answer": "42"}
+    - action_confirm_save_fact
+    - slot{"attribute": "meaning"}
+    - slot{"thing": "life"}
+    - slot{"answer": "42"}
+    - action_continue
+* affirmative
+    - action_save_fact
+```
+
+NOTE These actions will need to added to your domain file and enabled for the action server.
+
+
+Where the story does not force the issue, custom actions can use a slot to force the microphone status. 
+
+```slotsets.append(SlotSet("hermod_force_continue", "true")) ```
+or
+```slotsets.append(SlotSet("hermod_force_end", "true")) ```
+
+If both slots are set, hermod_force_continue takes precedence.
+
+**NOTE These slots need to be added to your domain file**
+
+
+For fallback actions, a sample implementation of action_default_fallback is included with the action server that sets the slot to force the microphone to restart.
+
+
 
 After a period of silence or failed recognition attempts, the microphone will turn itself back to hotword mode.
+
+
+#### Fallback Requests
+
+experiment in place - action server provides action_custom_fallback and config.yml includes
+
+```
+  - name: "FallbackPolicy"
+    nlu_threshold: 0.5
+    core_threshold: 0.3
+    fallback_action_name: "action_custom_fallback"
+```
+
+But NLU confidence scores below 0.5 don't trigger fallback action.
+
+
+TODO implement intent filters with thresholds
+
+
+
+
+### Logging
+
+
+```
+mosquitto_sub -v -u hermod_server -P  hermod -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/# &
+mosquitto_sub -v -u hermod_admin -P  talk2mebaby -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/# &
+mosquitto_sub -v -u hermod_admin -P  thisistalking -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/start -t hermod/+/speaker/stop &
+```
+
+mosquitto_sub -v -h mqtt -u hermod_admin -P  thisistalking -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/start -t hermod/+/speaker/stop &
+mosquitto_pub  -h mqtt -u hermod_admin -P  thisistalking -t hermod/hermod_server/asr/text -m '{"text":"what is the date"}'
 
 
 ### Example Web Service
@@ -1114,16 +1211,15 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
   
 - Dockerfile load rasa training data from external repository. 
    
-- load testing. ?? mem leak, subjectively slower after a while ?
-
-- asyncio restart all threads if one dies 
+- load testing.
 
 - chomecast web client
 
 - capture training data
-    - NLU
+    - NLU DONE
     - stories
-    - integrate into base training data
+    - integrate into base training data 
+   ``` services.py -t```
 
 - wikipedia example 
     - refine chatito data and rebuild model
@@ -1135,7 +1231,7 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
     -  show me (failing display mode ... fallback to wiki lookup page/attribute). eg show me the flag of peru
 
 
-- local storage of facts. See RASA knowledgebasebot
+- local storage of facts. See RASA knowledgebasebot DONE
 
 - HDASR
     - single service that switches between google and deepspeech
@@ -1145,8 +1241,6 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
 
 - auto adjust to ambient volume (per mycroft)
 
-- ? Extend ASR dictation timeout
-    - collate ASR text messages until silence timeout.
 
 
 - RASA
