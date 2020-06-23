@@ -1,0 +1,13 @@
+import ./slot_word.chatito
+
+%[navigate_to]('training': '20')
+    go to ~[navigate_target]
+    go to the ~[navigate_target] page
+    navigate to go to ~[navigate_target]
+    go to the ~[navigate_target] page
+
+~[navigate_target]
+    home
+    settings
+    search
+

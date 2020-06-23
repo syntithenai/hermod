@@ -1,23 +1,13 @@
 import ./slot_person.chatito
+import ./slot_person_type.chatito
 
-%[tell_me_about]('training': '250')
+%[tell_me_about]('training': '500')
     who is @[person]
-    tell me about is @[person]
+    tell me about  @[person]
     give me a bio for @[person]
     give me a biography for @[person]
-    who is the ~[role?] @[person]
-    tell me about the  ~[role?] @[person]
-    tell me about  ~[role?] @[person]
-
-~[role]
-    artist
-    musician
-    performer
-    judge
-    actor
-    politician
-    reverend
-    person
-
+    who is the @[person_type] @[person]
+    tell me about the  @[person_type] @[person]
+    tell me about @[person_type] @[person]
 
 

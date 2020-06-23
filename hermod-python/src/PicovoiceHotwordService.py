@@ -125,7 +125,7 @@ class PicovoiceHotwordService(MqttService):
             # self.log('deactivated')
         
     async def start_main(self):
-        # self.log('start hotword main')
+        self.log('start hotword main')
         try:
             while True :
                 await asyncio.sleep(0.001)

@@ -24,17 +24,21 @@ services:
     image: rasa/duckling
     restart: always
     container_name: duckling
-    ports: 
-      - 8000:8000
+    #ports: 
+      #- 8000:8000
 # mqtt
   mqtt:
     image: syntithenai/hermod-python
+    restart: always
     #build: ./hermod-python/
     container_name: mqtt
+    #entrypoint: ['sleep','500000']
     entrypoint: ['python','/app/src/hermod.py','-m']
     environment:
       # see volume mount below
-      SSL_CERTIFICATES_FOLDER: /app/certs
+      SSL_CERTIFICATES_FOLDER: /etc/letsencrypt/live/${SSL_DOMAIN_NAME}
+      SSL_DOMAIN_NAME: ${SSL_DOMAIN_NAME}
+      SSL_EMAIL: ${SSL_EMAIL}
       # root user and password to be created on startup
       MQTT_USER: ${MQTT_USER}
       MQTT_PASSWORD: ${MQTT_PASSWORD}
@@ -44,7 +48,8 @@ services:
       - 1883:1883
     volumes:
       # mount certificates folder
-      - ./hermod-python/certs:/app/certs
+      #- ./hermod-python/certs:/app/certs
+      - /etc/letsencrypt:/etc/letsencrypt
       # dev mount src
       - ./hermod-python/src:/app/src 
       # share mosquitto files via host mount for password updates
@@ -54,12 +59,18 @@ services:
 # hermod
   hermod:
     image: syntithenai/hermod-python
+    depends_on: 
+    - mqtt
     #build: ./hermod-python/
     container_name: hermodpython
-    #entrypoint: ['sleep','500000']
-    entrypoint: ['python','./hermod.py','-d'] # ,'-nl'
+    entrypoint: ['sleep','500000']
+    #entrypoint: ['python','./hermod.py','-d'] # ,'-nl'
     working_dir: '/app/src'
+    restart: always
     privileged: true
+    ports:
+      - 8080:80
+      - 4430:443
     environment:
       MQTT_HOSTNAME: ${MQTT_HOSTNAME}
       MQTT_USER: ${MQTT_USER}
@@ -67,6 +78,7 @@ services:
       MQTT_PORT: 1883
       
       RASA_URL: http://rasa:5005
+      HERMOD_KEEP_LISTENING: ${HERMOD_KEEP_LISTENING}
       DEEPSPEECH_MODELS: /app/deepspeech-models
       DUCKLING_URL: http://duckling:8000
       RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
@@ -77,7 +89,7 @@ services:
       # MQTT_PORT: hermod_server
       # MQTT_USER: hermod_server
       # MQTT_PASSWORD: hermod
-      
+        
       # BY DEFAULT LOCAL AUDIO IS DISABLED, SEE entrypoint, environment and volumes to enable
       # ENABLE PULSE AUDIO
       PULSE_SERVER: ${PULSE_SERVER}
@@ -95,55 +107,83 @@ services:
       GOOGLE_ENABLE_TTS: ${GOOGLE_ENABLE_TTS}
       IBM_SPEECH_TO_TEXT_APIKEY: ${IBM_SPEECH_TO_TEXT_APIKEY}
       IBM_SPEECH_TO_TEXT_REGION: ${IBM_SPEECH_TO_TEXT_REGION}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET}
+      # enable SSL  
+      SSL_CERTIFICATES_FOLDER: /etc/letsencrypt/live/${SSL_DOMAIN_NAME}
+      #SSL_CERTIFICATES_FOLDER: /app/certs
+      SSL_DOMAIN_NAME: ${SSL_DOMAIN_NAME}
+      SSL_EMAIL: ${SSL_EMAIL}
+      GOOGLE_ANALYTICS_CODE: ${GOOGLE_ANALYTICS_CODE}
+      ADSENSE_KEY: ${ADSENSE_KEY}
+      ADSENSE_SLOT: ${ADSENSE_SLOT}
+      
     volumes:
       # dev mount src
       - ./hermod-python/src:/app/src  
       # dev mount rasa model
       - ./hermod-python/rasa:/app/rasa  
-      - ./tts_cache:/tmp/tts_cache
       # access to pulse audio cookie from the host
       - ${HOME}/.config/pulse/cookie:/tmp/cookie 
-   
       # if not using pulse, you need to set environment variables MICROPHONE_DEVICE and SPEAKER_DEVICE
       - /dev/snd:/dev/snd 
       # api credentials
-      - /home/stever/secrets/hermod-service-account.json:/app/secrets/googlecredentials.json
-      
-# hermod web server
-  hermodweb:
-    image: syntithenai/hermod-python
-    #build: ./hermod-python/
-    container_name: hermodweb
-    #entrypoint: ['sleep','1000000']
-    entrypoint: ['python','/app/src/hermod.py','-w']
-    #entrypoint: ['python','./src/tf.py']
-    #env_file:
-      #- secrets.env
-    ports:
-      - 8090:8090
-      - 4430:443
-    environment:
-      MQTT_HOSTNAME: mqtt
-      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
-      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
-      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID}
-      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET}
-      # enable SSL for Flask 
-      SSL_CERTIFICATES_FOLDER: /app/certs
-      AUTHLIB_INSECURE_TRANSPORT: 1
-    volumes:
+      - ${HOME}/secrets/hermod-service-account.json:/app/secrets/googlecredentials.json
       # volume mount certificates folder
-      - ./hermod-python/certs:/app/certs
+      - /etc/letsencrypt:/etc/letsencrypt
+      #- ./hermod-python/certs:/app/certs
       # dev mount src
-      - ./hermod-python/src:/app/src  
       - ./hermod-python/www:/app/www  
       # allow web service to updated mosquitto passwords
       - ./hermod-python/mosquitto:/etc/mosquitto 
+      # host tts cache for streaming  via web server for web client
+      - ./tts_cache:/app/www/tts
+      # TTS service generates files in fixed path /tmp/tts_cache
+      - ./tts_cache:/tmp/tts_cache
+      
+# hermod web server
+  #hermodweb:
+    #image: syntithenai/hermod-python
+    ##build: ./hermod-python/
+    #restart: always
+    #container_name: hermodweb
+    #entrypoint: ['sleep','1000000']
+    ##entrypoint: ['python','/app/src/hermod.py','-w']
+    ##entrypoint: ['python','./src/tf.py']
+    ##env_file:
+      ##- secrets.env
+    #ports:
+      ##- 8090:8090
+      #- 4430:443
+    #environment:
+      #MQTT_HOSTNAME: mqtt
+      #GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      #GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      #GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID}
+      #GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET}
+      #GOOGLE_ANALYTICS_CODE: ${GOOGLE_ANALYTICS_CODE}
+      ## enable SSL for Flask 
+      #SSL_CERTIFICATES_FOLDER: /app/certs
+      #AUTHLIB_INSECURE_TRANSPORT: 1
+    #volumes:
+      ## volume mount certificates folder
+      #- ./hermod-python/certs:/app/certs
+      ## dev mount src
+      #- ./hermod-python/src:/app/src  
+      #- ./hermod-python/www:/app/www  
+      ## allow web service to updated mosquitto passwords
+      #- ./hermod-python/mosquitto:/etc/mosquitto 
+      ## host tts cache for delivery via web
+      #- ./tts_cache:/app/www/static/tts
 # rasa
   rasa:
     image: syntithenai/hermod-python
+    restart: always
     #build: ./hermod-python/
     container_name: rasa
+    #entrypoint: ['sleep','1000000']
     entrypoint: ['python','/app/src/hermod.py','-r'] # -t
     environment:
       DUCKLING_URL: http://duckling:8000
@@ -156,6 +196,7 @@ services:
       
 # rasa action server
   rasa_actions:
+    restart: always
     image: syntithenai/hermod-python
     #build: ./hermod-python
     container_name: rasa_actions
@@ -168,7 +209,7 @@ services:
       MQTT_PASSWORD: ${MQTT_PASSWORD}
       MQTT_PORT: 1883
       MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING}
-
+      UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
     volumes:
       - ./hermod-python/src:/app/src 
       - ./hermod-python/rasa:/app/rasa  
@@ -176,75 +217,3 @@ services:
     #ports:
     # - 5055  
 
-  #nginxproxy:
-    #image: jwilder/nginx-proxy
-    #container_name: nginx-proxy
-    #restart: always
-    #ports:
-      #- "80:80"
-      #- "443:443"
-    #labels:
-      #- com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
-    #volumes:
-      #- /var/run/docker.sock:/tmp/docker.sock:ro
-      #- /etc/nginxcerts:/etc/nginx/certs
-      #- /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
-      #- /var/www:/usr/share/nginx/html
-      #- ./nginx.tmpl:/app/nginx.tmpl
-      #- /var/docker/htpasswd:/etc/nginx/htpasswd
-    #environment:
-     #HTTPS_METHOD: noredirect
-     #DEFAULT_HOST: peppertrees.asuscomm.com
-     
-  #nginxproxysslgen:
-    ##image: alastaircoote/docker-letsencrypt-nginx-proxy-companion
-    #image: jrcs/letsencrypt-nginx-proxy-companion:latest
-    #container_name: nginxproxysslgen
-    #restart: always
-    #volumes_from:
-      #- nginxproxy
-    #volumes:
-      #- /var/run/docker.sock:/var/run/docker.sock:ro
-      #- /etc/nginxcerts:/etc/nginx/certs
-      #- /var/docker/nginxproxy/vhosts:/etc/nginx/vhost.d
-      #- /var/www:/usr/share/nginx/html
-
-
-    ## ===========================================================================================   
-    ## HERMOD VOICE SERVICES SUITE
-    ## ===========================================================================================   
-  
-  #hermod:
-        ##build: ./
-        #image: syntithenai/hermod
-        #restart: always
-        ##privileged: true
-        #entrypoint: "/usr/src/app/hermod-nodejs/pm2start.sh"
-        #environment:
-          ##PULSE_SERVER: 192.168.1.200
-          ##PULSE_COOKIE: /tmp/cookie
-        #ports:
-           ## web
-          ##- "80:80"
-          ##- "443:443"
-          ## mqtt 
-          #- "1883:1883"
-          ## mqtt web sockets 
-          #- "9001:9001"
-        ## on your linux desktop install paprefs and enable network access to local sound devices 
-        ## update IP below to your machine
-        #volumes:
-            ## without pulseaudio, just allow access to sound device
-            #- /dev/snd:/dev/snd
-            ## HOST MOUNTS FOR DEVELOPMENT
-            #- ./hermod-nodejs:/usr/src/app/hermod-nodejs
-            ## ATTACH DEEPSPEECH MODEL
-            #- ./deepspeech-model:/usr/src/app/hermod-nodejs/deepspeech-model
-            ##- ./hermod-react-satellite:/usr/src/app/hermod-react-satellite
-            ##- ./browser-example:/usr/src/app/browser-example
-            ## Use PULSE
-            ##- ./pulseaudio/asound-pulse.conf:/etc/asound.conf
-            ##- ./pulseaudio/client.conf:/etc/pulse/client.conf
-            ## PULSE COOKIE FROM HOST
-            ##- /home/stever/.config/pulse/cookie:/tmp/cookie
-    

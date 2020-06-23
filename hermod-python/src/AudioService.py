@@ -54,6 +54,10 @@ class AudioService(MqttService):
         self.speaker_is_playing = False
         # await self.client.publish('hermod/'+self.site+'/dialog/init',json.dumps({"platform":"python","supports":["audio"]}))
             
+    async def on_connect(self):
+        # wait for dialog manager to start
+        await asyncio.sleep(2)
+        await self.client.publish('hermod/'+self.site+'/dialog/init',json.dumps({"platform":"python","supports":["audio"]}))
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
@@ -88,7 +92,7 @@ class AudioService(MqttService):
                 await self.start_playing_url(payload.get('url'), playId)
             
             elif payload.get('sound',False):
-                await self.play_sound(payload.get('sound'),self.site)
+                await self.play_sound(payload.get('sound'),self.site, playId)
             
             else:
                 self.speaker_cache.append(msg.payload)
@@ -117,28 +121,14 @@ class AudioService(MqttService):
         elif topic == 'hermod/'+self.site+'/hotword/detected' or topic == 'hermod/'+self.site+'/dialog/continue':
             self.microphone_buffer = []
         elif topic == 'hermod/'+self.site+'/asr/timeout':
+            ptl = len('hermod/' + self.site + '/speaker/play') + 1
+            playId = topic[ptl:]
             # self.log('AUDIO SERVICE HEARD TIMEOUT')
             await self.restore_volume()
             await asyncio.sleep(0.01)
-            await self.play_sound('off',self.site)
+            await self.play_sound('off',self.site,playId)
             pass
            
-    async def play_sound(self,sound,site):
-        # self.log('req play sound')
-        if sound and site:
-            sounds = {
-              "off":"turn_off.wav",
-              "on":"turn_on.wav",
-            }
-            this_folder = os.path.dirname(os.path.realpath(__file__))
-            file_name = sounds.get(sound,False)
-            # self.log('req play sound '+file_name)
-            if file_name:
-                wav_file = os.path.join(this_folder, file_name)
-                async with aiofiles.open(wav_file, mode='rb') as f:
-                    audio_file = await f.read()
-                    await self.play_bytes(audio_file)
-                    
     async def send_microphone_buffer(self):
        if hasattr(self,'client'):
             for a in self.microphone_buffer:
@@ -237,50 +227,61 @@ class AudioService(MqttService):
             stream.close()
       
     
-    async def play_buffer(self,buffer, **kwargs):
-        loop = asyncio.get_event_loop()
-        event = asyncio.Event()
-        idx = 0
+    # async def play_buffer(self,buffer, **kwargs):
+        # loop = asyncio.get_event_loop()
+        # event = asyncio.Event()
+        # idx = 0
 
-        def callback(outdata, frame_count, time_info, status):
-            nonlocal idx
-            remainder = len(buffer) - idx
-            if remainder == 0:
-                loop.call_soon_threadsafe(event.set)
-                raise sd.CallbackStop
-            valid_frames = frame_count if remainder >= frame_count else remainder
-            outdata[:valid_frames] = buffer[idx:idx + valid_frames]
-            outdata[valid_frames:] = 0
-            idx += valid_frames
+        # def callback(outdata, frame_count, time_info, status):
+            # nonlocal idx
+            # remainder = len(buffer) - idx
+            # if remainder == 0:
+                # loop.call_soon_threadsafe(event.set)
+                # raise sd.CallbackStop
+            # valid_frames = frame_count if remainder >= frame_count else remainder
+            # outdata[:valid_frames] = buffer[idx:idx + valid_frames]
+            # outdata[valid_frames:] = 0
+            # idx += valid_frames
 
-        stream = sd.OutputStream(callback=callback, dtype=buffer.dtype,
-                                 channels=buffer.shape[1], **kwargs)
-        with stream:
-            await event.wait()
+        # stream = sd.OutputStream(callback=callback, dtype=buffer.dtype,
+                                 # channels=buffer.shape[1], **kwargs)
+        # with stream:
+            # await event.wait()
 
     async def start_playing_url(self, url, playId):
         self.speaker_is_playing = True
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         sound_bytes = urlopen(url).read()
-        await self.play_bytes(sound_bytes)
-        await self.client.publish("hermod/" + self.site +
-                                 "/speaker/finished", json.dumps({"id": playId}))
-        self.speaker_is_playing = False
+        await self.play_bytes(sound_bytes,playId)
+        
                     
-    async def start_playing(self, wav, playId = ''):
+    async def start_playing(self, wav, playId ):
         self.speaker_is_playing = True
         await self.client.publish("hermod/" + self.site + "/speaker/started", json.dumps({"id": playId}))
         sound_bytes = bytes(wav)
 
-        await self.play_bytes(sound_bytes)
+        await self.play_bytes(sound_bytes,playId)
         
-        await self.client.publish("hermod/" + self.site +
-                                 "/speaker/finished", json.dumps({"id": playId}))
-        self.speaker_is_playing = False
         
-  
-    async def play_bytes(self,sound_bytes):
-        # self.log('AUD PLAYBYTES '+str(len(sound_bytes)))
+    async def play_sound(self,sound,site,playId):
+        # self.log('req play sound')
+        if sound and site:
+            sounds = {
+              "off":"turn_off.wav",
+              "on":"turn_on.wav",
+            }
+            this_folder = os.path.dirname(os.path.realpath(__file__))
+            file_name = sounds.get(sound,False)
+            # self.log('req play sound '+file_name)
+            if file_name:
+                wav_file = os.path.join(this_folder, file_name)
+                async with aiofiles.open(wav_file, mode='rb') as f:
+                    audio_file = await f.read()
+                    await self.play_bytes(audio_file,playId)
+                    
+                                   
+    async def play_bytes(self,sound_bytes,playId):
+        self.log('AUD PLAYBYTES '+str(len(sound_bytes)))
         # slow read
         # while f.tell() < f.__len__():
             # pos = f.tell()
@@ -298,7 +299,11 @@ class AudioService(MqttService):
             max_workers=1,
         )
         await self.loop.run_in_executor(executor,play,song)
-        # self.log('PLAYBYTES SONG done play')
+        self.log('PLAYBYTES SONG done play')
+        await self.client.publish("hermod/" + self.site +
+                                 "/speaker/finished", json.dumps({"id": playId}))
+        self.log('PLAYBYTES pub finsiehd')
+        self.speaker_is_playing = False
         # OR asycio controllable (not working)
         # with io.BytesIO() as outfile:
             # song.export(outfile,format="wav")

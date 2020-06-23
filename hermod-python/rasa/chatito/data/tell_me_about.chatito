@@ -1,9 +1,16 @@
 import ./slot_thing.chatito
+import ./slot_thing_type.chatito
 
-%[tell_me_about]('training': '250')
+%[tell_me_about]('training': '450')
     tell me about @[thing]
     give me some information about @[thing]
     what is @[thing]
     what are @[thing]
     what kinds of @[thing] are there
     why use @[thing]
+    tell me about the @[thing_type] @[thing]
+    give me some information about the @[thing_type] @[thing]
+    what is  @[thing_type] @[thing]
+    what are  @[thing_type] @[thing]
+    what kinds of  @[thing_type] @[thing] are there
+    why use  @[thing_type] @[thing]

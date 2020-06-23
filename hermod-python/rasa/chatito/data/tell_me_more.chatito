@@ -1,8 +1,11 @@
-import ./slot_person.chatito
-import ./slot_place.chatito
 import ./slot_thing.chatito
+import ./slot_thing_type.chatito
+import ./slot_person.chatito
+import ./slot_person_type.chatito
+import ./slot_place.chatito
+import ./slot_place_type.chatito
 
-%[tell_me_more]('training': '50')
+%[tell_me_more]('training': '300')
     tell me more
     give me more
     i want to know more
@@ -16,4 +19,12 @@ import ./slot_thing.chatito
     tell me more about @[person]
     give me more information about @[person]
     i want to know more about @[person]
-
+    tell me more about the @[thing_type] @[thing]
+    give me more information about the @[thing_type] @[thing]
+    i want to know more about the @[thing_type] @[thing]
+    tell me more about the @[place_type] @[place]
+    give me more information about the @[place_type] @[place]
+    i want to know more about the @[place_type] @[place]
+    tell me more about the @[person_type] @[person]
+    give me more information about the @[person_type] @[person]
+    i want to know more about the @[person_type] @[person]

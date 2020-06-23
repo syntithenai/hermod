@@ -25,7 +25,11 @@ RUN wget -q https://ftp-master.debian.org/keys/release-10.asc -O- | apt-key add 
 RUN echo "deb http://deb.debian.org/debian buster non-free" >> /etc/apt/sources.list
 RUN apt-get update && apt-get install -y libttspico0 libttspico-utils  && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update; apt install -y  software-properties-common
+RUN add-apt-repository -y ppa:certbot/certbot
+RUN apt install -y certbot
 
+RUN pip install --upgrade pyunsplash
 #RUN pip install --upgrade pymongo==3.10.0 
 #RUN pip install --upgrade metaphone python-Levenshtein wikipedia-api
 

@@ -1,0 +1,9 @@
+import ./slot_word.chatito
+
+%[synonyms_word]('training': '500')
+    what are the synonyms of @[word]
+    what are synonyms of @[word]
+    what are some synonyms for @[word]
+    what are some other words for @[word]
+    how else can i say @[word]
+    how else can i say the word @[word]

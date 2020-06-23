@@ -73,6 +73,11 @@
   - slot{"word": "fred"}
   - action_spell_word  
   
+## synonyms word
+* synonyms_word{"word":"fred"}
+  - slot{"word": "fred"}
+  - action_synonyms_word  
+  
 ## ask follow up attribute
 * ask_attribute{"attribute":"capital","thing":"Paris"}
   - slot{"attribute": "capital"}
@@ -154,23 +159,27 @@
   - action_end
   
   
-## save fact success
-* save_fact{"attribute": "meaning","thing": "life","answer": "42"}
-    - action_confirm_save_fact
-    - slot{"attribute": "meaning"}
-    - slot{"thing": "life"}
-    - slot{"answer": "42"}
-    - action_continue
-* affirmative
-    - action_save_fact
     
-## save fact fail
-* save_fact{"attribute": "meaning","thing": "life","answer": "42"}
-    - action_confirm_save_fact
-    - slot{"attribute": "meaning"}
-    - slot{"thing": "life"}
-    - slot{"answer": "42"}
-    - action_continue
-* negative
-    - utter_cancelled
+## navigate to
+* navigate_to{"nav_target":"home"}
+  - action_navigate_to  
+  
+## fill crossword
+* fill_crossword{"crossword_position":"one across", "word":"fred"}
+  - action_fill_crossword  
 
+
+## search youtube thing
+* tell_me_about{"thing":"fred"}
+  - slot{"thing": "fred"}
+  - action_search_youtube
+
+## search youtube person
+* tell_me_about{"person":"fred"}
+  - slot{"person": "fred"}
+  - action_search_youtube
+  
+## search youtube place
+* tell_me_about{"place":"canada"}
+  - slot{"place": "canada"}
+  - action_search_youtube

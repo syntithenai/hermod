@@ -90,12 +90,6 @@ CONFIG = {'services':{}}
 # secrets = yaml.load(F.read(), Loader=yaml.FullLoader)
 # if not secrets: secrets = {}
 
-if ARGS.webserver > 0:
-    # TODO dev mode rebuild web - (NEED docker rebuild with npm global watchify)
-    # watchify index.js -v -o   static/bundle.js
-    THREAD_HANDLER.run(WebService.start_server,{'config':CONFIG})
-
-
 
 # start rasa action server
 def start_rasa_action_server(run_event):
@@ -141,11 +135,12 @@ def train_rasa():
     if ARGS.generate:
         cmd = ['npx chatito --format rasa data/']
         p = call(cmd, shell=True, cwd=os.path.join(os.path.dirname(__file__),'../rasa/chatito'))
-                        
+        print('CONVERT TO RASA MD')                
         convert_training_data(data_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/rasa_dataset_training.json'), out_file=os.path.join(os.path.dirname(__file__),'../rasa/chatito/nlu.md'), output_format="md", language="")
-
+        print('DONE CONVERT TO RASA MD') 
     
-    train(
+    if ARGS.train:
+        train(
         domain= os.path.join(os.path.dirname(__file__),'../rasa/domain.yml'),
         config= os.path.join(os.path.dirname(__file__),'../rasa/config.yml'),
         training_files= [os.path.join(os.path.dirname(__file__),'../rasa/data/nlu.md'),os.path.join(os.path.dirname(__file__),'../rasa/data/stories.md'),os.path.join(os.path.dirname(__file__),'../rasa/chatito/nlu.md')],
@@ -159,7 +154,7 @@ if not os.environ.get('RASA_ACTIONS_URL'):
 if not os.environ.get('DUCKLING_URL'):
     os.environ['DUCKLING_URL'] = 'http://localhost:8000'
     
-if ARGS.train:
+if ARGS.train or ARGS.generate:
     train_rasa()
     
 if ARGS.rasaserver:
@@ -196,28 +191,62 @@ def start_mqtt_auth_watcher(run_event):
     p.terminate()
     p.wait()
 
+
+# mqtt service must run before hermod web service to ensure certificates are created 
+def generate_certificates():
+#if os.environ.get('SSL_CERTIFICATES_FOLDER') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/cert.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/fullchain.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/privkey.pem'):
+    domain = os.environ.get('SSL_DOMAIN_NAME','localhost')
+    email = os.environ.get('SSL_EMAIL','none@syntithenai.com')
+    cert_path = '/etc/letsencrypt/live/'+domain
+    if domain == "localhost":
+        print('GEN LOCALHOST SSL KEY')
+        cmd = ['openssl','req','-x509','-newkey','rsa:4096','-keyout',cert_path+'/privkey.pem','-out',cert_path+'/cert.pem','-days','365','-nodes','-subj',"'/CN=localhost'"]
+        p = call(cmd)
         
+    else:
+        # files exist so renew
+        if os.path.isfile(cert_path+'/cert.pem') and os.path.isfile(cert_path+'/fullchain.pem') and os.path.isfile(cert_path+'/privkey.pem'):
+            print('RENEW CERTS')
+            cmd = ['certbot','renew'] 
+            print(cmd)
+            p = call(cmd)
+        
+        else:
+            print('GENERATE CERTS')
+            cmd = ['certbot','certonly','-a','standalone','--agree-tos','-d',domain,'-m',email,' --noninteractive'] 
+            print(cmd)
+            p = call(cmd)
+    
+    # use mosquitto conf template to rewrite mosquitto conf file including env SSL_CERTIFICATES_FOLDER
+    marker_replace_template("/etc/mosquitto/mosquitto-ssl-template.conf","/etc/mosquitto/mosquitto-ssl.conf",'SSL_CERTIFICATE_FOLDER',cert_path)
+    
+def marker_replace_template(in_file,out_file,old,new):
+    f = open(in_file, "r")
+    template_content = f.read()
+    result_content = template_content.replace(old,new)
+    f = open(out_file, "w")
+    f.write(result_content)
+    f.close()
+    
+def create_mqtt_user():
+    print('PRESET ADMIN PASSWORD TO MOSQ DB')
+    cmd = ['/usr/bin/mosquitto_passwd','-b','/etc/mosquitto/password',CONFIG['mqtt_user'],CONFIG['mqtt_password']] 
+    p = call(cmd)
+    marker_replace_template("/etc/mosquitto/acl-template","/etc/mosquitto/acl",'HERMOD_ROOT_USER',CONFIG['mqtt_user'])
+   
+       
 if ARGS.mqttserver > 0:
+    generate_certificates()
     # ensure admin password 
     if os.getenv('MQTT_USER') is not None:
             CONFIG['mqtt_user'] = os.getenv('MQTT_USER')
     if os.getenv('MQTT_PASSWORD') is not None:
             CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD')
-    print('PRESET ADMIN PASSWORD TO MOSQ DB')
-    print(CONFIG)
-    cmd = ['/usr/bin/mosquitto_passwd','-b','/etc/mosquitto/password',CONFIG['mqtt_user'],CONFIG['mqtt_password']] 
-    p = call(cmd)
-    print('SET ADMIN PASSWORD TO MOSQ DB')
-    cmd2 = ['/app/src/update_acl.sh' , CONFIG['mqtt_user']]
-    p = call(cmd2, shell=True, cwd=os.path.join(os.path.dirname(__file__)))
-    print('SET ADMIN USER IN ACL')
-    if os.environ.get('SSL_CERTIFICATES_FOLDER') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/cert.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/fullchain.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/privkey.pem'):
-        # use mosquitto conf template to rewrite mosquitto conf file including env SSL_CERTIFICATES_FOLDER
-        cmd = ['/app/src/update_ssl.sh' + ' ' + os.environ.get('SSL_CERTIFICATES_FOLDER')]
-        p = call(cmd, shell=True, cwd=os.path.join(os.path.dirname(__file__)))
-        THREAD_HANDLER.run(start_secure_mqtt_server)
-    else:
-        THREAD_HANDLER.run(start_mqtt_server)
+    create_mqtt_user()
+        
+    THREAD_HANDLER.run(start_secure_mqtt_server)
+    # else:
+        # THREAD_HANDLER.run(start_mqtt_server)
     THREAD_HANDLER.run(start_mqtt_auth_watcher)
 	
 	# # use hbmqtt
@@ -269,98 +298,114 @@ async def async_start_hermod():
     MODULE_DIR = os.getcwd()
     sys.path.append(MODULE_DIR)
     
-    # admin mqtt connection
-    CONFIG['mqtt_hostname'] = os.getenv('MQTT_HOSTNAME','localhost')
-    CONFIG['mqtt_port'] = int(os.getenv('MQTT_PORT',1883))
-    CONFIG['mqtt_user'] = os.getenv('MQTT_USER','hermod_admin')
-    CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD','talk2mebaby')
-    # MQTT  host from args
-    # if len(ARGS.mqttserver_host) > 0 :
-        # CONFIG['mqtt_hostname']= ARGS.mqttserver_host
+    if ARGS.webserver :
+        webservice_config = {
+            'certificates_folder':os.getenv('SSL_CERTIFICATES_FOLDER','/app/certs'),
+            'domain_name':os.getenv('SSL_DOMAIN_NAME','localhost'),
+            'email':os.getenv('SSL_EMAIL','none@syntithenai.com'),
+        }
+        
+        # TODO dev mode rebuild web - (NEED docker rebuild with npm global watchify)
+        # watchify index.js -v -o   static/bundle.js
+        # THREAD_HANDLER.run(WebService.start_server,{'config':CONFIG})
+        CONFIG['services']['WebService'] = webservice_config
 
-     # SET SOUND DEVICES
-    CONFIG['services']['AudioService'] = {"site":CONFIG.get('mqtt_user'), "inputdevice":"pulse", "outputdevice":"pulse"}
-    if os.getenv('SPEAKER_DEVICE') is not None and 'AudioService' in CONFIG['services']:
-            CONFIG['services']['AudioService']['outputdevice'] = os.getenv('SPEAKER_DEVICE')
-    if os.getenv('MICROPHONE_DEVICE') is not None and 'AudioService' in CONFIG['services']:
-            CONFIG['services']['AudioService']['inputdevice'] = os.getenv('MICROPHONE_DEVICE')
-    
 
-    CONFIG['services']['DialogManagerService']={}
-    CONFIG['services']['DataLoggerService']={}
-    
-    # HOTWORD
-    # #,bumblebee,porcupine"
-    CONFIG['services']['PicovoiceHotwordService']={"hotwords":os.getenv('PICOVOICE_HOTWORDS',"picovoice"),  "sensitivity": 0.9}
-    
-    # ASR 
-    # Deepspeech
-    using_asr = None
-    if os.getenv('DEEPSPEECH_MODELS') is not None and  os.path.exists(os.getenv('DEEPSPEECH_MODELS')):
-        if not 'DeepspeechAsrService' in CONFIG['services']:
-            CONFIG['services']['DeepspeechAsrService'] = {}
-        CONFIG['services']['DeepspeechAsrService']['model_path'] = os.getenv('DEEPSPEECH_MODELS')
-        using_asr = 'Deepspeech'
-    
-    # disable deepspeech and enable IBM ASR
-    if os.getenv('IBM_SPEECH_TO_TEXT_APIKEY',None) is not None and len(os.getenv('IBM_SPEECH_TO_TEXT_APIKEY','')) > 0 :
-        CONFIG['services'].pop('DeepspeechAsrService',None)
-        CONFIG['services']['IbmAsrService'] = {'vad_sensitivity':1 } #'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
-        using_asr = 'IBM'
+        
+    if ARGS.hermod :
+
+        # admin mqtt connection
+        CONFIG['mqtt_hostname'] = os.getenv('MQTT_HOSTNAME','localhost')
+        CONFIG['mqtt_port'] = int(os.getenv('MQTT_PORT',1883))
+        CONFIG['mqtt_user'] = os.getenv('MQTT_USER','hermod_admin')
+        CONFIG['mqtt_password'] = os.getenv('MQTT_PASSWORD','talk2mebaby')
+        # MQTT  host from args
+        # if len(ARGS.mqttserver_host) > 0 :
+            # CONFIG['mqtt_hostname']= ARGS.mqttserver_host
+
+         # SET SOUND DEVICES
+        CONFIG['services']['AudioService'] = {"site":CONFIG.get('mqtt_user'), "inputdevice":"pulse", "outputdevice":"pulse"}
+        if os.getenv('SPEAKER_DEVICE') is not None and 'AudioService' in CONFIG['services']:
+                CONFIG['services']['AudioService']['outputdevice'] = os.getenv('SPEAKER_DEVICE')
+        if os.getenv('MICROPHONE_DEVICE') is not None and 'AudioService' in CONFIG['services']:
+                CONFIG['services']['AudioService']['inputdevice'] = os.getenv('MICROPHONE_DEVICE')
+        
+
+        CONFIG['services']['DialogManagerService']={}
+        CONFIG['services']['DataLoggerService']={}
+        
+        # HOTWORD
+        # #,bumblebee,porcupine"
+        CONFIG['services']['PicovoiceHotwordService']={"hotwords":os.getenv('PICOVOICE_HOTWORDS',"picovoice"),  "sensitivity": 0.9}
+        
+        # ASR 
+        # Deepspeech
+        using_asr = None
+        if os.getenv('DEEPSPEECH_MODELS') is not None and  os.path.exists(os.getenv('DEEPSPEECH_MODELS')):
+            if not 'DeepspeechAsrService' in CONFIG['services']:
+                CONFIG['services']['DeepspeechAsrService'] = {}
+            CONFIG['services']['DeepspeechAsrService']['model_path'] = os.getenv('DEEPSPEECH_MODELS')
+            using_asr = 'Deepspeech'
+        
+        # disable deepspeech and enable IBM ASR
+        if os.getenv('IBM_SPEECH_TO_TEXT_APIKEY',None) is not None and len(os.getenv('IBM_SPEECH_TO_TEXT_APIKEY','')) > 0 :
+            CONFIG['services'].pop('DeepspeechAsrService',None)
+            CONFIG['services']['IbmAsrService'] = {'vad_sensitivity':1 } #'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+            using_asr = 'IBM'
+                
+        # disable deepspeech,ibm and enable google ASR
+        if os.getenv('GOOGLE_ENABLE_ASR',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
+            CONFIG['services'].pop('DeepspeechAsrService',None)
+            CONFIG['services'].pop('IbmAsrService',None)
+            CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
+            using_asr = 'Google'
+        print("ASR ENABLED using {}".format(using_asr))
+        
+        # require asr
+        if not using_asr:
+            print('ASR CONFIGURATION MISSING')
+            exit()
+        
+        ## TTS
+        if os.getenv('GOOGLE_ENABLE_TTS',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
+            print('TTS ENABLED USING GOOGLE')
+            CONFIG['services'].pop('Pico2wavTtsService',None)
+            CONFIG['services']['GoogleTtsService'] = { 'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU'), 'cache':'/tmp/tts_cache'} #}
+        else:
+            CONFIG['services'].pop('GoogleTtsService',None)
+            CONFIG['services']['Pico2wavTtsService'] = { 'binary_path': os.environ.get('TTS_BINARY','/usr/bin/pico2wave'), 'cache_path':os.environ.get('TTS_CACHE','/tmp/tts_cache')} #}
+            print('TTS ENABLED USING PICO2WAV')
+        
+        if os.getenv('RASA_URL') and len(os.getenv('RASA_URL')) > 0:
+            print('RASA ENABLED USING URL '+os.getenv('RASA_URL'))
+            rasa_service = CONFIG['services'].get('RasaService',{})
+            rasa_service['rasa_server'] = os.getenv('RASA_URL')
+            rasa_service['keep_listening'] = os.getenv('HERMOD_KEEP_LISTENING','false')
+            #print(rasa_service)`    
+            CONFIG['services']['RasaService'] = rasa_service 
             
-    # disable deepspeech,ibm and enable google ASR
-    if os.getenv('GOOGLE_ENABLE_ASR',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
-        CONFIG['services'].pop('DeepspeechAsrService',None)
-        CONFIG['services'].pop('IbmAsrService',None)
-        CONFIG['services']['GoogleAsrService'] = {'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU')}
-        using_asr = 'Google'
-    print("ASR ENABLED using {}".format(using_asr))
-    
-    # require asr
-    if not using_asr:
-        print('ASR CONFIGURATION MISSING')
-        exit()
-    
-    ## TTS
-    if os.getenv('GOOGLE_ENABLE_TTS',False)=="true" and os.getenv('GOOGLE_APPLICATION_CREDENTIALS',None) is not None and os.path.isfile(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')):
-        print('TTS ENABLED USING GOOGLE')
-        CONFIG['services'].pop('Pico2wavTtsService',None)
-        CONFIG['services']['GoogleTtsService'] = { 'language': os.environ.get('GOOGLE_APPLICATION_LANGUAGE','en-AU'), 'cache':'/tmp/tts_cache'} #}
-    else:
-        CONFIG['services'].pop('GoogleTtsService',None)
-        CONFIG['services']['Pico2wavTtsService'] = { 'binary_path': os.environ.get('TTS_BINARY','/usr/bin/pico2wave'), 'cache_path':os.environ.get('TTS_CACHE','/tmp/tts_cache')} #}
-        print('TTS ENABLED USING PICO2WAV')
-    
-    if os.getenv('RASA_URL') and len(os.getenv('RASA_URL')) > 0:
-        print('RASA ENABLED USING URL '+os.getenv('RASA_URL'))
-        rasa_service = CONFIG['services'].get('RasaService',{})
-        rasa_service['rasa_server'] = os.getenv('RASA_URL')
-        rasa_service['keep_listening'] = os.getenv('HERMOD_KEEP_LISTENING','false')
-        #print(rasa_service)`    
-        CONFIG['services']['RasaService'] = rasa_service 
+        # print(CONFIG['services'])
+       
+        # satellite mode restrict to audio and hotword services
+        if ARGS.satellite:
+            services = {'AudioService': CONFIG['services']['AudioService'], 'PicovoiceHotwordService':CONFIG['services']['PicovoiceHotwordService']}
+            CONFIG['services']= services
+        # no local audio/hotword
+        if ARGS.nolocalaudio:
+            if 'AudioService' in CONFIG['services']: 
+                del CONFIG['services']['AudioService']
+            if 'PicovoiceHotwordService' in CONFIG['services']: 
+                del CONFIG['services']['PicovoiceHotwordService']
         
-    # print(CONFIG['services'])
-   
-    # satellite mode restrict to audio and hotword services
-    if ARGS.satellite:
-        services = {'AudioService': CONFIG['services']['AudioService'], 'PicovoiceHotwordService':CONFIG['services']['PicovoiceHotwordService']}
-        CONFIG['services']= services
-    # no local audio/hotword
-    if ARGS.nolocalaudio:
-        if 'AudioService' in CONFIG['services']: 
-            del CONFIG['services']['AudioService']
-        if 'PicovoiceHotwordService' in CONFIG['services']: 
-            del CONFIG['services']['PicovoiceHotwordService']
-    
-    # satellite mode
-    if ARGS.satellite:
-        services = {'AudioService': CONFIG['services']['AudioService'], 'PicovoiceHotwordService':CONFIG['services']['PicovoiceHotwordService']}
-        CONFIG['services']= services
-    # no local audio/hotword
-    if ARGS.nolocalaudio:
-        if 'AudioService' in CONFIG['services']: del CONFIG['services']['AudioService']
-        if 'PicovoiceHotwordService' in CONFIG['services']: del CONFIG['services']['PicovoiceHotwordService']
-        
+        # satellite mode
+        if ARGS.satellite:
+            services = {'AudioService': CONFIG['services']['AudioService'], 'PicovoiceHotwordService':CONFIG['services']['PicovoiceHotwordService']}
+            CONFIG['services']= services
+        # no local audio/hotword
+        if ARGS.nolocalaudio:
+            if 'AudioService' in CONFIG['services']: del CONFIG['services']['AudioService']
+            if 'PicovoiceHotwordService' in CONFIG['services']: del CONFIG['services']['PicovoiceHotwordService']
+            
     # print('START SERVER 2')
     # print(CONFIG)
          
@@ -437,7 +482,7 @@ def handle_exception(loop, context):
     print("Shutting down...")
     asyncio.create_task(shutdown(loop))    
         
-if ARGS.hermod:
+if ARGS.hermod or ARGS.webserver :
     THREAD_HANDLER.run(start_hermod)
     
 # start all threads

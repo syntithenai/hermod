@@ -97,7 +97,7 @@ class Pico2wavTtsService(MqttService):
             self.clients[site] = payload
 
     async def cleanup_file(self,short_text,file_name):
-        await asyncio.sleep(10)
+        await asyncio.sleep(1)
          # cache short texts
         if len(short_text) > self.config.get('cache_max_letters',100):
              os.remove(file_name)

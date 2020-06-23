@@ -88,10 +88,11 @@ class DeepspeechAsrService(MqttService):
         self.models = deepspeech.Model(modelPath)
         self.models.enableExternalScorer(scorerPath)
 
+
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
-        #self.log("ASR MESSAGE {}".format(topic))
+        self.log("ASR MESSAGE {}".format(topic))
         parts = topic.split("/")
         site = parts[1]
 
@@ -102,10 +103,15 @@ class DeepspeechAsrService(MqttService):
             self.log('deactivate ASR '+site)
             await self.deactivate(site)
         elif topic == 'hermod/' +site+'/asr/start':
-            if not site in self.active and self.active[site]:
-                await self.activate(site)
-            # and not site in self.started:
             self.log('start ASR '+site)
+            # if not site in self.active and self.active[site]:
+                # self.log('from start activate ASR '+site)
+                # await self.activate(site)
+            self.log('start ASR a'+site)
+            await self.client.subscribe('hermod/'+site+'/microphone/audio')
+            self.log('start ASR b'+site)
+            # and not site in self.started:
+            self.log('start ASR s'+site)
             self.started[site] = True
             # self.is_speaking[site] = False
             payload = {}
@@ -114,28 +120,20 @@ class DeepspeechAsrService(MqttService):
             except Exception as e:
                 pass
             self.last_start_id[site] = payload.get('id','')
+            
+            self.clear_timeouts(site)
             # timeout if no packets
-            if site in self.no_packet_timeouts:
-                self.no_packet_timeouts[site].cancel()            
-            self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site))
-            # total time since start
-            if site in self.total_time_timeouts:
-                self.total_time_timeouts[site].cancel()            
-            self.total_time_timeouts[site] = self.loop.create_task(self.total_time_timeout(site))
+            self.start_timeouts(site)
             
             # start asr processing in background
             self.loop.create_task(self.startASRVAD(site))
             #await self.startASR(site)
                 
         elif topic == 'hermod/'+site+'/asr/stop':
+            await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
             self.log('stop ASR '+site)
             self.started[site] = False
-            # clear timeouts
-            if site in self.no_packet_timeouts:
-                self.no_packet_timeouts[site].cancel()            
-            # total time since start
-            if site in self.total_time_timeouts:
-                self.total_time_timeouts[site].cancel()  
+            self.clear_timeouts(site)
                 
         elif topic == 'hermod/'+site+'/microphone/audio' :
             if site in self.started and self.started[site]: # and  site in self.is_speaking and not self.is_speaking[site]:
@@ -158,8 +156,7 @@ class DeepspeechAsrService(MqttService):
             self.audio_stream[site] = BytesLoop()
             self.active[site] = True
             self.started[site] = False
-            await self.client.subscribe('hermod/'+site+'/microphone/audio')
-            # extra subscriptions in self.subscribe_to causes subscribe fail? so add these sub on activate
+             # extra subscriptions in self.subscribe_to causes subscribe fail? so add these sub on activate
             # await self.client.subscribe('hermod/'+site+'/tts/say')
             # await self.client.subscribe('hermod/'+site+'/tts/finished')
             
@@ -168,27 +165,64 @@ class DeepspeechAsrService(MqttService):
             raise Exception("Could not load Deepspeech model file")    
    
     async def deactivate(self,site):
-        await self.client.unsubscribe('hermod/'+site+'/microphone/audio')
         # await self.client.unsubscribe('hermod/'+site+'/tts/say')
         # await self.client.unsubscribe('hermod/'+site+'/tts/finished')
         self.audio_stream.pop(site, '')
         self.active[site] = False
         self.started[site] = False
             
-      
+     
+    def clear_timeouts(self,site):
+        print('clear timeouts')
+        try:
+            # clear timeouts
+            if site in self.no_packet_timeouts and self.no_packet_timeouts[site] :
+                self.no_packet_timeouts[site].cancel()
+                self.no_packet_timeouts[site] = None
+            # total time since start
+            if site in self.total_time_timeouts  and self.total_time_timeouts[site]:
+                self.total_time_timeouts[site].cancel()   
+                self.no_packet_timeouts[site] = None
+        except:
+            pass
+            
+    def start_timeouts(self,site):
+        print('start timeouts')
+        try:
+            self.no_packet_timeouts[site] = self.loop.create_task(self.no_packet_timeout(site))
+        except asyncio.CancelledError as e: 
+            self.log(e)
+        # total time since start
+        try:
+            self.total_time_timeouts[site] = self.loop.create_task(self.total_time_timeout(site))
+        except asyncio.CancelledError as e: 
+            self.log(e)
+              
     async def total_time_timeout(self,site):     
-        await asyncio.sleep(12)
-        print('TOTAL TIMEOUT tt')
-        if site in self.no_packet_timeouts:
-            self.no_packet_timeouts[site].cancel()  
+        # print('TOTAL TIMEOUT tt')
+        await asyncio.sleep(4)
+        print('TOTAL TIMEOUT tt GO')
+        
+        if site in self.no_packet_timeouts and self.no_packet_timeouts[site]:
+            try:
+                self.no_packet_timeouts[site].cancel()  
+            except asyncio.CancelledError as e: 
+                self.log(e)
+                
+            del self.no_packet_timeouts[site]
         await self.finish_stream(site)
        
             
     async def no_packet_timeout(self,site):
-        await asyncio.sleep(3)
-        print('SILENCE TIMEOUT np')
-        if site in self.total_time_timeouts:
-            self.total_time_timeouts[site].cancel()  
+        # print('SILENCE TIMEOUT np')
+        await asyncio.sleep(2)
+        print('SILENCE TIMEOUT np GO')
+        if site in self.total_time_timeouts and self.total_time_timeouts[site]:
+            try:
+                self.total_time_timeouts[site].cancel()  
+            except asyncio.CancelledError as e: 
+                self.log(e)
+            del self.total_time_timeouts[site]
         await self.finish_stream(site)
         
     async def timeout(self,site):
@@ -218,6 +252,8 @@ class DeepspeechAsrService(MqttService):
             self.log('incc emtpy '+str(self.empty_count[site]))
             self.empty_count[site] = self.empty_count[site]  + 1
             self.stream_contexts[site] = self.models.createStream()
+            self.clear_timeouts(site)
+            self.start_timeouts(site)
         # if self.empty_count[site] > 5:
             # self.started[site] = False
             # await self.client.publish('hermod/'+site+'/asr/timeout',json.dumps({"id":self.last_start_id.get(site,'')}))

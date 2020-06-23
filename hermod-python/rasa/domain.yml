@@ -1,10 +1,6 @@
 actions:
 - action_end
 - action_continue
-- action_maths_add_numbers
-- action_maths_divide_numbers
-- action_maths_multiply_numbers
-- action_maths_subtract_numbers
 - action_convert_units
 - action_spell_word
 - action_tell_time
@@ -14,24 +10,32 @@ actions:
 - action_search_wiktionary
 - action_search_wikidata
 - action_search_wikidata_followup
-- action_confirm_save_fact
-- action_save_fact
+#- action_confirm_save_fact
+#- action_save_fact
 - action_speak_mnemonic
+- action_search_youtube
+- action_fill_crossword
+- action_navigate_to
+- action_show_me_picture
+- action_synonyms_word
 - utter_goodbye
 - utter_can_say
 - utter_ok
 
+
 entities:
-- query
 - number
 - attribute
 - thing
 - word
 - place
 - person
-- from_unit
-- to_unit
-- answer
+#- answer
+- nav_target
+- thing_type
+- person_type
+- place_type
+- crossword_position
 
 intents:
 - tell_me_about
@@ -44,10 +48,15 @@ intents:
 - ask_time
 - ask_date
 - quit
-- save_fact
+#- save_fact
 - affirmative
 - negative
 - speak_mnemonic
+- navigate_to
+- search_youtube
+- show_me_picture
+- fill_crossword
+- synonyms_word
 
 responses:
   utter_goodbye:
@@ -85,8 +94,8 @@ slots:
     type: unfeaturized
   last_wiktionary_search:
     type: unfeaturized
-  answer:
-    type: unfeaturized
+  #answer:
+    #type: unfeaturized
   query:
     type: unfeaturized
   attribute:
@@ -95,15 +104,17 @@ slots:
     type: unfeaturized
   word:
     type: unfeaturized
-  result:
-    type: unfeaturized
+  #result:
+    #type: unfeaturized
   place:
     type: unfeaturized
   person:
     type: unfeaturized    
-  from_unit:
-    type: unfeaturized   
-  to_unit:
-    type: unfeaturized
   mnemonic:
+    type: unfeaturized    
+  thing_type:
+    type: unfeaturized    
+  person_type:
+    type: unfeaturized    
+  place_type:
     type: unfeaturized    

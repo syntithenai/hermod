@@ -132,7 +132,7 @@ class GoogleTtsService(MqttService):
             self.clients[site] = payload
       
     async def cleanup_file(self,short_text,file_name):
-        await asyncio.sleep(10)
+        await asyncio.sleep(1)
          # cache short texts
         if len(short_text) > self.config.get('cache_max_letters',100):
              os.remove(file_name)
@@ -199,7 +199,7 @@ class GoogleTtsService(MqttService):
                     'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
                     
             self.log('TTS sent ')
-            await   self.cleanup_file(short_text,file_name)
+            asyncio.ensure_future(self.cleanup_file,(short_text,file_name))
       
             # # cache short texts
             # if len(short_text) > self.config.get('cache_max_letters',100):

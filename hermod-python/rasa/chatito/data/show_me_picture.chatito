@@ -1,0 +1,25 @@
+import ./slot_thing.chatito
+import ./slot_thing_type.chatito
+import ./slot_person.chatito
+import ./slot_person_type.chatito
+import ./slot_place.chatito
+import ./slot_place_type.chatito
+
+%[show_me_picture]('training': '350')
+    show me a ~[picture] of @[thing]
+    show me a ~[picture] of @[person]
+    show me a ~[picture] of @[place]
+    show me a ~[picture] of the @[thing_type] @[thing]
+    show me a ~[picture] of the @[person_type] @[person]
+    show me a ~[picture] of the @[place_type] @[place]
+
+~[picture]
+    picture
+    image
+    photo
+    photograph
+    flag
+    icon
+    watercolor picture
+    ink
+    artwork

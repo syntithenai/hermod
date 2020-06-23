@@ -35,3 +35,23 @@
     - action_maths_add_numbers
     - slot{"result": "8"}
     
+
+## save fact success
+* save_fact{"attribute": "meaning","thing": "life","answer": "42"}
+    - action_confirm_save_fact
+    - slot{"attribute": "meaning"}
+    - slot{"thing": "life"}
+    - slot{"answer": "42"}
+    - action_continue
+* affirmative
+    - action_save_fact
+    
+## save fact fail
+* save_fact{"attribute": "meaning","thing": "life","answer": "42"}
+    - action_confirm_save_fact
+    - slot{"attribute": "meaning"}
+    - slot{"thing": "life"}
+    - slot{"answer": "42"}
+    - action_continue
+* negative
+    - utter_cancelled

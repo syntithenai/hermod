@@ -64,12 +64,15 @@ class MqttService(object):
         print(message)
         sys.stdout.flush()
    
+    async def on_connect(self):
+        pass
 
     async def run(self):
         while True:
             async with AuthenticatedMqttClient(self.config.get('mqtt_hostname','localhost'),self.config.get('mqtt_port',1883),self.config.get('mqtt_user',''),self.config.get('mqtt_password','')) as client:
                 # self.log('connected')
                 self.client = client
+                await self.on_connect()
                 if hasattr(self,'connect_hook'):
                     await self.connect_hook()
                 for sub in self.subscribe_to.split(","):

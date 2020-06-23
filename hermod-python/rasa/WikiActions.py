@@ -1042,7 +1042,7 @@ class ActionConfirmSaveFact(Action):
         logger.debug('CONFIRM SAVE FACT')
         logger.debug([attribute,thing,answer])
         await publish('hermod/'+site+'/display/show',{'question':'Remember that the '+attribute+' of '+thing+' is '+answer})
-                        
+        await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Yes please',"text":'yes please'},{"label":'No thanks',"text":'No thanks'}]})                
         if attribute and thing and len(attribute) > 0 and len(thing) > 0 and answer and len(answer) > 0:
             dispatcher.utter_message(text="Do you want me to remember that the "+attribute+" of "+thing+" is "+answer)
             slotsets.append(SlotSet("hermod_force_continue", "true"))  
@@ -1123,6 +1123,7 @@ class ActionSpellWord(Action):
         
         slotsets = []
         if word and len(word) > 0:
+            await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
             word_record = await find_word(word)
             
             if not word_record:
@@ -1151,3 +1152,18 @@ class ActionSpellWord(Action):
         
         
         return slotsets  
+
+
+class ActionSynonymsWord(Action):
+#
+    def name(self) -> Text:
+        return "action_synonyms_word"
+#
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        logger = logging.getLogger(__name__)    
+        logger.debug('ACTION_SYNONYMS')
+        dispatcher.utter_message(text="Find synonym")
+        return []
+        #return [SlotSet("hermod_force_continue", "true"), SlotSet("hermod_force_end", None)] 

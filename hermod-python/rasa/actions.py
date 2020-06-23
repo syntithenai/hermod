@@ -11,6 +11,10 @@ from rasa_sdk.events import SlotSet
 #import MathsActions 
 import WikiActions 
 import DateTimeActions 
+import ActionNavigateTo
+import ActionShowMePicture
+import ActionSearchYoutube
+import ActionCrossword
 
 #import HealthCheckForm
 import ActionEnd

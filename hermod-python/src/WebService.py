@@ -1,24 +1,16 @@
-from flask import Flask, redirect, url_for, cli, redirect, render_template, flash, session, current_app
-from flask_dance.contrib.google import make_google_blueprint, google
-from flask_dance.contrib.github import make_github_blueprint, github
-from subprocess import call
+from sanic import Sanic
+from sanic.exceptions import ServerError
+from sanic.response import json, redirect, file, file_stream
+from sanic.log import logger
+import asyncio
+import socket
+import os
 import string
-import os, json, random, sys
-import hashlib
-import yaml, time
-import oauthlib
-from oauthlib.oauth2.rfc6749.errors import InvalidClientIdError, TokenExpiredError
+import random
+from subprocess import call
+import time
 
-    
-
-
-# start login server
-app = Flask(__name__,root_path='/app/www',static_url_path="")
-
-# disable caching for dev
-app.jinja_env.auto_reload = True
-app.config['TEMPLATES_AUTO_RELOAD'] = True
-
+print('START')
 
 def get_password(stringLength=10):
     """Generate a random string of fixed length """
@@ -27,11 +19,6 @@ def get_password(stringLength=10):
 
 # mosquitto_passwd -b passwordfile username password
 def get_mosquitto_user(email):
-    # Assumes the default UTF-8
-    # hash_object = hashlib.md5(email.encode())
-    # email_clean = hash_object.hexdigest()
-    # letters = string.ascii_lowercase
-    # randomtag =  ''.join(random.choice(letters) for i in range(stringLength))
     randomtag = get_password(4)
     email_clean = email.replace("@",'__')
     email_clean = email_clean.replace(".",'_') + '_' + randomtag
@@ -40,148 +27,125 @@ def get_mosquitto_user(email):
     password = get_password()
     cmd = ['/usr/bin/mosquitto_passwd','-b','/etc/mosquitto/password',email_clean,password] 
     p = call(cmd)
+    # TODO async sleep
     time.sleep(0.5)
     return {"email":email,"email_clean":email_clean,"password":password}
 
+# # http -> https
+secureredirector = Sanic("hermodweb_secure_redirect")
+# secureredirector.route('/<path:path>')
+async def catch_all(request, path=''):
+    return await file('/app/www/secure_redirect.html')
+async def catch_all_root(request):
+    return await file('/app/www/secure_redirect.html')
 
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrithermod")
-app.config["GOOGLE_OAUTH_CLIENT_ID"] = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
-app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
-google_bp = make_google_blueprint(scope=["https://www.googleapis.com/auth/userinfo.email","openid","https://www.googleapis.com/auth/userinfo.profile"])
-app.register_blueprint(google_bp, url_prefix="/login")
-app.config["GITHUB_OAUTH_CLIENT_ID"] = os.environ.get("GITHUB_OAUTH_CLIENT_ID")
-app.config["GITHUB_OAUTH_CLIENT_SECRET"] = os.environ.get("GITHUB_OAUTH_CLIENT_SECRET")
-github_bp = make_github_blueprint()
-app.register_blueprint(github_bp, url_prefix="/login")
+secureredirector.add_route(catch_all_root,'/')    
+secureredirector.add_route(catch_all,'/<path:path>')    
 
-#print('START WEB')
+# # main web server
+app = Sanic("hermodweb")
 
-
-# @app.route('/logout', methods=['GET'])
-# def logout():
-    # """
-    # This endpoint tries to revoke the token
-    # and then it clears the session
-    # """
-    # if google.authorized:
-        # try:
-            # google.get(
-                # 'https://accounts.google.com/o/oauth2/revoke',
-                # params={
-                    # 'token':
-                        # current_app.blueprints['google'].token['access_token']},
-            # )
-        # except TokenExpiredError:
-            # pass
-        # except InvalidClientIdError:
-            # # Our OAuth session apparently expired. We could renew the token
-            # # and logout again but that seems a bit silly, so for now fake
-            # # it.
-            # pass
-    # _empty_session()
-    # return redirect(url_for('app.index'))
-
-
-def _empty_session():
-    """
-    Deletes the google token and clears the session
-    """
+async def ssl_catch_all(request, path=''):
+    return await file('/app/www/spokencrossword/build/index.html')
+async def ssl_catch_all_root(request):
+    return await file('/app/www/spokencrossword/build/index.html')
+async def ssl_serve_file(request,path):
+    # if path == "/" or path == "":
+        # return await file('/app/www/spokencrossword/build/index.html')
+    # elif path ==  "/vanilla" or path ==  "/vanilla/":
+        # return await file('/app/www/spokencrossword/vanilla/static/index.html')
+    # else:
+    parts = path.split("/")
+    root_path = '/app/www/spokencrossword/build/'
+    file_path= path
+    if len(parts) > 0 and parts[0] == 'vanilla':
+        root_path = '/app/www/spokencrossword/vanilla/static/'
+        file_path = "/".join(parts[1:])
+    elif len(parts) > 0 and parts[0] == 'tts':
+        root_path = '/app/www/tts/'
+        file_path = "/".join(parts[1:])    
+    
     try:
-        if 'google' in current_app.blueprints and hasattr(current_app.blueprints['google'], 'token'):
-            del current_app.blueprints['google'].token
-        if 'github' in current_app.blueprints and hasattr(current_app.blueprints['github'], 'token'):
-            del current_app.blueprints['github'].token
-        session.clear()
-    except Exception as e:
-        pass
+        if file_path == '':
+            file_path = 'index.html'
+        return await file_stream(root_path + file_path)
+    except FileNotFoundError:
+        raise ServerError("Not found", status_code=400)
+    except:
+        raise ServerError("Server Error", status_code=500)
 
-@app.errorhandler(oauthlib.oauth2.rfc6749.errors.TokenExpiredError)
-@app.errorhandler(oauthlib.oauth2.rfc6749.errors.InvalidClientIdError)
-@app.errorhandler(oauthlib.oauth2.rfc6749.errors.InvalidClientError)
-def token_expired(_):
-    print('TOKEN EXP')
-    _empty_session()
-    #return redirect(url_for("google.login"))
-    return redirect("/")
-    #return render_template('index.html', url=url_for('index'))
-    #return redirect(url_for('app.index'))
-    
-    
-# @app.errorhandler(InvalidClientIdError)
-# def handle_error(e):
-    # print('ERR ')
-    # print(e)    
-    # # session.clear()
-    # # return redirect(url_for("google.login"))
-    # #return render_template('redirect.html', url=url_for('index'))
+app.add_route(ssl_catch_all_root,'/')    
+# app.add_route(ssl_catch_all,'/<path:path>') 
+app.add_route(ssl_serve_file,'/<path:path>')
 
+# old plain javascript version
+app.static('/vanilla','/app/www/spokencrossword/vanilla/static', stream_large_files=True)
+#app.static('/react','/app/www/spokencrossword/build', stream_large_files=True)
+#app.static('/<path:path>','/app/www/spokencrossword/build/index.html')
+# config request - connection details for mqtt
+#app.static('/','/app/www/spokencrossword/build/index.html')
+# config request - connection details for mqtt
+async def get_hermod_config(request):
+  webconfig = get_mosquitto_user("webuser")
+  # direct from env vars because config not available (could try embed sanic and routes inside webservice?)
+  webconfig['analytics_code'] = os.getenv('GOOGLE_ANALYTICS_CODE','')
+  webconfig['adsense_key'] = os.getenv('ADSENSE_KEY','')
+  webconfig['adsense_slot'] = os.getenv('ADSENSE_SLOT','')
+  return json(webconfig)
+  
+app.add_route(get_hermod_config, "/config")
 
-def logme(msg):
-    print(msg)
-    sys.stdout.flush()
+class WebService():
 
-if True:
-    @app.route("/")
-    def index():
-        try:
-            if os.environ.get("GOOGLE_OAUTH_CLIENT_ID") and os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET") and len(os.environ.get("GOOGLE_OAUTH_CLIENT_ID")) > 0 and len(os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")) > 0:
-                if not google.authorized:
-                    return redirect(url_for("google.login"))
-                try:
-                    resp = google.get("/oauth2/v1/userinfo")
-                    assert resp.ok, resp.text
-                    return render_template('index.html',data=get_mosquitto_user(resp.json()["email"]))
-                except Exception as e:
-                    _empty_session()
-                    return redirect(url_for("google.login"))
-            elif os.environ.get("GITHUB_OAUTH_CLIENT_ID") and os.environ.get("GITHUB_OAUTH_CLIENT_SECRET") and len(os.environ.get("GITHUB_OAUTH_CLIENT_ID")) > 0 and len(os.environ.get("GITHUB_OAUTH_CLIENT_SECRET")) > 0:
-                if not github.authorized:
-                    return redirect(url_for("github.login"))
-                try:
-                    resp = github.get("/user")
-                    assert resp.ok, resp.text
-                    return render_template('index.html',data=get_mosquitto_user('github_'+resp.json().get("login",'no_user_login')));
-                except Exception as e:
-                    _empty_session()
-                    return redirect(url_for("github.login"))
-            else:
-                return render_template('index.html',data=get_mosquitto_user('no_user_login')) 
-        except Exception as e:
-            print(e)
-
-
-# @app.route("/")
-# def index():
-    # if not github.authorized:
-        # return redirect(url_for("github.login"))
-    # resp = github.get("/user")
-    # assert resp.ok
-    # return "You are @{login} on GitHub".format(login=resp.json()["login"])
-
-
-
-def start_server(config , run_event):
-    # print(config)
-    # print(os.environ.get('SSL_CERTIFICATES_FOLDER'))
-    # print(os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem')) )
-    # print(os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')))
-    # print(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem')) 
-    # print(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem'))
-    
-    if os.environ.get('SSL_CERTIFICATES_FOLDER'):
-        if os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem')) and os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')):
-            print('START SSL WEB SERVER')
-            app.run(host='0.0.0.0',ssl_context=(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem'), os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')), port=443, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
+    def __init__(self,config,loop):
+        self.config = config
+        self.loop = loop
+        print('INIT')
+        # generate_certificates(config['services']['WebService'].get('domain_name'),config['services']['WebService'].get('email'))
+        
+        
+        
+        
+    async def run(self):
+        print('RUN')
+        print(self.config)
+        cert_path = self.config['services']['WebService'].get('certificates_folder')
+        print(cert_path)
+        if os.path.isfile(cert_path+'/cert.pem')  and os.path.isfile(cert_path+'/privkey.pem'):
+            #hostname = self.config.get('hostname','localhost')
+            ssl = {'cert': cert_path+"/cert.pem", 'key': cert_path+"/privkey.pem"}
+            server = secureredirector.create_server(host="0.0.0.0", port=80, access_log = True, return_asyncio_server=True)
+            ssl_server = app.create_server(host="0.0.0.0", port=443, access_log = True, return_asyncio_server=True,ssl=ssl)
+            print('RUN ssl')
+            ssl_task = asyncio.ensure_future(ssl_server)
+            print('RUN plain')
+            task = asyncio.ensure_future(server)
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except KeyboardInterrupt:
+                server.close()
+                ssl_server.close()
+                loop.close()
         else:
-            print('START WEB SERVER')
-            app.run(host='0.0.0.0', port=80, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
+            print("Failed to start web server - MISSING SSL CERTS")
+            
+     
+
+# def logme(msg):
+    # logger.info(msg)
+
+# def start_server(config , run_event):
     
-    else:
-        print('START WEB SERVER')
-        app.run(host='0.0.0.0', port=80, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
+    # if os.environ.get('SSL_CERTIFICATES_FOLDER'):
+        # if os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem')) and os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')):
+            # print('START SSL WEB SERVER')
+            # app.run(host='0.0.0.0',ssl_context=(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem'), os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')), port=443, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
+        # else:
+            # print('START WEB SERVER')
+            # app.run(host='0.0.0.0', port=80, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
     
+    # else:
+        # print('START WEB SERVER')
+        # app.run(host='0.0.0.0', port=80, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
     
-@app.after_request
-def apply_caching(response):
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    return response   

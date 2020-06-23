@@ -166,8 +166,8 @@ class DialogManagerService(MqttService):
         return uid
         
     async def on_message(self, msg):
-        # self.log("DM start message")
-        # self.log(msg)
+        self.log("DM  message")
+        self.log(msg)
         topic = "{}".format(msg.topic)
         parts = topic.split("/")
         site = parts[1]
@@ -239,16 +239,21 @@ class DialogManagerService(MqttService):
             # await self.client.publish(prep + 'dialog/end', json.dumps(payload))
 
         elif topic == prep + 'dialog/end':
-            # self.log("DM end")
+            self.log("DM end")
             #if self.check_dialog_id(topic,payload):
             await self.client.publish(prep + 'dialog/ended', json.dumps({"id":payload.get("id","no_id")}))
+            self.log("DM ended")
             await self.client.publish(prep + 'asr/stop', json.dumps({"id":payload.get("id","no_id")}))
+            self.log("DM asr stop")
             await self.client.publish(prep + 'microphone/start', json.dumps({}))
+            self.log("DM mic st")
             if site in self.dialogs: 
                 del self.dialogs[site]
             await self.client.publish(prep + 'hotword/start', json.dumps({}))
+            self.log("DM hw start")
             
         elif topic == prep + 'dialog/init':
+            self.log('INITIALISE '+site)
             await self.client.publish('hermod/'+site+'/hotword/activate',json.dumps({}))
             await self.client.publish('hermod/'+site+'/asr/activate',json.dumps({}))
             await self.client.publish('hermod/'+site+'/microphone/start',json.dumps({}))
