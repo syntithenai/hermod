@@ -1,0 +1,23 @@
+usage: bouncy FILE PORT
+
+Create a routes FILE like this:
+
+  {
+    "beep.example.com" : 8000,
+    "boop.example.com" : 8001
+  }
+
+Then point the `bouncy` command at this `routes.json` file and give it
+a port to listen on: 
+
+  bouncy routes.json 80
+
+The `routes.json` file should just map host names to host/port combos. Use a
+colon-separated string to specify a host and port in a route.
+
+Use `""` for the host as a default route.
+
+You can optionally specify a listen address as the third parameter or with
+`--address`. It defaults to `0.0.0.0`. Specify `::` to listen on both IPv4 and
+IPv6 addresses.
+

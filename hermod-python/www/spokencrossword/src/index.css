@@ -1,0 +1,68 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+
+
+ .component {
+    width: 100%;
+    min-height: 20em;
+    background-color: white;
+}
+
+.clues {
+ text-align: left;
+ padding-left: 2em;
+}
+.helpSampleButtons {
+
+} 
+.helpSampleButtons button {
+    float: left;
+    margin-top: 0.2em;
+    margin-right: 0.2em
+}
+.dynamicButtons button {
+    float: left;
+    margin-right: 0.2em;
+}
+.homePageComponent {
+  text-align: left;
+  padding-left: 0.2em
+}
+
+.crossword {
+  height: 15em;
+  width:80%;      
+}
+
+.speech-bubble:hover, .speech-bubble:active, .speech-bubble:focus, .speech-bubble:visited {
+  text-decoration:none;  
+}
+
+.speech-bubble:after {
+	content: '';
+	position: absolute;
+	right: 0;
+	top: 60%;
+	width: 0;
+	height: 0;
+	border: 20px solid transparent;
+	border-left-color: #38cedc;
+	border-right: 0;
+	border-top: 0;
+	margin-top: -10px;
+	margin-right: -20px;
+}
+    
+
