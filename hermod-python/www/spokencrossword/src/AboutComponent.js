@@ -4,7 +4,7 @@ export default () => {
   return (
     <div className="component first-component" style={{textAlign:'left', marginLeft:'1em'}}>
         <h2>About This Software</h2>
-        <div>This software is a demonstration for the Hermod, a suite of tools for building applications with voice.</div>
+        <div>This software is a demonstration for Hermod, a suite of tools for building applications with voice.</div>
         <br/>
         
         <div>The software is freely available under a FreeBSD Open Source License.<br/></div>

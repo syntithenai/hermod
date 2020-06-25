@@ -12,7 +12,9 @@ import CrosswordComponent from "./CrosswordComponent";
 import HeaderComponent from "./HeaderComponent";
 import FooterComponent from "./FooterComponent";
 import IFrameComponent from "./IFrameComponent";
+import YoutubeComponent from "./YoutubeComponent";
 import AboutComponent from './AboutComponent';
+import ImageListComponent from './ImageListComponent';
 import LoginComponent from './LoginComponent';
 import HermodClient from './HermodClient';
 
@@ -42,8 +44,10 @@ export default class App extends Component {
                             <PropsRoute  exact={true} path="/home"  hermodClient={hermodClient}  component={HomeContentComponent} sendMessage={api.sendMessage}   />
                             <PropsRoute  exact={true} path="/crossword"  hermodClient={hermodClient}  component={CrosswordComponent}   />
                             <PropsRoute  exact={true} path="/frame"  hermodClient={hermodClient}  component={IFrameComponent}   />
+                            <PropsRoute  exact={true} path="/youtube"  hermodClient={hermodClient}  component={YoutubeComponent}   />
                             <PropsRoute  exact={true} path="/about"  hermodClient={hermodClient} component={AboutComponent}  />
                             <PropsRoute  exact={true} path="/login"  hermodClient={hermodClient} component={LoginComponent}   />
+                            <PropsRoute  exact={true} path="/images"  images={hermodClient.images} component={ImageListComponent}   />
                         </div>
                         <FooterComponent adsenseClient={hermodClient.adsenseClient} adsenseSlot={hermodClient.adsenseSlot} />
                     </div>

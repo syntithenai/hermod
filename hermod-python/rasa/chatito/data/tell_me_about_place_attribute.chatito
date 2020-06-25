@@ -4,4 +4,4 @@ import ./slot_place_type.chatito
 
 %[ask_attribute]('training': '500')
     what is the @[attribute] of @[place]
-    what is the @[attribute] of the @[place_type] @[place]
+    what is the @[attribute] of the ~[place_type] @[place]

@@ -194,9 +194,11 @@ def start_mqtt_auth_watcher(run_event):
 
 # mqtt service must run before hermod web service to ensure certificates are created 
 def generate_certificates():
+    print('GEN CERTS')
 #if os.environ.get('SSL_CERTIFICATES_FOLDER') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/cert.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/fullchain.pem') and os.path.isfile(os.environ.get('SSL_CERTIFICATES_FOLDER')+'/privkey.pem'):
     domain = os.environ.get('SSL_DOMAIN_NAME','localhost')
     email = os.environ.get('SSL_EMAIL','none@syntithenai.com')
+    print(domain)
     cert_path = '/etc/letsencrypt/live/'+domain
     if domain == "localhost":
         print('GEN LOCALHOST SSL KEY')

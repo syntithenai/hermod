@@ -10,25 +10,23 @@ import random
 from subprocess import call
 import time
 
-print('START')
-
 def get_password(stringLength=10):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(stringLength))
 
 # mosquitto_passwd -b passwordfile username password
-def get_mosquitto_user(email):
+async def get_mosquitto_user(email):
     randomtag = get_password(4)
     email_clean = email.replace("@",'__')
     email_clean = email_clean.replace(".",'_') + '_' + randomtag
-    print(email_clean)
-    print('get mosq user')
+    # print(email_clean)
+    # print('get mosq user')
     password = get_password()
     cmd = ['/usr/bin/mosquitto_passwd','-b','/etc/mosquitto/password',email_clean,password] 
     p = call(cmd)
     # TODO async sleep
-    time.sleep(0.5)
+    await asyncio.sleep(0.5)
     return {"email":email,"email_clean":email_clean,"password":password}
 
 # # http -> https
@@ -47,8 +45,10 @@ app = Sanic("hermodweb")
 
 async def ssl_catch_all(request, path=''):
     return await file('/app/www/spokencrossword/build/index.html')
+    
 async def ssl_catch_all_root(request):
     return await file('/app/www/spokencrossword/build/index.html')
+    
 async def ssl_serve_file(request,path):
     # if path == "/" or path == "":
         # return await file('/app/www/spokencrossword/build/index.html')
@@ -86,7 +86,18 @@ app.static('/vanilla','/app/www/spokencrossword/vanilla/static', stream_large_fi
 #app.static('/','/app/www/spokencrossword/build/index.html')
 # config request - connection details for mqtt
 async def get_hermod_config(request):
-  webconfig = get_mosquitto_user("webuser")
+  data = await get_mosquitto_user("webuser")
+  
+  webconfig = {
+    # "server": "wss://peppertrees.asuscomm.com:9001", 
+    "username": data.get('email_clean'),
+    "password": data.get('password'),
+    "subscribe": "hermod/"+data.get('email_clean')+"/#",
+    "hotwordsensitivity" : 0.5    ,
+    "site" :data.get('email_clean')
+  } 
+
+  
   # direct from env vars because config not available (could try embed sanic and routes inside webservice?)
   webconfig['analytics_code'] = os.getenv('GOOGLE_ANALYTICS_CODE','')
   webconfig['adsense_key'] = os.getenv('ADSENSE_KEY','')
@@ -100,25 +111,22 @@ class WebService():
     def __init__(self,config,loop):
         self.config = config
         self.loop = loop
-        print('INIT')
+        # print('INIT')
         # generate_certificates(config['services']['WebService'].get('domain_name'),config['services']['WebService'].get('email'))
-        
-        
-        
-        
+                
     async def run(self):
         print('RUN')
-        print(self.config)
+        # print(self.config)
         cert_path = self.config['services']['WebService'].get('certificates_folder')
-        print(cert_path)
+        # print(cert_path)
         if os.path.isfile(cert_path+'/cert.pem')  and os.path.isfile(cert_path+'/privkey.pem'):
             #hostname = self.config.get('hostname','localhost')
             ssl = {'cert': cert_path+"/cert.pem", 'key': cert_path+"/privkey.pem"}
             server = secureredirector.create_server(host="0.0.0.0", port=80, access_log = True, return_asyncio_server=True)
             ssl_server = app.create_server(host="0.0.0.0", port=443, access_log = True, return_asyncio_server=True,ssl=ssl)
-            print('RUN ssl')
+            # print('RUN ssl')
             ssl_task = asyncio.ensure_future(ssl_server)
-            print('RUN plain')
+            # print('RUN plain')
             task = asyncio.ensure_future(server)
             try:
                 while True:

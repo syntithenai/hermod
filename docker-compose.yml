@@ -119,6 +119,7 @@ services:
       GOOGLE_ANALYTICS_CODE: ${GOOGLE_ANALYTICS_CODE}
       ADSENSE_KEY: ${ADSENSE_KEY}
       ADSENSE_SLOT: ${ADSENSE_SLOT}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
       
     volumes:
       # dev mount src
@@ -210,6 +211,7 @@ services:
       MQTT_PORT: 1883
       MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING}
       UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
     volumes:
       - ./hermod-python/src:/app/src 
       - ./hermod-python/rasa:/app/rasa  

@@ -162,24 +162,43 @@
     
 ## navigate to
 * navigate_to{"nav_target":"home"}
+  - slot{"nav_target": "home"}
   - action_navigate_to  
   
 ## fill crossword
 * fill_crossword{"crossword_position":"one across", "word":"fred"}
+  - slot{"crossword_position":"one across", "word":"fred"}
   - action_fill_crossword  
 
 
 ## search youtube thing
-* tell_me_about{"thing":"fred"}
+* search_youtube{"thing":"fred"}
   - slot{"thing": "fred"}
   - action_search_youtube
 
 ## search youtube person
-* tell_me_about{"person":"fred"}
+* search_youtube{"person":"fred"}
   - slot{"person": "fred"}
   - action_search_youtube
   
 ## search youtube place
-* tell_me_about{"place":"canada"}
+* search_youtube{"place":"canada"}
   - slot{"place": "canada"}
   - action_search_youtube
+  
+  
+## search picture thing
+* show_me_picture{"thing":"fred"}
+  - slot{"thing": "fred"}
+  - action_show_me_picture
+
+## search picture person
+* show_me_picture{"person":"fred"}
+  - slot{"person": "fred"}
+  - action_show_me_picture
+  
+## search picture place
+* show_me_picture{"place":"canada"}
+  - slot{"place": "canada"}
+  - action_show_me_picture
+

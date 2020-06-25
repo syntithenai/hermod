@@ -41,12 +41,12 @@ class RasaService(MqttService):
                     self.log('FOUND rasa service')
                     await self.client.publish('hermod/rasa/ready',json.dumps({}))
                     break
-                asyncio.sleep(3)
+                await asyncio.sleep(3)
             except Exception as e: 
                 self.log(e)
                 pass
-            await asyncio.sleep(3000)
-            time.sleep(2)
+            # await asyncio.sleep(3000)
+            # time.sleep(2)
         
                    
     async def on_message(self, msg):
@@ -84,10 +84,10 @@ class RasaService(MqttService):
             # await self.client.publish('hermod/'+site+'/display/stopwaiting',{})
             await self.reset_tracker(site) 
         
-        elif topic == 'hermod/' + site + '/dialog/init':
+        elif topic == 'hermod/' + site + '/ ':
             #pass
             # save dialog init data to slots for custom actions
-            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": "hermod_client", "value": json.dumps(payload)}])
+            await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": "hermod_client", "value": json.dumps(payload)}])
    
     
     async def reset_tracker(self,site):

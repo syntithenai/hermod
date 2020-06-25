@@ -1,3 +1,5 @@
+hermod-python/rasa/story_graph.dot
+hermod-python/www/spokencrossword/public/tts
 hermod-python/wordset-dictionary
 .env
 tts_cache

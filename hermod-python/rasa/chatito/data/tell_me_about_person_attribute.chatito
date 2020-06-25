@@ -9,11 +9,11 @@ import ./slot_person_type.chatito
     when is @[person] [birthday]{"entity":"attribute","value":"date of birth"}
     what [job]{"entity":"attribute","value":"occupation"} did @[person] do
     what is @[person] [birth day]{"entity":"attribute","value":"date of birth"}
-    what [job]{"entity":"attribute","value":"occupation"} does @[person_type] @[person] have
-    what does @[person_type] @[person] do [for a job]{"entity":"attribute","value":"occupation"}
-    what does @[person_type] @[person] do to [make a living]{"entity":"attribute","value":"occupation"}
-    how does @[person_type] @[person] [make money]{"entity":"attribute","value":"occupation"}
-    when is @[person_type] @[person] [birthday]{"entity":"attribute","value":"date of birth"}
-    what [job]{"entity":"attribute","value":"occupation"} did @[person_type] @[person] do
-    what is @[person_type] @[person] [birth day]{"entity":"attribute","value":"date of birth"}
+    what [job]{"entity":"attribute","value":"occupation"} does ~[person_type] @[person] have
+    what does ~[person_type] @[person] do [for a job]{"entity":"attribute","value":"occupation"}
+    what does ~[person_type] @[person] do to [make a living]{"entity":"attribute","value":"occupation"}
+    how does ~[person_type] @[person] [make money]{"entity":"attribute","value":"occupation"}
+    when is ~[person_type] @[person] [birthday]{"entity":"attribute","value":"date of birth"}
+    what [job]{"entity":"attribute","value":"occupation"} did ~[person_type] @[person] do
+    what is ~[person_type] @[person] [birth day]{"entity":"attribute","value":"date of birth"}
 

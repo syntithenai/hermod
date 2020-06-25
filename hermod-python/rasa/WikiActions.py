@@ -17,7 +17,7 @@ from rasa_sdk.events import SlotSet, FollowupAction
 
 import wikipediaapi
 from mediawiki import MediaWiki
-from wikidata.client import Client
+#from wikidata.client import WikiClient
 import requests        
 import wptools        
 #import paho.mqtt.client as mqtt
@@ -64,6 +64,13 @@ class AuthenticatedMqttClient(Client):
         return _put_in_queue, _message_generator()
 
 
+
+CONFIG={
+    'mqtt_hostname':os.environ.get('MQTT_HOSTNAME','localhost'),
+    'mqtt_user':os.environ.get('MQTT_USER',''),
+    'mqtt_password':os.environ.get('MQTT_PASSWORD',''),
+    'mqtt_port':int(os.environ.get('MQTT_PORT','1883')) ,
+}
 
 async def publish(topic,payload): 
     async with AuthenticatedMqttClient(CONFIG.get('mqtt_hostname','localhost'),CONFIG.get('mqtt_port',1883),CONFIG.get('mqtt_user',''),CONFIG.get('mqtt_password','')) as client:
@@ -1159,11 +1166,56 @@ class ActionSynonymsWord(Action):
     def name(self) -> Text:
         return "action_synonyms_word"
 #
-    def run(self, dispatcher: CollectingDispatcher,
+    async def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
-        logger.debug('ACTION_SYNONYMS')
-        dispatcher.utter_message(text="Find synonym")
-        return []
-        #return [SlotSet("hermod_force_continue", "true"), SlotSet("hermod_force_end", None)] 
+        site = tracker.current_state().get('sender_id')
+        word = extract_entities(tracker,'word')
+        slotsets = []
+        if word and len(word) > 0:
+            word_record = await find_word(word)
+        
+            if not word_record:
+                # try fuzzy match
+                word_record = await search_word(word)
+            
+            if word_record:
+                # assign corrected word to slot
+                slotsets.append(SlotSet('word',word_record.get('word')))
+                # clear slots for wiki
+                # slotsets.append(SlotSet('thing',None))
+                # slotsets.append(SlotSet('attribute',None))
+                # slotsets.append(SlotSet('last_wikipedia_search',1))
+                
+                meanings = word_record.get('meanings')
+                if len(meanings) > 0:
+                    collatedSynonyms=[]
+                    for meaning in meanings:
+                        if meaning.get('synonyms',False) and len(meaning.get('synonyms')) > 0:
+                            for synonym in meaning.get('synonyms',[]):
+                                collatedSynonyms.append(synonym)
+                    if len(collatedSynonyms) > 0:
+                         dispatcher.utter_message(text='The word '+word_record.get('word')+' has synonyms {}.'.format(", ".join(meaning.get('synonyms')))  )
+                         await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word_record.get('word')})
+                    else :
+                        dispatcher.utter_message(text="I don't know any synonyms for the word "+word_record.get('word') )
+                        await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word_record.get('word')})
+                    await publish('hermod/'+site+'/display/show',{'question':'what are synonyms of '+word_record.get('word')})
+                else:
+                    dispatcher.utter_message(text="I couldn't find any synonyms for the word "+word_record.get('word'))   
+                    await publish('hermod/'+site+'/display/show',{'question':'what are synonyms of '+word_record.get('word')})
+                    slotsets.append(SlotSet("hermod_force_continue", "true"))      
+ 
+            else:
+                dispatcher.utter_message(text="I couldn't find the word "+word)   
+                await publish('hermod/'+site+'/display/show',{'question':'what are synonyms of '+word})
+                slotsets.append(SlotSet("hermod_force_continue", "true"))  
+             
+        else:
+            dispatcher.utter_message(text="I didn't hear the word you want defined. Try again")
+            slotsets.append(SlotSet("hermod_force_continue", "true"))  
+        
+        return slotsets
+        
+        

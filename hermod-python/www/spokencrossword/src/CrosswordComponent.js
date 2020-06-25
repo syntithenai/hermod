@@ -85,7 +85,6 @@ export default class CrosswordComponent extends Component {
       return (
         <div className="component first-component">
             <div className="content-block">
-            {JSON.stringify(this.props.hermodClient)}
                 <Crossword data={data} />;
             </div>
         </div>

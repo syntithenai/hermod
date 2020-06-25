@@ -29,7 +29,7 @@ RUN apt-get update; apt install -y  software-properties-common
 RUN add-apt-repository -y ppa:certbot/certbot
 RUN apt install -y certbot
 
-RUN pip install --upgrade pyunsplash
+RUN pip install --upgrade pyunsplash google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2 file_cache
 #RUN pip install --upgrade pymongo==3.10.0 
 #RUN pip install --upgrade metaphone python-Levenshtein wikipedia-api
 

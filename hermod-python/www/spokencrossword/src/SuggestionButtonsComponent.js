@@ -53,9 +53,7 @@ function SuggestionButtonsComponent(props) {
   return (
      <span style={{float: "left", marginRight: "0.5em", padding: "0.5em"}} className="dynamicButtons" id="dynamicButtons" >
                 {renderedButtons}
-                <Button variant="primary"  >Tell me more</Button>
-                <Button variant="primary"  >And what's the population</Button>
-            </span>
+    </span>
     
   );
 }

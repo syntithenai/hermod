@@ -49,8 +49,8 @@ class ContentOne extends Component {
                 <div style={{marginTop: '0.5em' ,clear: "both"}} className="helpSampleButtons" >
                     <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >What's the capital of Australia</Button>
                     <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Spell the word "fuzy"</Button>
-                     <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Search youtube for kittens</Button>
-                      <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Show me pictures of cucumbers</Button>
+                     <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Search youtube for funny cats</Button>
+                      <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Show me pictures of a camel</Button>
                 </div>
                   <br/><br/>
                 <div style={{marginTop: '0.5em' ,clear: "both"}} >With all that information at hand, lets see if you can solve a crossword</div>

@@ -6,8 +6,8 @@ import ./slot_person_type.chatito
     tell me about  @[person]
     give me a bio for @[person]
     give me a biography for @[person]
-    who is the @[person_type] @[person]
-    tell me about the  @[person_type] @[person]
-    tell me about @[person_type] @[person]
+    who is the ~[person_type] @[person]
+    tell me about the  ~[person_type] @[person]
+    tell me about ~[person_type] @[person]
 
 

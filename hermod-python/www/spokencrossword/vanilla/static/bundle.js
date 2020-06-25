@@ -8832,6 +8832,18 @@ function logAnalyticsEvent(name,user) {
 
 
 var HermodWebClient = function(config) {
+    
+    //{
+                    //"server": "https://localhost:3000", 
+                    //"mqttServer": "wss://peppertrees.asuscomm.com:9001", 
+                    //"username": "hermod_admin",
+                    //"password": "talk2mebaby",
+                    //"subscribe": "hermod/hermod_admin_web/#",
+                    //"hotwordsensitivity" : 0.5    ,
+                    //"site" :"hermod_admin_web",
+                    //"analytics_code": "UA-3712973-3"
+                //}
+        
         var PorcupineManager = require('./porcupine/porcupine_manager')
         
         var KeywordData =  require('./porcupine/keyword_data_edison')
@@ -8869,7 +8881,8 @@ var HermodWebClient = function(config) {
         var microphoneGainNode = null;
         let speakerContext = null
         var speakerGainNode = null;
-                                  
+         
+        var urlAudioPlayer = null;                          
         
         var porcupineManager;
         var speakingTimeout = null;     
@@ -8944,20 +8957,20 @@ var HermodWebClient = function(config) {
                         json = JSON.parse(payload)
                     } catch(e) {}
                     if (json && json.url) {
-                        if (onCallbacks.hasOwnProperty('startplaying')) {
-                            onCallbacks['startplaying']()
+                        if (onCallbacks.hasOwnProperty('startPlaying')) {
+                            onCallbacks['startPlaying']()
                          } 
                         playUrl(json.url).then(function() {
                             //console.log(['DONE speaker play']);
                             mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
-                            if (onCallbacks.hasOwnProperty('stopplaying')) {
-                                onCallbacks['stopplaying']()
+                            if (onCallbacks.hasOwnProperty('stopPlaying')) {
+                                onCallbacks['stopPlaying']()
                             } 
                         }); 
                     } else {
                         mqttClient.publish("hermod/"+site+"/speaker/started",JSON.stringify({"id":uid})); 
-                        if (onCallbacks.hasOwnProperty('startplaying')) {
-                            onCallbacks['startplaying']()
+                        if (onCallbacks.hasOwnProperty('startPlaying')) {
+                            onCallbacks['startPlaying']()
                         } 
                          //console.log(['START speaker play']);
                         speakerCache.push(payload)
@@ -8965,8 +8978,8 @@ var HermodWebClient = function(config) {
                             //console.log(['DONE speaker play']);
                             speakerCache = []
                             mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
-                            if (onCallbacks.hasOwnProperty('stopplaying')) {
-                                onCallbacks['stopplaying']()
+                            if (onCallbacks.hasOwnProperty('stopPlaying')) {
+                                onCallbacks['stopPlaying']()
                              } 
                         }); 
                     }
@@ -9019,23 +9032,33 @@ var HermodWebClient = function(config) {
             'hermod/+/nlu/intent': function(topic,site,payload) {
                 //console.log('NLU INTENT')
                 var json = JSON.parse(payload)
-                var message = json.intent.name
-                var entities = []
-                for (var i in json.entities) {
-                    entities.push(json.entities[i].entity)
+                if (json && json.intent && json.intent.name) {
+                    var message = json.intent.name
+                    var entities = []
+                    if (json.entities) {
+                        for (var i in json.entities) {
+                            entities.push(json.entities[i].entity)
+                        }
+                        if (entities.length > 0) {
+                            message += '::'+entities.join("__")
+                        }
+                    }
+                    //console.log(JSON.parse(payload))
+                    logAnalyticsEvent(message,site)
                 }
-                if (entities.length > 0) {
-                    message += '::'+entities.join("__")
-                }
-                //console.log(JSON.parse(payload))
-                logAnalyticsEvent(message,site)
  
             },
             'hermod/+/tts/say': function(topic,site,payload) {
                isPlaying = true 
+              if (onCallbacks.hasOwnProperty('startSpeaking')) {
+                    onCallbacks['startSpeaking']() 
+                }
             }, 
             'hermod/+/tts/finished': function(topic,site,payload) {
                isPlaying = false 
+              if (onCallbacks.hasOwnProperty('stopSpeaking')) {
+                    onCallbacks['stopSpeaking']() 
+                }
             }, 
             
             'hermod/+/speaker/volume': function(topic,site,payloadIn) {
@@ -9229,8 +9252,8 @@ var HermodWebClient = function(config) {
                     protocol = 'wss://' 
                 }
                 var mqttServer = null;
-                if (config.mqttServer) {
-                    mqttServer = config.mqttServer
+                if (config.server) {
+                    mqttServer = config.server
                 } else {
                     mqttServer = protocol + window.location.hostname + ":"+port
                 }
@@ -9675,11 +9698,17 @@ var HermodWebClient = function(config) {
         //}
         
         function stopPlaying() {
-            //console.log('STOP PLAY')
-             if (bufferSource) {
-                 //console.log('STOP PLAY real')
+            console.log('STOP PLAY')
+            if (bufferSource) {
+                 console.log('STOP PLAY real')
                  bufferSource.stop()
              }
+            if (urlAudioPlayer) {
+                urlAudioPlayer.pause()
+            }
+            if (onCallbacks.hasOwnProperty('stopPlaying')) {
+                onCallbacks['stopPlaying']()
+            }
         };
         
         
@@ -9776,15 +9805,15 @@ var HermodWebClient = function(config) {
         function playUrl(url) {
             console.log('PLAY url '+ url)
             return new Promise(function(resolve,reject) {
-                var audio = new Audio(url);
-                audio.addEventListener("canplaythrough", event => {
+                urlAudioPlayer = new Audio(url);
+                urlAudioPlayer.addEventListener("canplaythrough", event => {
                   /* the audio is now playable; play it if permissions allow */
-                  audio.play();
+                  urlAudioPlayer.play();
                 });
-                audio.addEventListener("ended", event => {
+                urlAudioPlayer.addEventListener("ended", event => {
                     resolve()
                 })
-                audio.addEventListener("error", event => {
+                urlAudioPlayer.addEventListener("error", event => {
                     resolve()
                 })
             })

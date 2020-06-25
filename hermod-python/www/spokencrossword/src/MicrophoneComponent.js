@@ -24,18 +24,22 @@ export default class MicrophoneComponent extends Component {
     
     render() {
     
-        
-        var borderColor = 'black'
-        var backgroundColor = 'grey'
-        if (this.props.hermodClient.microphoneState === 1) {
+        if (this.props.hermodClient.isPlaying) { 
             borderColor = 'green'
-            backgroundColor = 'grey'
-        } else if (this.props.hermodClient.microphoneState === 2) {
-            borderColor = 'red'
-            backgroundColor = 'pink'
-        } else if (this.props.hermodClient.microphoneState === 3) {
-            borderColor = 'green'
-            backgroundColor = 'green'
+            backgroundColor = 'lightblue'
+        } else {
+            var borderColor = 'black'
+            var backgroundColor = 'grey'
+            if (this.props.hermodClient.microphoneState === 1) {
+                borderColor = 'green'
+                backgroundColor = 'grey'
+            } else if (this.props.hermodClient.microphoneState === 2) {
+                borderColor = 'red'
+                backgroundColor = 'pink'
+            } else if (this.props.hermodClient.microphoneState === 3) {
+                borderColor = 'green'
+                backgroundColor = 'green'
+            }
         }
 
         const micStyle = {position: "fixed", top:'0.9em', right:'0.9em', height:"3.1em", width:"3.1em", padding:"0.3em", zIndex: 60}

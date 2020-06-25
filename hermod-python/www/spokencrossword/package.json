@@ -20,6 +20,7 @@
     "react-page-scroller": "^2.0.7-beta",
     "react-router-dom": "^5.2.0",
     "react-scripts": "3.4.1",
+    "react-youtube": "^7.11.2",
     "stream-chunker": "^1.2.8",
     "styled-components": "^5.1.1",
     "webworkify-webpack": "^2.1.5",

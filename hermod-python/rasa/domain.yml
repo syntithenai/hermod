@@ -22,7 +22,6 @@ actions:
 - utter_can_say
 - utter_ok
 
-
 entities:
 - number
 - attribute
@@ -30,11 +29,7 @@ entities:
 - word
 - place
 - person
-#- answer
 - nav_target
-- thing_type
-- person_type
-- place_type
 - crossword_position
 
 intents:
@@ -94,27 +89,18 @@ slots:
     type: unfeaturized
   last_wiktionary_search:
     type: unfeaturized
-  #answer:
-    #type: unfeaturized
-  query:
-    type: unfeaturized
-  attribute:
-    type: unfeaturized
-  thing:
-    type: unfeaturized
-  word:
-    type: unfeaturized
-  #result:
-    #type: unfeaturized
-  place:
-    type: unfeaturized
-  person:
-    type: unfeaturized    
   mnemonic:
     type: unfeaturized    
-  thing_type:
-    type: unfeaturized    
-  person_type:
-    type: unfeaturized    
-  place_type:
-    type: unfeaturized    
+  #query:
+    #type: unfeaturized
+  attribute:
+    type: text
+  thing:
+    type: text
+  place:
+    type: text
+  person:
+    type: text    
+  word:
+    type: text 
+

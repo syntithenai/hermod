@@ -12,6 +12,20 @@ import { BrowserRouter as Router, Link } from "react-router-dom";
 
 export default class HeaderComponent extends Component {
     
+    
+  constructor(props) {
+      super(props);
+      //let that = this;
+      this.sendForm = this.sendForm.bind(this)
+    }
+
+    sendForm(e) {
+        console.log('SEMD FORM')
+        let that = this;
+        e.preventDefault()
+        that.props.sendMessage(that.props.hermodClient.question)
+        return false;
+    }
 
     render() {
         let that = this;
@@ -27,7 +41,7 @@ export default class HeaderComponent extends Component {
         </div>
         
         <div style={{float: "left",marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "90%"}}  >
-              <form ><input style={{fontSize: "1.8em" , width: "100%"}} id="text_input" type='text' value={that.props.hermodClient.question} onChange={that.props.setQuestion} placeholder='Type your question here' /></form>
+              <form onSubmit={that.sendForm} ><input style={{fontSize: "1.8em" , width: "100%"}} id="text_input" type='text' value={that.props.hermodClient.question} onChange={that.props.setQuestion} placeholder='Type your question here' /></form>
         </div> 
                
         

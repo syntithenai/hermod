@@ -8,9 +8,9 @@ import ./slot_thing_type.chatito
     what are @[thing]
     what kinds of @[thing] are there
     why use @[thing]
-    tell me about the @[thing_type] @[thing]
-    give me some information about the @[thing_type] @[thing]
-    what is  @[thing_type] @[thing]
-    what are  @[thing_type] @[thing]
-    what kinds of  @[thing_type] @[thing] are there
-    why use  @[thing_type] @[thing]
+    tell me about the ~[thing_type] @[thing]
+    give me some information about the ~[thing_type] @[thing]
+    what is  ~[thing_type] @[thing]
+    what are  ~[thing_type] @[thing]
+    what kinds of  ~[thing_type] @[thing] are there
+    why use  ~[thing_type] @[thing]

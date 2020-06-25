@@ -9,9 +9,9 @@ import ./slot_place_type.chatito
     show me a ~[picture] of @[thing]
     show me a ~[picture] of @[person]
     show me a ~[picture] of @[place]
-    show me a ~[picture] of the @[thing_type] @[thing]
-    show me a ~[picture] of the @[person_type] @[person]
-    show me a ~[picture] of the @[place_type] @[place]
+    show me a ~[picture] of the ~[thing_type] @[thing]
+    show me a ~[picture] of the ~[person_type] @[person]
+    show me a ~[picture] of the ~[place_type] @[place]
 
 ~[picture]
     picture
