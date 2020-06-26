@@ -180,7 +180,7 @@ class GoogleTtsService(MqttService):
             if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
                     self.log('SEND TTS AS URL')
                     await self.client.publish(
-                        'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/"+short_file_name}), qos=0)
+                        'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/tts/"+short_file_name}), qos=0)
             else: 
                 slice_length = 16000
                 def chunker(seq, size):
