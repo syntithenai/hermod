@@ -103,6 +103,7 @@ class ActionSearchYoutube(Action):
             await publish('hermod/'+site+'/display/show',{'youtube':videoId})
             # dispatcher.utter_message(text="Done")
         else:
+            await publish('hermod/'+site+'/display/show',{'question':'Search youtube for '})
             dispatcher.utter_message(text="I didn't hear that right.  What did you want to search youtube for ?")
         # await publish('hermod/'+site+'/display/show',{'question':'Remember that the '+attribute+' of '+thing+' is '+answer})
         # await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Yes please',"text":'yes please'},{"label":'No thanks',"text":'No thanks'}]})      

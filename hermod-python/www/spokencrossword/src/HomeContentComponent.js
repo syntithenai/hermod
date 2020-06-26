@@ -50,7 +50,8 @@ class ContentOne extends Component {
                     <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >What's the capital of Australia</Button>
                     <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Spell the word "fuzy"</Button>
                      <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Search youtube for funny cats</Button>
-                      <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Show me pictures of a camel</Button>
+                      <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >Show me a picture of a motorbike</Button>
+                       <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >What are some synonyms for weak</Button>
                 </div>
                   <br/><br/>
                 <div style={{marginTop: '0.5em' ,clear: "both"}} >With all that information at hand, lets see if you can solve a crossword</div>

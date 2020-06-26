@@ -212,7 +212,7 @@ export default withRouter(class HermodClient extends Component {
                                     cleanEntities[entity.entity] = entity.value
                                 }
                             }
-                            that.setState({nlu: intentName + JSON.stringify(cleanEntities)})
+                            that.setState({nlu: intentName + JSON.stringify(cleanEntities), buttons: []})
                             that.analyticsEvent(intentName + JSON.stringify(cleanEntities))
                         }
                     }  else if (parts.length > 2 && parts[2] === "tts"  && parts[3] === "say") {
@@ -290,25 +290,26 @@ export default withRouter(class HermodClient extends Component {
         if (that.state.isPlaying) {
             that.client.stopPlaying()
         } else {          
-            if (state == 1) { // connected stopped
+            if (state === 1) { // connected stopped
                 that.client.stopMicrophone()
                 that.client.stopHotword()
                 // trigger dialog start through hermod
                 that.client.sendMessage('hermod/'+that.state.config.site+'/dialog/end',{})
-            } else if (state == 2) {  // hotword active
+            } else if (state === 2) {  // hotword active
                 that.client.stopHotword()
                 that.client.startMicrophone()
                 that.client.sendMessage('hermod/'+that.state.config.site+'/hotword/detected',{})
-            } else if (state == 3) { // active
+            } else if (state === 3) { // active
                 that.client.stopMicrophone()
                 that.client.stopHotword()
                 that.client.sendMessage('hermod/'+that.state.config.site+'/dialog/end',{})
-            } else if (state == 4) {
-                that.client.stopPlaying()
-                that.client.stopMicrophone()
-                that.client.stopHotword()
-                that.client.sendMessage('hermod/'+that.state.config.site+'/dialog/end',{})
-            }
+            } 
+            //else if (state === 4) {
+                //that.client.stopPlaying()
+                //that.client.stopMicrophone()
+                //that.client.stopHotword()
+                //that.client.sendMessage('hermod/'+that.state.config.site+'/dialog/end',{})
+            //}
         }
         
         //status = (status + 1) % 4;

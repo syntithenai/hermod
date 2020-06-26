@@ -3,7 +3,9 @@ import logging
 import pyunsplash
 import os
 import json
-       
+import concurrent.futures
+import asyncio    
+
 from typing import Any, Text, Dict, List
 #
 from rasa_sdk import Action, Tracker
@@ -51,6 +53,15 @@ async def publish(topic,payload):
         await client.publish(topic,json.dumps(payload))
 
 
+def search_unsplash(search_term):
+    pu = pyunsplash.PyUnsplash(api_key=os.environ.get('UNSPLASH_ACCESS_KEY'))
+    search = pu.search(type_='photos',page=0, per_page=4, query=str(search_term))
+    images=[]
+    for photo in search.entries:
+            # print(photo.id, photo.link_download)
+        images.append(photo.link_download)
+    return images
+
 # dummy action when using voice interface to signal switch back to active listening
 class ActionShowMePicture(Action):
 #
@@ -72,17 +83,22 @@ class ActionShowMePicture(Action):
         await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
         search_term = self.extract_entities(tracker,['thing','person','place','word'])
         if search_term and len(search_term) > 0:
-                   
-            pu = pyunsplash.PyUnsplash(api_key=os.environ.get('UNSPLASH_ACCESS_KEY'))
-            search = pu.search(type_='photos',page=0, page_page=4, query=str(search_term))
-            images=[]
-            for photo in search.entries:
-                    # print(photo.id, photo.link_download)
-                images.append(photo.link_download)
-            await publish('hermod/'+site+'/display/show',{'question':'Show me a picture of '+search_term})
-            await publish('hermod/'+site+'/display/show',{'images':images})
+            executor = concurrent.futures.ProcessPoolExecutor(
+                    max_workers=1,
+                )
+            images = await asyncio.get_event_loop().run_in_executor(executor,search_unsplash,search_term)
+            if (images and len(images) > 0):
+                await publish('hermod/'+site+'/display/show',{'images':images})
+            else :
+                await publish('hermod/'+site+'/display/show',{'images':[]})
+                dispatcher.utter_message(text="I couldn't find any pictures of "+search_term)
+                
+            await publish('hermod/'+site+'/display/show',{'question':'Show me a picture of a '+search_term})
+
+            
             #dispatcher.utter_message(text="Done")
         else:
+            await publish('hermod/'+site+'/display/show',{'question':'Show me a picture of a '})
             dispatcher.utter_message(text="I didn't hear that right. What did you want to see a picture of?")
         return []
         #return [SlotSet("hermod_force_continue", "true"), SlotSet("hermod_force_end", None)] 

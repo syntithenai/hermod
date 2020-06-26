@@ -4,6 +4,9 @@ import { Button } from "react-bootstrap";
 import MicrophoneComponent from './MicrophoneComponent'
 import SpeechBubbleComponent from './SpeechBubbleComponent'
 import SuggestionButtonsComponent from './SuggestionButtonsComponent'
+import NluFixerComponent from './NluFixerComponent'
+
+
 import { BrowserRouter as Router, Link } from "react-router-dom";
 //style={{float: "left", marginRight: "0.5em"}}
 //style={{float: "left", marginRight: 0.5 +"em"}}
@@ -30,7 +33,7 @@ export default class HeaderComponent extends Component {
     render() {
         let that = this;
       return (
-        <div className="hermodHeader" style={{backgroundColor: "#2b30d23b", minHeight: "8em", width: "100%", top: 0, left: 0, position: 'fixed'}}>
+        <div className="hermodHeader" style={{backgroundColor: "#2b30d23b", minHeight: "9em", width: "100%", top: 0, left: 0, position: 'fixed'}}>
           <MicrophoneComponent hermodClient={that.props.hermodClient} toggleMicrophone={this.props.toggleMicrophone}/>
           <SpeechBubbleComponent hermodClient={that.props.hermodClient} />
           <div id="buttons" style={{float: "left", marginRight: "0.5em", padding: "0.5em"}}>
@@ -43,8 +46,10 @@ export default class HeaderComponent extends Component {
         <div style={{float: "left",marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "90%"}}  >
               <form onSubmit={that.sendForm} ><input style={{fontSize: "1.8em" , width: "100%"}} id="text_input" type='text' value={that.props.hermodClient.question} onChange={that.props.setQuestion} placeholder='Type your question here' /></form>
         </div> 
-               
         
+        <div style={{float: "left",marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "90%"}}  >
+             <NluFixerComponent intents={[]}   entities={[]}  />  
+        </div>
         </div>
       );
     }

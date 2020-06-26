@@ -39,7 +39,7 @@ export default class App extends Component {
                 {(hermodClient, api) => (
                     <div>
                         <PropsRoute  path="/" hermodClient={hermodClient} component={HeaderComponent}  showFrame={api.showFrame} showWindow={api.showWindow} sendMessage={api.sendMessage} toggleMicrophone={api.toggleMicrophone} setQuestion={api.setQuestion} />
-                        <div style={{marginTop:"8em"}}>
+                        <div style={{marginTop:"9em"}}>
                             <PropsRoute  exact={true} path="/" hermodClient={hermodClient} component={HomeContentComponent} sendMessage={api.sendMessage}  />
                             <PropsRoute  exact={true} path="/home"  hermodClient={hermodClient}  component={HomeContentComponent} sendMessage={api.sendMessage}   />
                             <PropsRoute  exact={true} path="/crossword"  hermodClient={hermodClient}  component={CrosswordComponent}   />

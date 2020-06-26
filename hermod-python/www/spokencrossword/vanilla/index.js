@@ -233,16 +233,15 @@ var HermodWebClient = function(config) {
                     //console.log(JSON.parse(payload))
                     logAnalyticsEvent(message,site)
                 }
- 
             },
             'hermod/+/tts/say': function(topic,site,payload) {
-               isPlaying = true 
+              
               if (onCallbacks.hasOwnProperty('startSpeaking')) {
                     onCallbacks['startSpeaking']() 
                 }
             }, 
             'hermod/+/tts/finished': function(topic,site,payload) {
-               isPlaying = false 
+               
               if (onCallbacks.hasOwnProperty('stopSpeaking')) {
                     onCallbacks['stopSpeaking']() 
                 }
@@ -886,6 +885,7 @@ var HermodWebClient = function(config) {
         
         function stopPlaying() {
             console.log('STOP PLAY')
+            isPlaying = false
             if (bufferSource) {
                  console.log('STOP PLAY real')
                  bufferSource.stop()
@@ -926,6 +926,7 @@ var HermodWebClient = function(config) {
         
         function playSound(bytes,playTime) {
             if (!playTime) playTime = 0;
+            isPlaying = true
             // console.log('PLAY SOUND BYTES')
             return new Promise(function(resolve,reject) {
                 try {
@@ -960,29 +961,35 @@ var HermodWebClient = function(config) {
                             } catch (e) {
                                 console.log('play sound error starting')
                                 console.log(e)
+                                isPlaying = false
                                 resolve()
                             }
                             bufferSource.onended = function() {
                                 console.log('PLAY SOUND BYTES source ended')
                                 //setTimeout(stopPlaying,100)
+                                isPlaying = false
                                 resolve();
                             };
                             bufferSource.onerror = function() {
                                 console.log('PLAY SOUND BYTES source error')
+                                isPlaying = false
                                 resolve();
                             };
                         },function(e) {
                              console.log('PLAY SOUND BYTES decode FAIL')
                              console.log(e)
+                             isPlaying = false
                              resolve()   
                         });
                         //resolve()
                     } else {
                         console.log('PLAY SOUND BYTES no bytes')
+                        isPlaying = false
                         resolve();
                     }
                 } catch (e) {
                     console.log('PLAY SOUND BYTES err')
+                    isPlaying = false
                     console.log(e)
                     resolve()
                 }
@@ -991,6 +998,7 @@ var HermodWebClient = function(config) {
         
         function playUrl(url) {
             console.log('PLAY url '+ url)
+            isPlaying = true 
             return new Promise(function(resolve,reject) {
                 urlAudioPlayer = new Audio(url);
                 urlAudioPlayer.addEventListener("canplaythrough", event => {
@@ -998,9 +1006,11 @@ var HermodWebClient = function(config) {
                   urlAudioPlayer.play();
                 });
                 urlAudioPlayer.addEventListener("ended", event => {
+                    isPlaying = false 
                     resolve()
                 })
                 urlAudioPlayer.addEventListener("error", event => {
+                    isPlaying = false
                     resolve()
                 })
             })

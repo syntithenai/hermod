@@ -1196,7 +1196,7 @@ class ActionSynonymsWord(Action):
                             for synonym in meaning.get('synonyms',[]):
                                 collatedSynonyms.append(synonym)
                     if len(collatedSynonyms) > 0:
-                         dispatcher.utter_message(text='The word '+word_record.get('word')+' has synonyms {}.'.format(", ".join(meaning.get('synonyms')))  )
+                         dispatcher.utter_message(text='The word '+word_record.get('word')+' has synonyms {}.'.format(", ".join(collatedSynonyms))  )
                          await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word_record.get('word')})
                     else :
                         dispatcher.utter_message(text="I don't know any synonyms for the word "+word_record.get('word') )
