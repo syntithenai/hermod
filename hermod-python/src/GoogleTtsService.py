@@ -152,7 +152,8 @@ class GoogleTtsService(MqttService):
             short_text = text[0:200].replace(' ','_')
             # speakable and limited
             say_text = text[0:300].replace('(','').replace(')','')
-            file_name = os.path.join(cache_path, clean_filename('tts-' + str(short_text)) + '.mp3')
+            short_file_name = clean_filename('tts-' + str(short_text)) + '.mp3'
+            file_name = os.path.join(cache_path, short_file_name)
             # self.log('TTS file '+file_name)
         
             # generate if file doesn't exist in cache
@@ -179,7 +180,7 @@ class GoogleTtsService(MqttService):
             if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
                     self.log('SEND TTS AS URL')
                     await self.client.publish(
-                        'hermod/{}/speaker/play/{}'.format(site, value), payload={"url":self.clients[site].get('url')+"/"+short_file_name}, qos=0)
+                        'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/"+short_file_name}), qos=0)
             else: 
                 slice_length = 16000
                 def chunker(seq, size):
@@ -199,8 +200,8 @@ class GoogleTtsService(MqttService):
                     'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
                     
             self.log('TTS sent ')
-            asyncio.ensure_future(self.cleanup_file,(short_text,file_name))
-      
+            #asyncio.ensure_future(self.cleanup_file,(short_text,file_name))
+            await self.cleanup_file(short_text,file_name)
             # # cache short texts
             # if len(short_text) > self.config.get('cache_max_letters',100):
                 # # self.log('TTS remove file')

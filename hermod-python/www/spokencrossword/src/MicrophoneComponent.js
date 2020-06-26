@@ -23,8 +23,8 @@ export default class MicrophoneComponent extends Component {
     
     
     render() {
-        var borderColor = 'black'
-        var backgroundColor = 'grey'
+        var borderColor = ''
+        var backgroundColor = ''
             
         if (this.props.hermodClient.isPlaying) { 
             borderColor = 'green'

@@ -54,12 +54,19 @@ async def publish(topic,payload):
 
 
 def search_unsplash(search_term):
+    logger = logging.getLogger(__name__)    
+    
     pu = pyunsplash.PyUnsplash(api_key=os.environ.get('UNSPLASH_ACCESS_KEY'))
     search = pu.search(type_='photos',page=0, per_page=4, query=str(search_term))
     images=[]
     for photo in search.entries:
-            # print(photo.id, photo.link_download)
-        images.append(photo.link_download)
+            # details = pu.photo.get(photo.id,400)
+            # print(photo)
+            logger.debug('ACTION_ image')
+            logger.debug(photo.links)
+            # print(json.dumps(photo))
+            # print(details.id, details.link_download)
+            images.append(photo.link_download+"?auto=format")
     return images
 
 # dummy action when using voice interface to signal switch back to active listening
