@@ -63,8 +63,8 @@ services:
     - mqtt
     #build: ./hermod-python/
     container_name: hermodpython
-    entrypoint: ['sleep','500000']
-    #entrypoint: ['python','../src/hermod.py','-d','-w','-a','-nl'] 
+    #entrypoint: ['sleep','500000']
+    entrypoint: ['python','../src/hermod.py','-d','-w','-a','-nl'] 
     working_dir: '/app/rasa'
     restart: always
     privileged: true
