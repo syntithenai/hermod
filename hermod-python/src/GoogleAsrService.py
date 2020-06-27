@@ -34,7 +34,7 @@ class Transcoder(object):
         self.encoding = encoding
         self.language = language
         self.rate = rate
-        self.closed = True
+        self.closed = False
         self.transcript = None
         self.error = None
         self.mqtt_client = mqtt_client
@@ -53,16 +53,16 @@ class Transcoder(object):
         """
         # print('TRANSCODER RESPONSE LOOP')
         for response in responses:
-            # print('TRANSCODER RESPONSE')
-            # print([response.speech_event_type])
-            # print([response])
+            print('TRANSCODER RESPONSE')
+            print([response.speech_event_type])
+            print([response])
             # is_end_utterance = False
-            # if response.speech_event_type == 1:
-                # print('GOOGLE END UTTERANCE')
+            if response.speech_event_type == 1:
+                print('GOOGLE END UTTERANCE')
                 # is_end_utterance = True
                 # #break
             if response.error:
-                # print(response.error.message)
+                print(response.error.message)
                 self.error = response.error
                 #break
             if not response.results:
@@ -86,6 +86,7 @@ class Transcoder(object):
         Audio stream recognition and result parsing
         """
         #You can add speech contexts for better recognition
+        # self.closed = False
         cap_speech_context = types.SpeechContext(phrases=[""])
         client = speech.SpeechClient()
         config = types.RecognitionConfig(
@@ -100,14 +101,14 @@ class Transcoder(object):
             interim_results=False,
             single_utterance=True)
         audio_generator = self.stream_generator()
-        # print('TRANSCODER PROCESS')
+        print('TRANSCODER PROCESS')
         requests = (types.StreamingRecognizeRequest(audio_content=content)
                     for content in audio_generator)
 
         responses = client.streaming_recognize(streaming_config, requests)
         try:
             self.response_loop(responses)
-            # print('TRANSCODER DONE LOOP')
+            print('TRANSCODER DONE LOOP')
         except Exception as e:
             print('TRANSCODER ERR')
             print(e)
@@ -116,11 +117,13 @@ class Transcoder(object):
 
     def stream_generator(self):
         while not self.closed:
+            # print('stream gen start')
             chunk = self.buff.get()
             if chunk is None:
                 return
             data = [chunk]
             while True:
+                # print('stream gen inner')
                 try:
                     chunk = self.buff.get(block=False)
                     if chunk is None:
@@ -360,7 +363,7 @@ class GoogleAsrService(MqttService):
                         # #self.log(e)
                     
                     if self.transcoders[site].error and self.transcoders[site].error.code == 11:
-                        # print('SPEECH  err 11')
+                        self.log('SPEECH  err 11')
                         # easy because no text expected so can send bail out messages directly
                         self.no_packet_timeouts[site].cancel()
                         self.stop_transcoder(site)
@@ -369,7 +372,10 @@ class GoogleAsrService(MqttService):
                         await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
                     
                     if self.transcoders[site].transcript:
+                        self.log('HAVRE TRANSCRER')
+                        self.log(self.transcoders[site].transcript)
                         self.stop_transcoder(site)
+                        
                 elif self.non_speech[site] == silence_cutoff:
                     # print('exceEd non speech')
                     self.no_packet_timeouts[site].cancel()

@@ -95,16 +95,18 @@ export default class HomePageContent extends Component {
         let that = this;
       return (
         <div className="component homePageComponent">
-            <FullPageScrollerComponent>
+           
                     <ContentOne sendMessage={that.props.sendMessage} />
                      <ContentTwo sendMessage={that.props.sendMessage}  />
-                    <ContentLast/>
+            
                     
-                </FullPageScrollerComponent> 
+              
         </div>
       );
     };
-}
+} 
+//<FullPageScrollerComponent>
+  //</FullPageScrollerComponent> 
 // onClick="client.sendASRTextMessage(config.site,'Remember that the capital of Australia is Tamworth')"
 //onClick="client.sendASRTextMessage(config.site,'What is the capital of Australia')
 //onClick="client.sendASRTextMessage(config.site,'Spell the word fuzy')"

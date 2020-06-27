@@ -22,6 +22,7 @@ import random
 import string
 import logging
 import asyncio
+import uvloop
 import os
 #from hbmqtt.broker import Broker
 from flask import Flask, redirect, url_for, cli, redirect
@@ -39,8 +40,8 @@ from ThreadHandler import ThreadHandler
 THREAD_HANDLER = ThreadHandler()
 
 PARSER = argparse.ArgumentParser(description="Run Hermod voice suite")
-
-
+# enable uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 # PARSER.add_argument('-sd', '--speakerdevice', type=str, default='',
 					# help="Alsa device name for speaker")
@@ -90,19 +91,6 @@ CONFIG = {'services':{}}
 # secrets = yaml.load(F.read(), Loader=yaml.FullLoader)
 # if not secrets: secrets = {}
 
-
-# start rasa action server
-def start_rasa_action_server(run_event):
-    print('START RASA ACTIONS SERVER')
-    cmd = ['python','-m','rasa_sdk','--actions','actions','-vv'] 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
-    while run_event.is_set():
-        time.sleep(1)
-    p.terminate()
-    p.wait()
-    
-if ARGS.actionserver > 0:
-    THREAD_HANDLER.run(start_rasa_action_server)
 
 # start rasa  server
 def start_rasa_server(run_event):
@@ -312,6 +300,20 @@ async def async_start_hermod():
         # THREAD_HANDLER.run(WebService.start_server,{'config':CONFIG})
         CONFIG['services']['WebService'] = webservice_config
 
+    
+    # start rasa action server
+    # def start_rasa_action_server(run_event):
+        # print('START RASA ACTIONS SERVER')
+        # cmd = ['python','-m','rasa_sdk','--actions','actions','-vv'] 
+        # p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False, cwd=os.path.join(os.path.dirname(__file__),'../rasa'))
+        # while run_event.is_set():
+            # time.sleep(1)
+        # p.terminate()
+        # p.wait()
+        
+    if ARGS.actionserver > 0:
+        # THREAD_HANDLER.run(start_rasa_action_server)
+        CONFIG['services']['RasaActionsService'] = {}
 
         
     if ARGS.hermod :
@@ -385,7 +387,13 @@ async def async_start_hermod():
             rasa_service['keep_listening'] = os.getenv('HERMOD_KEEP_LISTENING','false')
             #print(rasa_service)`    
             CONFIG['services']['RasaService'] = rasa_service 
-            
+        else :
+            print('RASA ENABLED USING LOCAL ')
+            rasa_service = CONFIG['services'].get('RasaServiceLocal',{})
+            rasa_service['rasa_actions_url'] = os.getenv('RASA_ACTIONS_URL','')
+            rasa_service['keep_listening'] = os.getenv('HERMOD_KEEP_LISTENING','false')
+            #print(rasa_service)`    
+            CONFIG['services']['RasaServiceLocal'] = rasa_service 
         # print(CONFIG['services'])
        
         # satellite mode restrict to audio and hotword services
@@ -439,8 +447,8 @@ async def async_start_hermod():
 
 def start_hermod(run_event):
     #loop = asyncio.get_event_loop()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
     #loop.set_exception_handler(handle_exception)
     while True and run_event.is_set():
         print('START HERMOD REQUEST ASYNC')
@@ -484,7 +492,7 @@ def handle_exception(loop, context):
     print("Shutting down...")
     asyncio.create_task(shutdown(loop))    
         
-if ARGS.hermod or ARGS.webserver :
+if ARGS.hermod or ARGS.webserver or ARGS.actionserver :
     THREAD_HANDLER.run(start_hermod)
     
 # start all threads

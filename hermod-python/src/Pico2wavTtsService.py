@@ -109,14 +109,20 @@ class Pico2wavTtsService(MqttService):
         value = payload.get('id','no_id')
         
         if len(text) > 0:
-            short_text = text[0:200].replace(' ','_')
-            short_file_name =clean_filename('tts-' + str(short_text) + '.wav')
+            short_text = text[0:100].replace(' ','_').replace(".","")
+            # speakable and limited
+            say_text = text[0:300].replace('(','').replace(')','')
+            short_file_name = clean_filename('tts-' + str(short_text)) + '.wav'
             file_name = os.path.join(cache_path, short_file_name)
+            
+            # short_text = text[0:100].replace(' ','_')
+            # short_file_name =clean_filename('tts-' + str(short_text) + '.wav')
+            # file_name = os.path.join(cache_path, short_file_name)
             
             # generate if file doesn't exist in cache
             if not os.path.isfile(file_name):
                 path = self.config['services']['Pico2wavTtsService']['binary_path']
-                command = path + ' -w=' + file_name + ' "{}" '.format(text)
+                command = path + ' -w=' + file_name + ' "{}" '.format(say_text)
                 executor = concurrent.futures.ProcessPoolExecutor(
                     max_workers=1,
                 )

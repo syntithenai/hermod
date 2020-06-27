@@ -7,8 +7,38 @@ import aiohttp
 import asyncio
 import async_timeout
 
+from rasa.core.agent import Agent
+from rasa.core.tracker_store import InMemoryTrackerStore
+from rasa.core.interpreter import NaturalLanguageInterpreter
+from rasa.core.utils import EndpointConfig
+from rasa.core.events import SlotSet
+from rasa.core.channels.channel import UserMessage
 
-class RasaService(MqttService):
+
+# async def run():
+    # print("Your bot is ready to talk! Type your messages here or send 'stop'")
+    # while True:
+        # a = input()
+        # if a == 'stop':
+            # break
+            
+        # nlu = await agent.parse_message_using_nlu_interpreter(a)
+        # print(nlu)    
+        
+        # responses = await agent.handle_text(a, sender_id='webfred')
+        # for response in responses:
+            # print(response["text"])
+        
+        # tracker = tracker_store.get_or_create_tracker('webfred')
+        # tracker.update(SlotSet("place","JAPAN"))
+        # tracker_store.save(tracker)
+        # print(tracker.current_slot_values())
+
+# loop = asyncio.get_event_loop()  
+# loop.run_until_complete(run())
+
+
+class RasaServiceLocal(MqttService):
 
     def __init__(
             self,
@@ -16,12 +46,19 @@ class RasaService(MqttService):
             loop
     ):
         super(
-            RasaService,
+            RasaServiceLocal,
             self).__init__(config,loop)
         self.config = config
         # self.recursion_depth = {}
-        self.rasa_server = self.config['services']['RasaService'].get('rasa_server','http://localhost:5005/')
+        # self.rasa_server = self.config['services']['RasaServiceLocal'].get('rasa_server','http://localhost:5005/')
         self.subscribe_to = 'hermod/+/dialog/ended,hermod/+/dialog/init,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
+        # self.log("ENDPOINT:"+config.get('rasa_actions_url',''))
+        # self.log(config)
+        endpoint = EndpointConfig(config['services']['RasaServiceLocal'].get('rasa_actions_url'))
+        print('loading model') 
+        domain = 'domain.yml'
+        self.tracker_store = InMemoryTrackerStore(domain)
+        self.agent = Agent.load('/app/rasa/models/model.tar.gz', action_endpoint = endpoint, tracker_store=self.tracker_store)
         
         
     async def connect_hook(self):
@@ -30,21 +67,22 @@ class RasaService(MqttService):
         for sub in self.subscribe_to.split(","):
             # self.log('RASA subscribe to {}'.format(sub))
             await self.client.subscribe(sub)
-        
-        while True:
-            # self.log('check rasa service '+self.rasa_server)
-            try:
-                # self.log('rasa service GET '+self.rasa_server)
-                response = requests.get(self.rasa_server)
-                # self.log('rasa service GOT '+self.rasa_server)
-                if response.status_code == 200:
-                    self.log('FOUND rasa service')
-                    await self.client.publish('hermod/rasa/ready',json.dumps({}))
-                    break
-                await asyncio.sleep(3)
-            except Exception as e: 
-                self.log(e)
-                pass
+        await self.client.publish('hermod/rasa/ready',json.dumps({}))
+                 
+        # while True:
+            # # self.log('check rasa service '+self.rasa_server)
+            # try:
+                # # self.log('rasa service GET '+self.rasa_server)
+                # # response = requests.get(self.rasa_server)
+                # # self.log('rasa service GOT '+self.rasa_server)
+                # if response.status_code == 200:
+                    # self.log('FOUND rasa service')
+                    # await self.client.publish('hermod/rasa/ready',json.dumps({}))
+                    # break
+                # await asyncio.sleep(3)
+            # except Exception as e: 
+                # self.log(e)
+                # pass
             # await asyncio.sleep(3000)
             # time.sleep(2)
         
@@ -87,7 +125,10 @@ class RasaService(MqttService):
         elif topic == 'hermod/' + site + '/ ':
             #pass
             # save dialog init data to slots for custom actions
-            await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": "hermod_client", "value": json.dumps(payload)}])
+            tracker = self.tracker_store.get_or_create_tracker(site)
+            tracker.update(SlotSet("hermod_client",json.dumps(payload)))
+            self.tracker_store.save(tracker)
+            # await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": "hermod_client", "value": json.dumps(payload)}])
    
     
     async def reset_tracker(self,site):
@@ -122,22 +163,32 @@ class RasaService(MqttService):
         
     async def handle_intent(self,topic,site,payload):
         await self.client.publish('hermod/'+site+'/core/started',json.dumps({}));
-        self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))
+        # self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))
         #response = requests.post(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')}),headers = {'content-type': 'application/json'})
-        response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
-        # self.log('resp RASA TRIGGER')
-        # self.log(response)
-        messages = response.get('messages')
-        self.log('HANDLE INTENT MESSAGES')
-        self.log(messages)
-        if messages and len(messages) > 0:
+        # self.log('HANDLE INTENT '+site)
+        # self.log(payload.get('text'))
+        
+        # messages = await self.agent.handle_message(UserMessage(parse_data = payload, sender_id=site))
+        messages=[]
+        responses = await self.agent.handle_text(payload.get('text'),sender_id=site,  output_channel=None)
+        for response in responses:
+            messages.append(response.get("text"))
+            print(response.get("text"))
+        # response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
+        # # self.log('resp RASA TRIGGER')
+        # # self.log(response)
+        # messages = response.get('messages')
+        # self.log('HANDLE INTENT MESSAGES')
+        # self.log(messages)
+        if len(messages) > 0:
             # self.log('SEND MESSAGES')
-            message = '. '.join(map(lambda x: x.get('text',''   ),messages))
+            message = '. '.join(messages) 
+            #map(lambda x: x.get('text',''   ),messages))
             # self.log(message)
             await self.client.subscribe('hermod/'+site+'/tts/finished')
-            self.log('SEND MESSAGES sub finish')
+            # self.log('SEND MESSAGES sub finish')
             await self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message, "id":payload.get('id','')}))
-            self.log('SEND MESSAGES sent text '+message)
+            # self.log('SEND MESSAGES sent text '+message)
             # send action messages from server actions to client action
             # for message in messages:
                 # self.log(message)
@@ -150,12 +201,16 @@ class RasaService(MqttService):
     async def finish(self,site,payload):
         #self.log('finish')
         #response = requests.get(self.rasa_server+"/conversations/"+site+"/tracker",json.dumps({}))
-        response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
-        events = response.get('events',[])
-        slots = response.get('slots',[])
-        self.log('RASA TRAKER FINSIH')
-        self.log(slots)
-        self.log('RASA TRAKER')
+        tracker = self.tracker_store.get_or_create_tracker(site)
+        # tracker.update(SlotSet("hermod_client",json.dumps(payload)))
+        # self.tracker_store.save(tracker)
+        # response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
+        # events = response.get('events',[])
+        # slots = response.get('slots',[])
+        slots = tracker.current_slot_values();
+        # self.log('RASA TRAKER FINSIH')
+        # self.log(slots)
+        # self.log('RASA TRAKER')
         
         # end conversation
         # await self.client.publish('hermod/'+site+'/dialog/slots',json.dumps(slots));
@@ -164,17 +219,23 @@ class RasaService(MqttService):
         
         #if len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_end':
         if  slots.get('hermod_force_continue',False)  == 'true':
-            self.log('RASA TRAKER restart mic')
-            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''},{"event": "slot", "name": 'hermod_force_end', "value": ''}])
+            # self.log('RASA TRAKER restart mic')
+            # await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''},{"event": "slot", "name": 'hermod_force_end', "value": ''}])
+            tracker.update(SlotSet("hermod_force_continue",""))
+            tracker.update(SlotSet("hermod_force_end",""))
+            self.tracker_store.save(tracker)
             await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
         elif  slots.get('hermod_force_end',False) == 'true':
-            self.log('RASA TRAKER restart hotword')
-            await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''},{"event": "slot", "name": 'hermod_force_end', "value": ''}])
+            # self.log('RASA TRAKER restart hotword')
+            # await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": 'hermod_force_continue', "value": ''},{"event": "slot", "name": 'hermod_force_end', "value": ''}])
+            tracker.update(SlotSet("hermod_force_continue",""))
+            tracker.update(SlotSet("hermod_force_end",""))
+            self.tracker_store.save(tracker)
             await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
         #elif len(events) > 0 and events[len(events) - 2].get('event') == 'action'  and events[len(events) - 2].get('name') == 'action_continue':
         # fallback to configured default
         else:
-            self.log('RASA TRAKER fallback to default')
+            # self.log('RASA TRAKER fallback to default')
             if (self.config.get('keep_listening') == "true"):
                 await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
             else:
@@ -186,41 +247,43 @@ class RasaService(MqttService):
 # asyncio.ensure_future(my_coro(), loop=event_loop)
 
     async def nlu_parse_request(self,site,text,payload):
-        self.log('PARSE REQUEST')
-        self.log(text)
-        self.log(payload)
+        # self.log('PARSE REQUEST')
+        # self.log(text)
+        # self.log(payload)
         # self.log(self.rasa_server+"/model/parse")
         # self.log(json.dumps({"text":text,"message_id":site})    )
-        response = await self.request_post(self.rasa_server+"/model/parse",{"text":text,"message_id":site})
+        response = await self.agent.parse_message_using_nlu_interpreter(text)
+        
+        # response = await self.request_post(self.rasa_server+"/model/parse",{"text":text,"message_id":site})
         #response = requests.post(self.rasa_server+"/model/parse",data = json.dumps({"text":text,"message_id":site}),headers = {'content-type': 'application/json'})
-        self.log('PARSE RESPONSE')
-        self.log(response)
+        # self.log('PARSE RESPONSE')
+        # self.log(response)
         # if payload and 'id' in payload:
             # response['id'] = payload.get('id','')
-        self.log('PARSE RESPONSE presend')
+        # self.log('PARSE RESPONSE presend')
         await self.client.publish('hermod/'+site+'/nlu/intent',json.dumps(response))
-        self.log('PARSE RESPONSE sent')
+        # self.log('PARSE RESPONSE sent')
 
-    async def request_get(self,url,json):
-        with async_timeout.timeout(10):
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url,json = json, headers = {'content-type': 'application/json'}) as resp:
-                    # print(resp.status)
-                    return await resp.json()
+    # async def request_get(self,url,json):
+        # with async_timeout.timeout(10):
+            # async with aiohttp.ClientSession() as session:
+                # async with session.get(url,json = json, headers = {'content-type': 'application/json'}) as resp:
+                    # # print(resp.status)
+                    # return await resp.json()
 
-    async def request_post(self,url,json):
-        with async_timeout.timeout(25):
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url,json=json,headers = {'content-type': 'application/json'}) as resp:
-                    # print(resp.status)
-                    return await resp.json()
+    # async def request_post(self,url,json):
+        # with async_timeout.timeout(25):
+            # async with aiohttp.ClientSession() as session:
+                # async with session.post(url,json=json,headers = {'content-type': 'application/json'}) as resp:
+                    # # print(resp.status)
+                    # return await resp.json()
             
-    async def request_put(self,url,json):
-        with async_timeout.timeout(10):
-            async with aiohttp.ClientSession() as session:
-                async with session.put(url,json=json,headers = {'content-type': 'application/json'}) as resp:
-                    # print(resp.status)
-                    return await resp.json()
+    # async def request_put(self,url,json):
+        # with async_timeout.timeout(10):
+            # async with aiohttp.ClientSession() as session:
+                # async with session.put(url,json=json,headers = {'content-type': 'application/json'}) as resp:
+                    # # print(resp.status)
+                    # return await resp.json()
             
             
             # async with session.get(url) as response:

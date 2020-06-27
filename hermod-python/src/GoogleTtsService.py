@@ -132,7 +132,7 @@ class GoogleTtsService(MqttService):
             self.clients[site] = payload
       
     async def cleanup_file(self,short_text,file_name):
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
          # cache short texts
         if len(short_text) > self.config.get('cache_max_letters',100):
              os.remove(file_name)
@@ -149,7 +149,7 @@ class GoogleTtsService(MqttService):
             # self.log('TTS havetext')
         
             # filename limits
-            short_text = text[0:200].replace(' ','_')
+            short_text = text[0:100].replace(' ','_').replace(".","")
             # speakable and limited
             say_text = text[0:300].replace('(','').replace(')','')
             short_file_name = clean_filename('tts-' + str(short_text)) + '.mp3'

@@ -166,8 +166,8 @@ class DialogManagerService(MqttService):
         return uid
         
     async def on_message(self, msg):
-        self.log("DM  message")
-        self.log(msg)
+        # self.log("DM  message")
+        # self.log(msg)
         topic = "{}".format(msg.topic)
         parts = topic.split("/")
         site = parts[1]

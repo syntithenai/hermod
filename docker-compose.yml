@@ -64,8 +64,8 @@ services:
     #build: ./hermod-python/
     container_name: hermodpython
     entrypoint: ['sleep','500000']
-    #entrypoint: ['python','./hermod.py','-d'] # ,'-nl'
-    working_dir: '/app/src'
+    #entrypoint: ['python','../src/hermod.py','-d','-w','-a','-nl'] 
+    working_dir: '/app/rasa'
     restart: always
     privileged: true
     ports:
@@ -76,12 +76,12 @@ services:
       MQTT_USER: ${MQTT_USER}
       MQTT_PASSWORD: ${MQTT_PASSWORD}
       MQTT_PORT: 1883
-      
-      RASA_URL: http://rasa:5005
+      # disabled to force local RASA
+      #RASA_URL: ${RASA_URL}
       HERMOD_KEEP_LISTENING: ${HERMOD_KEEP_LISTENING}
       DEEPSPEECH_MODELS: /app/deepspeech-models
       DUCKLING_URL: http://duckling:8000
-      RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
+      RASA_ACTIONS_URL: http://localhost:5055/webhook
       # for logging
       MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING}
       MNEMO_CONNECTION_STRING: ${MNEMO_CONNECTION_STRING}
@@ -122,6 +122,8 @@ services:
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
       
     volumes:
+      # map in host localtime
+      - /etc/localtime:/etc/localtime:ro
       # dev mount src
       - ./hermod-python/src:/app/src  
       # dev mount rasa model
@@ -179,43 +181,47 @@ services:
       ## host tts cache for delivery via web
       #- ./tts_cache:/app/www/static/tts
 # rasa
-  rasa:
-    image: syntithenai/hermod-python
-    restart: always
-    #build: ./hermod-python/
-    container_name: rasa
-    #entrypoint: ['sleep','1000000']
-    entrypoint: ['python','/app/src/hermod.py','-r'] # -t
-    environment:
-      DUCKLING_URL: http://duckling:8000
-      RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
-    volumes:
-      - ./hermod-python/src:/app/src 
-      - ./hermod-python/rasa:/app/rasa  
-    #ports:
-    #  - 5005
+  #rasa:
+    #image: syntithenai/hermod-python
+    #restart: always
+    ##build: ./hermod-python/
+    #container_name: rasa
+    ##entrypoint: ['sleep','1000000']
+    #entrypoint: ['python','/app/src/hermod.py','-r'] # -t
+    #environment:
+      #DUCKLING_URL: http://duckling:8000
+      #RASA_ACTIONS_URL: http://rasa_actions:5055/webhook
+    #volumes:
+      ## map in host localtime
+      #- /etc/localtime:/etc/localtime:ro
+      #- ./hermod-python/src:/app/src 
+      #- ./hermod-python/rasa:/app/rasa  
+    ##ports:
+    ##  - 5005
       
 # rasa action server
-  rasa_actions:
-    restart: always
-    image: syntithenai/hermod-python
-    #build: ./hermod-python
-    container_name: rasa_actions
-    #entrypoint: ['sleep','1000000']
-    entrypoint: ['python','/app/src/hermod.py','-a']
-    # TODO - should use exposed websockets mqtt access
-    environment:
-      MQTT_HOSTNAME: mqtt
-      MQTT_USER: ${MQTT_USER}
-      MQTT_PASSWORD: ${MQTT_PASSWORD}
-      MQTT_PORT: 1883
-      MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING}
-      UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
-      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
-    volumes:
-      - ./hermod-python/src:/app/src 
-      - ./hermod-python/rasa:/app/rasa  
+  #rasa_actions:
+    #restart: always
+    #image: syntithenai/hermod-python
+    ##build: ./hermod-python
+    #container_name: rasa_actions
+    ##entrypoint: ['sleep','1000000']
+    #entrypoint: ['python','/app/src/hermod.py','-a']
+    ## TODO - should use exposed websockets mqtt access
+    #environment:
+      #MQTT_HOSTNAME: mqtt
+      #MQTT_USER: ${MQTT_USER}
+      #MQTT_PASSWORD: ${MQTT_PASSWORD}
+      #MQTT_PORT: 1883
+      #MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING}
+      #UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
+      #YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+    #volumes:
+      ## map in host localtime (debian host)
+      #- /etc/localtime:/etc/localtime:ro
+      #- ./hermod-python/src:/app/src 
+      #- ./hermod-python/rasa:/app/rasa  
       
-    #ports:
-    # - 5055  
+    ##ports:
+    ## - 5055  
 

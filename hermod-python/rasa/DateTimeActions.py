@@ -2,6 +2,8 @@ import sys
 import logging
         
 from typing import Any, Text, Dict, List
+from datetime import datetime
+        
 #
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
@@ -21,7 +23,8 @@ class ActionTellTime(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         slotsets = []
-        dispatcher.utter_message(text="The time is {}".format(strftime("%I:%M %p", localtime())))
+        dt = datetime.now().strftime("%I:%M %p")
+        dispatcher.utter_message(text="The time is {}".format(dt))
         slotsets.append(SlotSet("hermod_force_end", None ))
         slotsets.append(SlotSet("hermod_force_continue","true"))
         return slotsets

@@ -71,6 +71,7 @@ async def ssl_serve_file(request,path):
         return await file_stream(root_path + file_path)
     except FileNotFoundError:
         raise ServerError("Not found", status_code=400)
+        return await file_stream(root_path + 'index.html')
     except:
         raise ServerError("Server Error", status_code=500)
 
