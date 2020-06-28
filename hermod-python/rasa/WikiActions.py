@@ -858,29 +858,33 @@ class ActionSearchWikidata(Action):
         for raw_entity in last_entities:
             # logger.debug(raw_entity)
             if raw_entity.get('entity','') == "attribute":
-                if not len(attribute) > 0:
+                # if not len(attribute) > 0:
                     attribute = raw_entity.get('value','')
                     slotsets.append(SlotSet('attribute',attribute))
             if raw_entity.get('entity','') == "thing":
-                if not len(thing) > 0:
+                # if not len(thing) > 0:
                     thing = raw_entity.get('value','')
                     thing_type='thing'
                     slotsets.append(SlotSet('thing',thing))
+                    break
             if raw_entity.get('entity','') == "place":
-                if not len(thing) > 0:
+                # if not len(thing) > 0:
                     thing = raw_entity.get('value','')
                     thing_type='place'
                     slotsets.append(SlotSet('place',thing))
+                    break
             if raw_entity.get('entity','') == "person":
-                if not len(thing) > 0:
+                # if not len(thing) > 0:
                     thing = raw_entity.get('value','')
                     thing_type='person'
                     slotsets.append(SlotSet('person',thing))
+                    break
             if raw_entity.get('entity','') == "word":
-                if not len(thing) > 0:
+                # if not len(thing) > 0:
                     thing = raw_entity.get('value','')
                     thing_type='word'
                     slotsets.append(SlotSet('thing',thing))
+                    break
         
         # logger.debug(last_entities)
         # logger.debug('THING FROM ENTITIES'+thing)
