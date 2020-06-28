@@ -755,6 +755,17 @@ class ActionSpeakMnemonic(Action):
         slotsets = []
         # pull thing parameters from saved slots ?
         slots = tracker.current_state().get('slots')
+        for slot in slots:
+            if slot == "thing" or  slot == "person" or  slot == "place" and slot in slots and slots[slot] and len(slots[slot]) > 0:
+                if not thing or len(thing) <= 0:
+                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    thing = slots[slot]
+                    thing_type=slot
+            if slot == "attribute" :
+                if not attribute or len(attribute) <= 0:
+                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    attribute = slots[slot]
+                    
         for raw_entity in last_entities:
             # logger.debug(raw_entity)
             if raw_entity.get('entity','') == "attribute":
@@ -792,27 +803,17 @@ class ActionSpeakMnemonic(Action):
         # logger.debug('SLOTS')
         # logger.debug(slots)        
         
-        for slot in slots:
-            if slot == "thing" or  slot == "person" or  slot == "place" and slot in slots and slots[slot] and len(slots[slot]) > 0:
-                if not thing or len(thing) <= 0:
-                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                    thing = slots[slot]
-                    thing_type=slot
-            if slot == "attribute" :
-                if not attribute or len(attribute) <= 0:
-                    logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                    attribute = slots[slot]
+
         # logger.debug('THING FROM SLOTS'+thing)
         # logger.debug('ATTRIBUTE FROM SLOTS'+attribute)
               
         site = tracker.current_state().get('sender_id')  
         
-        
         if attribute and thing and len(attribute) > 0 and len(thing) > 0:
             result = await find_fact(attribute.lower(),thing.lower())
-            logger.debug('MNEMON LOOKUP FACT')
-            logger.debug(result)
-            logger.debug([attribute,thing])
+            # logger.debug('MNEMON LOOKUP FACT')
+            # logger.debug(result)
+            # logger.debug([attribute,thing])
             await publish('hermod/'+site+'/display/show',{'question':'What is the memory aid for the '+attribute+' of '+thing})
             if result and result.get('mnemonic',False):
                 dispatcher.utter_message(text="The memory aid for the "+attribute+" of "+thing+" is, "+result.get('mnemonic'))
@@ -844,6 +845,16 @@ class ActionSearchWikidata(Action):
         slotsets = []
         # pull thing parameters from saved slots ?
         slots = tracker.current_state().get('slots')
+        for slot in slots:
+            if slot == "thing" or  slot == "person" or  slot == "place" and slot in slots and slots[slot] and len(slots[slot]) > 0:
+                if not thing or len(thing) <= 0:
+                    # logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                    thing = slots[slot]
+                    thing_type=slot
+            # if slot == "attribute" :
+                # logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
+                # attribute = slots[slot]
+        # entities override slots
         for raw_entity in last_entities:
             # logger.debug(raw_entity)
             if raw_entity.get('entity','') == "attribute":
@@ -877,15 +888,7 @@ class ActionSearchWikidata(Action):
         # logger.debug('SLOTS')
         # logger.debug(slots)        
         
-        for slot in slots:
-            if slot == "thing" or  slot == "person" or  slot == "place" and slot in slots and slots[slot] and len(slots[slot]) > 0:
-                if not thing or len(thing) <= 0:
-                    # logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                    thing = slots[slot]
-                    thing_type=slot
-            # if slot == "attribute" :
-                # logger.debug('SET FROM SLOT '+str(slot)+' ' +str(slots[slot]))
-                # attribute = slots[slot]
+        
                 
         site = tracker.current_state().get('sender_id')        
         if attribute and thing and len(attribute) > 0 and len(thing) > 0:

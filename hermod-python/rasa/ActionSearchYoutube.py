@@ -91,6 +91,7 @@ class ActionSearchYoutube(Action):
         logger = logging.getLogger(__name__)    
         logger.debug('YT')
         #await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
+        slotsets = []
         site = tracker.current_state().get('sender_id')
         search_term = self.extract_entities(tracker,['thing','person','place','word'])
         logger.debug(search_term)
@@ -105,10 +106,11 @@ class ActionSearchYoutube(Action):
         else:
             await publish('hermod/'+site+'/display/show',{'question':'Search youtube for '})
             dispatcher.utter_message(text="I didn't hear that right.  What did you want to search youtube for ?")
+            slotsets.append(SlotSet("hermod_force_continue", "true"))
         # await publish('hermod/'+site+'/display/show',{'question':'Remember that the '+attribute+' of '+thing+' is '+answer})
         # await publish('hermod/'+site+'/display/show',{'buttons':[{"label":'Yes please',"text":'yes please'},{"label":'No thanks',"text":'No thanks'}]})      
         # await publish('hermod/'+site+'/display/show',{'question':'Spell the word '+word})dispatcher.utter_message(text="The "+attribute+" of "+thing+" is "+ result)
         
         
-        return []
+        return slotsets
         #SlotSet("hermod_force_continue", "true"), SlotSet("hermod_force_end", None)] 

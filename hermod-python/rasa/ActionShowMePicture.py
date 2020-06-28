@@ -59,17 +59,19 @@ def search_unsplash(search_term):
         images=[]
         pu = pyunsplash.PyUnsplash(api_key=os.environ.get('UNSPLASH_ACCESS_KEY'))
         try:
+            print('try search '+search_term)
             search = pu.search(type_='photos',page=0, per_page=4, query=str(search_term))
             for photo in search.entries:
                     # details = pu.photo.get(photo.id,400)
                     # print(photo)
-                    logger.debug('ACTION_ image')
-                    logger.debug(photo.links)
-                    # print(json.dumps(photo))
-                    # print(details.id, details.link_download)
+                    # print('ACTION_ image')
+                    # print(photo.links)
+                    # # print(json.dumps(photo))
+                    # print(photo.id, photo.link_download)
                     images.append(photo.link_download+"?auto=format")
         except Exception as e:
-            logger.debug(e)
+            print('PYSPLASH ERROR')
+            print(e)
             pass
         
         return images
@@ -93,6 +95,7 @@ class ActionShowMePicture(Action):
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         logger = logging.getLogger(__name__)    
         logger.debug('ACTION_ image')
+        slotsets = []
         site = tracker.current_state().get('sender_id')
         await publish('hermod/'+site+'/tts/say',{"text":"Looking now"})
         search_term = self.extract_entities(tracker,['thing','person','place','word'])
@@ -114,5 +117,7 @@ class ActionShowMePicture(Action):
         else:
             await publish('hermod/'+site+'/display/show',{'question':'Show me a picture of a '})
             dispatcher.utter_message(text="I didn't hear that right. What did you want to see a picture of?")
-        return []
+            slotsets.append(SlotSet("hermod_force_continue", "true"))
+            logger.debug('ACTION_ image')
+        return slotsets
         #return [SlotSet("hermod_force_continue", "true"), SlotSet("hermod_force_end", None)] 
