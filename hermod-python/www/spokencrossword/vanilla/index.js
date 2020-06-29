@@ -581,6 +581,7 @@ var HermodWebClient = function(config) {
                     //console.log('heard '+keyword)
                     if (keyword && hotwordStarted) {
                         //console.log('heard and accept '+keyword)
+                        startMicrophone()
                         sendMessage('hermod/'+config.site+'/hotword/detected',{})
                         if (onCallbacks.hasOwnProperty('hotwordDetected')) {
                             onCallbacks['hotwordDetected'](keyword)
@@ -823,7 +824,7 @@ var HermodWebClient = function(config) {
                           //console.log(['REC'])
                           resample(e.inputBuffer,16000,function(res) {
                             if (! isPlaying) { 
-                                if (speaking) {
+                                if (speaking && isRecording  && isSending) {
                                     if (recorderTimeout) clearTimeout(recorderTimeout)
                                     //console.log(['SEND '+'hermod/'+site+'/microphone/audio'])
                                     sendAudioMessage('hermod/'+site+'/microphone/audio',Buffer.from(convertFloat32ToInt16(res)))

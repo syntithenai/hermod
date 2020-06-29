@@ -31,20 +31,20 @@ class RasaService(MqttService):
             # self.log('RASA subscribe to {}'.format(sub))
             await self.client.subscribe(sub)
         
-        while True:
+        # while True:
             # self.log('check rasa service '+self.rasa_server)
-            try:
-                # self.log('rasa service GET '+self.rasa_server)
-                response = requests.get(self.rasa_server)
-                # self.log('rasa service GOT '+self.rasa_server)
-                if response.status_code == 200:
-                    self.log('FOUND rasa service')
-                    await self.client.publish('hermod/rasa/ready',json.dumps({}))
-                    break
-                await asyncio.sleep(3)
-            except Exception as e: 
-                self.log(e)
-                pass
+            # try:
+                # # self.log('rasa service GET '+self.rasa_server)
+                # response = requests.get(self.rasa_server)
+                # # self.log('rasa service GOT '+self.rasa_server)
+                # if response.status_code == 200:
+                    # self.log('FOUND rasa service')
+                    # await self.client.publish('hermod/rasa/ready',json.dumps({}))
+                    # break
+                # await asyncio.sleep(3)
+            # except Exception as e: 
+                # self.log(e)
+                # pass
             # await asyncio.sleep(3000)
             # time.sleep(2)
         

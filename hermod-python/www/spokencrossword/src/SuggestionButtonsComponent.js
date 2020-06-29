@@ -27,7 +27,7 @@ import { Button } from "react-bootstrap";
     //}
 
 function SuggestionButtonsComponent(props) {
-    console.log(props)
+    //console.log(props)
     var renderedButtons = []
     var i = 0;
     const sendMessage = function(e) {

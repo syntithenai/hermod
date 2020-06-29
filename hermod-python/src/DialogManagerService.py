@@ -113,9 +113,9 @@ class DialogManagerService(MqttService):
         await self.client.publish(prep + 'microphone/start', json.dumps({}))
         
     async def callback_dmcontinue_ttsfinished(self, prep, topic, message):
-        pass
-        # await self.client.publish(prep + 'asr/start', json.dumps({}))
-        # await self.client.publish(prep + 'microphone/start', json.dumps({}))
+        # pass
+        await self.client.publish(prep + 'asr/start', json.dumps({}))
+        await self.client.publish(prep + 'microphone/start', json.dumps({}))
         
     async def start_dialog(self, site, text):
         prep = 'hermod/' + site + '/'
@@ -126,6 +126,7 @@ class DialogManagerService(MqttService):
         if len(text) > 0:
             await self.client.publish(prep + 'dialog/started', json.dumps({"id":uid}))
             await self.client.publish(prep + 'asr/stop', json.dumps({}))
+            await self.client.publish(prep + 'hotword/stop', json.dumps({}))
             await self.client.publish(prep + 'microphone/stop', json.dumps({}))
             await self.client.publish(prep + 'nlu/parse', json.dumps({"id":uid,"text": text}))
         # otherwise start dialog and asr
@@ -160,14 +161,14 @@ class DialogManagerService(MqttService):
             if len(payload.get('id')) > 0 and site in self.dialogs and payload.get('id') == self.dialogs[site]:
                 uid = payload.get('id')
         # otherwise create one
-        else:
+        if not uid:
             uid = uuid.uuid4().hex
             self.dialogs[site] = uid;
         return uid
         
     async def on_message(self, msg):
-        # self.log("DM  message")
-        # self.log(msg)
+        self.log("DM  message")
+        self.log(msg)
         topic = "{}".format(msg.topic)
         parts = topic.split("/")
         site = parts[1]
@@ -186,22 +187,28 @@ class DialogManagerService(MqttService):
         # self.log(payload)
         
         prep = 'hermod/' + site + '/'
-        # self.log("DaM MESSAGE {} - {} - {}".format(site,topic,prep))
+        self.log("DaM MESSAGE {} - {} - {}".format(site,topic,prep))
 
         # first handle temporary subscription bindings
         await self.handle_waiters(prep, topic, payload)
         # now handle main subscription bindings
         if topic == prep + 'hotword/detected':
             # self.log("HW MESSAGE")
-            await self.client.publish(prep + 'speaker/stop', json.dumps({}))
-            await self.client.publish(prep + 'microphone/stop', json.dumps({}))
+            await self.client.publish(prep + 'hotword/stop', json.dumps({"id":self.dialogs.get(site,'')}))
+            uid = uuid.uuid4().hex
+            await self.client.publish(prep + 'dialog/started', json.dumps({"id":uid}))
+            await self.client.publish(prep + 'asr/start', json.dumps({"id":uid}))
+            await self.client.publish(prep + 'microphone/start', json.dumps({"id":uid}))
+            
+            # await self.client.publish(prep + 'speaker/stop', json.dumps({}))
+            # await self.client.publish(prep + 'microphone/stop', json.dumps({}))
             # self.log("HW MESSAGE")
-            await self.send_and_wait(
-                prep + 'dialog/end',
-                # id from last dialog started
-                {"id":self.dialogs.get(site,'')},
-                prep + 'dialog/ended',
-                self.callback_hotword_dialog_ended)
+            # await self.send_and_wait(
+                # prep + 'dialog/end',
+                # # id from last dialog started
+                # {"id":self.dialogs.get(site,'')},
+                # prep + 'dialog/ended',
+                # self.callback_hotword_dialog_ended)
 
         elif topic == prep + 'dialog/continue':
             text = payload.get('text','')
@@ -221,9 +228,11 @@ class DialogManagerService(MqttService):
             await self.start_dialog(site, text)
 
         elif topic == prep + 'asr/text':
+            self.log('DM HAVE TEXT')
             text = payload.get('text','')
             uid = self.ensure_dialog_id(topic,payload)
             if uid:
+                self.log('DM HAVE TEXT AND UID')
                 await self.client.publish(prep + 'asr/stop', json.dumps({"id":uid}))
                 #self.client.publish(prep + 'hotword/stop', json.dumps({}))
                 await self.client.publish(prep + 'microphone/stop', json.dumps({}))
@@ -243,6 +252,7 @@ class DialogManagerService(MqttService):
             #if self.check_dialog_id(topic,payload):
             await self.client.publish(prep + 'dialog/ended', json.dumps({"id":payload.get("id","no_id")}))
             self.log("DM ended")
+
             await self.client.publish(prep + 'asr/stop', json.dumps({"id":payload.get("id","no_id")}))
             self.log("DM asr stop")
             await self.client.publish(prep + 'microphone/start', json.dumps({}))

@@ -21,7 +21,7 @@ export default withRouter(class HermodClient extends Component {
 
     constructor(props) {
         super(props);
-        //let that = this;
+        //let that = this; 
         this.state={
             isListening: false,
             isSpeaking: false,
