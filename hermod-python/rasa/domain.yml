@@ -85,14 +85,12 @@ slots:
     type: unfeaturized
   hermod_force_continue:
     type: unfeaturized
+  crossword:
+    type: unfeaturized
   last_wikipedia_search:
     type: unfeaturized
   last_wiktionary_search:
     type: unfeaturized
-  mnemonic:
-    type: unfeaturized    
-  #query:
-    #type: unfeaturized
   attribute:
     type: text
   thing:

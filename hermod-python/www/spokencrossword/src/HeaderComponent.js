@@ -33,12 +33,13 @@ export default class HeaderComponent extends Component {
     render() {
         let that = this;
       return (
-        <div className="hermodHeader" style={{backgroundColor: "#2b30d23b", minHeight: "9em", width: "100%", top: 0, left: 0, position: 'fixed'}}>
+        <div className="hermodHeader" style={{backgroundColor: "#b5a5f3", minHeight: "9em", width: "100%", top: 0, left: 0, position: 'fixed'}}>
           <MicrophoneComponent hermodClient={that.props.hermodClient} toggleMicrophone={this.props.toggleMicrophone}/>
           <SpeechBubbleComponent hermodClient={that.props.hermodClient} />
           <div id="buttons" style={{float: "left", marginRight: "0.5em", padding: "0.5em"}}>
             <span  className="fixedButtons" id="fixedButtons" style={{float: "left", marginRight: "0.5em"}} >
-                 <Link  to='/' ><Button style={{float: 'left'}} variant="primary"  size="lg" >Home</Button></Link>
+                 <Link  to='/' ><Button style={{float: 'left'}} variant="secondary"  size="lg" >Home</Button></Link>
+                 <Link  to='/crossword' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>
             </span>
             <SuggestionButtonsComponent  buttons={that.props.hermodClient.buttons} sendMessage={that.props.sendMessage}  showFrame={that.props.showFrame}  showWindow={that.props.showWindow}/>
         </div>

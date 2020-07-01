@@ -35,7 +35,7 @@ export default class MicrophoneComponent extends Component {
             if (this.props.hermodClient.microphoneState === 1) {
                 borderColor = 'green'
                 backgroundColor = 'grey'
-            } else if (this.props.hermodClient.microphoneState === 2) {
+            } else if (this.props.hermodClient.microphoneState === 2 && this.props.hermodClient.hotwordReady) {
                 borderColor = 'red'
                 backgroundColor = 'pink'
             } else if (this.props.hermodClient.microphoneState === 3) {

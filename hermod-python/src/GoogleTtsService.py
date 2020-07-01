@@ -32,8 +32,8 @@ char_limit = 240
 seed(1)
 
 def write_speech(text,file_name,config):
-    print('WRITE SPEECH')
-    print([text,file_name,config])
+    # print('WRITE SPEECH')
+    # print([text,file_name,config])
     # Instantiates a client
     client = texttospeech.TextToSpeechClient()
 
@@ -55,7 +55,7 @@ def write_speech(text,file_name,config):
     response = client.synthesize_speech(
         request={"input": input_text, "voice": voice, "audio_config": audio_config}
     )
-    print('GOT GOO SPEECH REQ')
+    # print('GOT GOO SPEECH REQ')
     
     return response.audio_content
 
@@ -127,8 +127,8 @@ class GoogleTtsService(MqttService):
                 json.dumps(message))
             await self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
         elif topic == 'hermod/' + site + '/dialog/init':
-            self.log('G TTS CLIENT INIT')
-            self.log(payload)
+            # self.log('G TTS CLIENT INIT')
+            # self.log(payload)
             self.clients[site] = payload
       
     async def cleanup_file(self,short_text,file_name):
@@ -136,7 +136,7 @@ class GoogleTtsService(MqttService):
          # cache short texts
         if len(short_text) > self.config.get('cache_max_letters',100):
              os.remove(file_name)
-        self.log('CLEANUP TTS '+file_name)
+        # self.log('CLEANUP TTS '+file_name)
         
         
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
@@ -159,7 +159,7 @@ class GoogleTtsService(MqttService):
             # generate if file doesn't exist in cache
             audio_file = None
             if not os.path.isfile(file_name):
-                self.log('TTS exec')
+                # self.log('TTS exec')
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                 #audio_file = await self.loop.run_in_executor(None,write_speech,text, file_name, self.config)
                     audio_file = await my_run_in_executor(executor,write_speech,say_text , file_name, self.config)
@@ -168,17 +168,17 @@ class GoogleTtsService(MqttService):
                 # The response's audio_content is binary.
                 # with open(file_name, 'wb') as out:
                     # out.write(response.audio_content)
-                self.log('TTS DONE write')
-            else:     
-                self.log('TTS read')
+                # self.log('TTS DONE write')
+            # else:     
+                # self.log('TTS read')
         
                 async with aiofiles.open(file_name, mode='rb') as f:
                     audio_file = await f.read()
-            self.log('TTS now send {}'.format(len(audio_file)))
+            # self.log('TTS now send {}'.format(len(audio_file)))
             
             await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
             if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
-                    self.log('SEND TTS AS URL')
+                    # self.log('SEND TTS AS URL')
                     await self.client.publish(
                         'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/tts/"+short_file_name}), qos=0)
             else: 
@@ -193,13 +193,13 @@ class GoogleTtsService(MqttService):
                     ts = ts + len(slice)
                     await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
                 
-                self.log(lc)
-                self.log(ts)
+                # self.log(lc)
+                # self.log(ts)
                 # finally send play message with empty payload
                 await self.client.publish(
                     'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
                     
-            self.log('TTS sent ')
+            # self.log('TTS sent ')
             #asyncio.ensure_future(self.cleanup_file,(short_text,file_name))
             await self.cleanup_file(short_text,file_name)
             # # cache short texts

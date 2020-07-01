@@ -16,40 +16,58 @@ import YoutubeComponent from "./YoutubeComponent";
 import AboutComponent from './AboutComponent';
 import ImageListComponent from './ImageListComponent';
 import LoginComponent from './LoginComponent';
+
 import HermodClient from './HermodClient';
+import CrosswordListComponent from './CrosswordListComponent';
 
 export default class App extends Component {
 
-  //constructor(props) {
-      //super(props);
-      ////let that = this;
-    //}
+  constructor(props) {
+      super(props);
+      //let that = this;
+      this.fillCrossword=this.fillCrossword.bind(this)
+    }
 
     
       componentDidMount() {
         console.log('APP dMOUNT')
+        this.crossword =  React.createRef();
+        
       };
       
    
+   fillCrossword(payload) {
+       console.log(['FILL CROSSWORD',payload,this.crossword])
+       if (this.crossword) {
+           console.log('FILL CROSS have ref')
+           this.crossword.current.fillAnswer(payload.direction,payload.number,payload.word);
+        }
+   }
+   
     render() {
+        let that = this;
       return (
         <div className="App">
             <Router>
-                <HermodClient>
+                <HermodClient bindTopic={{"hermod/+/crossword/fill": that.fillCrossword}} >
                 {(hermodClient, api) => (
                     <div>
                         <PropsRoute  path="/" hermodClient={hermodClient} component={HeaderComponent}  showFrame={api.showFrame} showWindow={api.showWindow} sendMessage={api.sendMessage} toggleMicrophone={api.toggleMicrophone} setQuestion={api.setQuestion} />
                         <div style={{marginTop:"9em"}}>
                             <PropsRoute  exact={true} path="/" hermodClient={hermodClient} component={HomeContentComponent} sendMessage={api.sendMessage}  />
                             <PropsRoute  exact={true} path="/home"  hermodClient={hermodClient}  component={HomeContentComponent} sendMessage={api.sendMessage}   />
-                            <PropsRoute  exact={true} path="/crossword"  hermodClient={hermodClient}  component={CrosswordComponent}   />
+                            <PropsRoute  exact={true} path="/crossword"  site={hermodClient.config.site} api={api} hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
+                            <PropsRoute  exact={true} path="/crossword/:id" site={hermodClient.config.site} api={api}  hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
+                            <PropsRoute  exact={true} path="/crosswords"  hermodClient={hermodClient}  component={CrosswordListComponent} startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
                             <PropsRoute  exact={true} path="/frame"  hermodClient={hermodClient}  component={IFrameComponent}   />
                             <PropsRoute  exact={true} path="/youtube"  hermodClient={hermodClient}  component={YoutubeComponent}   />
                             <PropsRoute  exact={true} path="/about"  hermodClient={hermodClient} component={AboutComponent}  />
                             <PropsRoute  exact={true} path="/login"  hermodClient={hermodClient} component={LoginComponent}   />
                             <PropsRoute  exact={true} path="/images"  images={hermodClient.images} component={ImageListComponent}   />
+                        
                         </div>
-                        <FooterComponent adsenseClient={hermodClient.adsenseClient} adsenseSlot={hermodClient.adsenseSlot} />
+                        
+                        <FooterComponent slots={hermodClient.slots} adsenseClient={hermodClient.adsenseClient} adsenseSlot={hermodClient.adsenseSlot} />
                     </div>
                   )}
                 </HermodClient>

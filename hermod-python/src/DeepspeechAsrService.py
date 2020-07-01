@@ -92,7 +92,7 @@ class DeepspeechAsrService(MqttService):
         
     async def on_message(self, msg):
         topic = "{}".format(msg.topic)
-        self.log("ASR MESSAGE {}".format(topic))
+        # self.log("ASR MESSAGE {}".format(topic))
         parts = topic.split("/")
         site = parts[1]
 
@@ -107,11 +107,11 @@ class DeepspeechAsrService(MqttService):
             # if not site in self.active and self.active[site]:
                 # self.log('from start activate ASR '+site)
                 # await self.activate(site)
-            self.log('start ASR a'+site)
+            # self.log('start ASR a'+site)
             await self.client.subscribe('hermod/'+site+'/microphone/audio')
-            self.log('start ASR b'+site)
+            # self.log('start ASR b'+site)
             # and not site in self.started:
-            self.log('start ASR s'+site)
+            # self.log('start ASR s'+site)
             self.started[site] = True
             # self.is_speaking[site] = False
             payload = {}
@@ -137,7 +137,7 @@ class DeepspeechAsrService(MqttService):
                 
         elif topic == 'hermod/'+site+'/microphone/audio' :
             if site in self.started and self.started[site]: # and  site in self.is_speaking and not self.is_speaking[site]:
-                self.log('save audio message') # {} {} '.format(len(msg.payload),site))
+                # self.log('save audio message') # {} {} '.format(len(msg.payload),site))
                 self.audio_stream[site].write(msg.payload) 
                 
         # elif topic == 'hermod/'+site+'/tts/say'  :
@@ -151,7 +151,7 @@ class DeepspeechAsrService(MqttService):
         
     async def activate(self,site):
         if os.path.isdir(self.model_path):
-            self.log('ACTIVATE DS ASR')
+            # self.log('ACTIVATE DS ASR')
             # self.is_speaking[site] = False
             self.audio_stream[site] = BytesLoop()
             self.active[site] = True
@@ -421,8 +421,8 @@ class DeepspeechAsrService(MqttService):
                 # break;
                             
             if len(frame) < 1:  # 640
-                self.log('WARNING: SHORT FRAME')
-                #pass
+                # self.log('WARNING: SHORT FRAME')
+                pass
                 # yield None
                 # return
             else:

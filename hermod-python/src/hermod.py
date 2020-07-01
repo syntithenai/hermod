@@ -419,7 +419,7 @@ async def async_start_hermod():
     # print('START SERVER 2')
     # print(CONFIG)
          
-    while True:
+    if True:
         loop = asyncio.get_event_loop()
         # loop.set_debug(True)
         run_services = []
@@ -447,10 +447,10 @@ async def async_start_hermod():
 
 def start_hermod(run_event):
     #loop = asyncio.get_event_loop()
-    # loop = asyncio.new_event_loop()
+    loop = asyncio.new_event_loop()
     # asyncio.set_event_loop(loop)
-    #loop.set_exception_handler(handle_exception)
-    while True and run_event.is_set():
+    # loop.set_exception_handler(handle_exception)
+    if True and run_event.is_set():
         print('START HERMOD REQUEST ASYNC')
         asyncio.run(async_start_hermod())
         

@@ -80,8 +80,8 @@ class Pico2wavTtsService(MqttService):
         if topic == 'hermod/' + site + '/tts/say':
             await self.generate_audio(site, text, payload)
         elif topic == 'hermod/' + site + '/speaker/finished':
-            self.log('SPEAKER FINISHED')
-            self.log(payload)
+            # self.log('SPEAKER FINISHED')
+            # self.log(payload)
             #self.play_requests[payload.get('id')] = value;
           
             message = {"id": payload.get('id')}
@@ -91,9 +91,9 @@ class Pico2wavTtsService(MqttService):
                 json.dumps(message))
             await self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
         elif topic == 'hermod/' + site + '/dialog/init':
-            self.log('PICO TTS CLIENT INIT')
-            self.log(payload)
-            self.log(site)
+            # self.log('PICO TTS CLIENT INIT')
+            # self.log(payload)
+            # self.log(site)
             self.clients[site] = payload
 
     async def cleanup_file(self,short_text,file_name):
@@ -101,7 +101,7 @@ class Pico2wavTtsService(MqttService):
          # cache short texts
         if len(short_text) > self.config.get('cache_max_letters',100):
              os.remove(file_name)
-        self.log('CLEANUP TTS '+file_name)
+        # self.log('CLEANUP TTS '+file_name)
 
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
     async def generate_audio(self, site, text, payload):
@@ -131,13 +131,13 @@ class Pico2wavTtsService(MqttService):
             async with aiofiles.open(file_name, mode='rb') as f:
                 audio_file = await f.read()
                 await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
-                self.log(self.clients)
+                # self.log(self.clients)
                 if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
-                    self.log('SEND TTS AS URL'+self.clients[site].get('url')+"/"+short_file_name)
+                    # self.log('SEND TTS AS URL'+self.clients[site].get('url')+"/"+short_file_name)
                     await self.client.publish(
                         'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/tts/"+short_file_name}), qos=0)
                 else:
-                    self.log('SEND TTS AS packets')
+                    # self.log('SEND TTS AS packets')
                     slice_length = 2048
                     def chunker(seq, size):
                         return (seq[pos:pos + size] for pos in range(0, len(seq), size))

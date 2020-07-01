@@ -51,11 +51,11 @@ class RasaServiceLocal(MqttService):
         self.config = config
         # self.recursion_depth = {}
         # self.rasa_server = self.config['services']['RasaServiceLocal'].get('rasa_server','http://localhost:5005/')
-        self.subscribe_to = 'hermod/+/dialog/ended,hermod/+/dialog/init,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
+        self.subscribe_to = 'hermod/+/rasa/set_slots,hermod/+/dialog/ended,hermod/+/dialog/init,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
         # self.log("ENDPOINT:"+config.get('rasa_actions_url',''))
         # self.log(config)
         endpoint = EndpointConfig(config['services']['RasaServiceLocal'].get('rasa_actions_url'))
-        print('loading model') 
+        # print('loading model') 
         domain = 'domain.yml'
         self.tracker_store = InMemoryTrackerStore(domain)
         self.agent = Agent.load('/app/rasa/models/model.tar.gz', action_endpoint = endpoint, tracker_store=self.tracker_store)
@@ -100,7 +100,11 @@ class RasaServiceLocal(MqttService):
         except BaseException:
             pass
         # self.log(payload)
-        if topic == 'hermod/' + site + '/nlu/parse':
+        if topic == 'hermod/' + site + '/rasa/set_slots':
+            if payload: 
+                await self.set_slots(payload)
+                
+        elif topic == 'hermod/' + site + '/nlu/parse':
             if payload: 
                 await self.client.publish('hermod/'+site+'/display/startwaiting',json.dumps({}))
                 text = payload.get('query')
@@ -130,7 +134,6 @@ class RasaServiceLocal(MqttService):
             self.tracker_store.save(tracker)
             # await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": "hermod_client", "value": json.dumps(payload)}])
    
-    
     async def reset_tracker(self,site):
         pass
         # backup slots
@@ -173,7 +176,7 @@ class RasaServiceLocal(MqttService):
         responses = await self.agent.handle_text(payload.get('text'),sender_id=site,  output_channel=None)
         for response in responses:
             messages.append(response.get("text"))
-            print(response.get("text"))
+            # print(response.get("text"))
         # response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
         # # self.log('resp RASA TRIGGER')
         # # self.log(response)
@@ -197,6 +200,27 @@ class RasaServiceLocal(MqttService):
         else:
             # self.log('SEND finish')
             await self.finish(site,payload)
+        
+    
+    async def set_slots(self,payload):
+        tracker = self.tracker_store.get_or_create_tracker(site)
+        if payload :
+            #tracker.current_slot_values();
+            for slot in payload.get('slots',[]:
+                # print('SETSLOT loc')
+                # print([slot])
+                tracker.update(SlotSet(slot.get('slot'),slot.get('value')))
+            self.tracker_store.save(tracker)
+            
+            await self.client.publish('hermod/'+site+'/dialog/slots',json.dumps(tracker.current_slot_values()));
+
+    async def send_slots(self,site):
+        # self.log('SEND SLOTS localS')
+        tracker = self.tracker_store.get_or_create_tracker(site)
+        slots = tracker.current_slot_values();
+        # self.log(slots)
+        await self.client.publish('hermod/'+site+'/dialog/slots',json.dumps(slots));
+    
         
     async def finish(self,site,payload):
         #self.log('finish')
@@ -240,7 +264,7 @@ class RasaServiceLocal(MqttService):
                 await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
             else:
                 await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
-                
+        self.send_slots(site)        
 # event_loop = asyncio.get_event_loop()
 # Then later, inside your Thread:
 

@@ -68,7 +68,7 @@ def search_unsplash(search_term):
                     # print(photo.links)
                     # # print(json.dumps(photo))
                     # print(photo.id, photo.link_download)
-                    images.append(photo.link_download+"?auto=format")
+                    images.append({"url":photo.link_download+"?auto=format","attribution":photo.get_attribution()})
         except Exception as e:
             print('PYSPLASH ERROR')
             print(e)

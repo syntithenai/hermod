@@ -57,8 +57,8 @@ class Transcoder(object):
             print([response.speech_event_type])
             print([response])
             # is_end_utterance = False
-            if response.speech_event_type == 1:
-                print('GOOGLE END UTTERANCE')
+            # if response.speech_event_type == 1:
+                # print('GOOGLE END UTTERANCE')
                 # is_end_utterance = True
                 # #break
             if response.error:
@@ -73,7 +73,7 @@ class Transcoder(object):
             transcript = result.alternatives[0].transcript
             if result.is_final:
                 self.transcript = transcript
-                print('GOT TEXT '+transcript)
+                # print('GOT TEXT '+transcript)
                 asyncio.run(self.mqtt_client.publish('hermod/'+self.site+'/asr/text',json.dumps({"id": self.last_dialog_id, 'text':self.transcript})))
                 self.closed = True
             # end utterance without transcript
@@ -101,14 +101,14 @@ class Transcoder(object):
             interim_results=False,
             single_utterance=True)
         audio_generator = self.stream_generator()
-        print('TRANSCODER PROCESS')
+        # print('TRANSCODER PROCESS')
         requests = (types.StreamingRecognizeRequest(audio_content=content)
                     for content in audio_generator)
 
         responses = client.streaming_recognize(streaming_config, requests)
         try:
             self.response_loop(responses)
-            print('TRANSCODER DONE LOOP')
+            # print('TRANSCODER DONE LOOP')
         except Exception as e:
             print('TRANSCODER ERR')
             print(e)
@@ -203,7 +203,7 @@ class GoogleAsrService(MqttService):
             
     async def total_time_timeout(self,site,msg):     
         await asyncio.sleep(12)
-        print('TOTAL TIMEOUT')
+        # print('TOTAL TIMEOUT')
         if site in self.no_packet_timeouts:
             self.no_packet_timeouts[site].cancel()  
         self.transcoders[site].write(msg.payload)
@@ -250,7 +250,8 @@ class GoogleAsrService(MqttService):
         site = parts[1]
         
         if topic == 'hermod/' +site+'/asr/activate':
-            self.log('activate ASR '+site)
+            pass
+            # self.log('activate ASR '+site)
             #await self.activate(site)
         elif topic == 'hermod/' +site+'/asr/deactivate':
             #self.log('deactivate ASR '+site)
@@ -351,7 +352,7 @@ class GoogleAsrService(MqttService):
                 # restrict empty packets to transcoder
                 silence_cutoff = 100
                 if self.non_speech[site] < silence_cutoff:
-                    self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
+                    # self.log('save audio message {} {} {}'.format(len(msg.payload),site,self.audio_count))
                     self.transcoders[site].closed = False
                     self.transcoders[site].write(msg.payload)
                     # payload_text = msg.payload
@@ -363,7 +364,7 @@ class GoogleAsrService(MqttService):
                         # #self.log(e)
                     
                     if self.transcoders[site].error and self.transcoders[site].error.code == 11:
-                        self.log('SPEECH  err 11')
+                        # self.log('SPEECH  err 11')
                         # easy because no text expected so can send bail out messages directly
                         self.no_packet_timeouts[site].cancel()
                         self.stop_transcoder(site)
@@ -372,8 +373,8 @@ class GoogleAsrService(MqttService):
                         await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id": self.last_dialog_id[site]}))
                     
                     if self.transcoders[site].transcript:
-                        self.log('HAVRE TRANSCRER')
-                        self.log(self.transcoders[site].transcript)
+                        # self.log('HAVRE TRANSCRER')
+                        # self.log(self.transcoders[site].transcript)
                         self.stop_transcoder(site)
                         
                 elif self.non_speech[site] == silence_cutoff:

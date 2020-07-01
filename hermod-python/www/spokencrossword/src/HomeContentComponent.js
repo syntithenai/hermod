@@ -1,7 +1,6 @@
 import React from "react";
 import {Component} from 'react';
 import { Button } from "react-bootstrap";
-//import {BrowserRouter as Link} from 'react-router-dom'
 import { BrowserRouter as Router, Link } from "react-router-dom";
 import FullPageScrollerComponent from './FullPageScrollerComponent'
 import logo from './logo.svg';
@@ -54,11 +53,24 @@ class ContentOne extends Component {
                        <Button variant="primary"  onClick={function(e) {that.props.sendMessage(e.target.innerText)}} >What are some synonyms for weak</Button>
                 </div>
                   <br/><br/>
-                <div style={{marginTop: '0.5em' ,clear: "both"}} >With all that information at hand, lets see if you can solve a crossword</div>
-                <div className="helpSampleButtons" >
+                 <div className="helpSampleButtons" >
+                 
+                  <div style={{clear: "both"}} >As we chat I'll suggest some follow up questions in the top menu.</div>
+                          <div className="helpSampleButtons" >
+                    <Button variant="secondary"  >And what's the population</Button>
+                    <Button variant="secondary"  >Tell me more</Button>
+                </div>
+            <br/>  <br/>  <br/>
+                    <div style={{clear: "both"}} >With all that information at hand, lets see if you can solve a crossword</div>
+               
                     <Link  to='/crossword' ><Button variant="success"   size="lg"  >Start a crossword</Button></Link>
-                    
+                    <div style={{clear: "both"}} >I can help with that too (when you are looking at a crossword) </div>
+                    <Button variant="secondary"  >One across is Canberra</Button>
+                     
                  </div>
+                 <br/>  <br/>  <br/>
+                 <br/>  <br/>  <br/>
+                 <br/>  <br/>  <br/>
           </div>
         );
     }
@@ -69,14 +81,11 @@ class ContentTwo extends Component {
         let that = this;
         return (
           <div className="component" >
-          <h2 style={{clear: "both"}} >What can I say ?</h2>
-               
-           <div style={{marginTop: '4em' ,clear: "both"}} >As we chat I'll suggest some follow up questions in the top menu.</div>
+            <div style={{clear: "both"}} >As we chat I'll suggest some follow up questions in the top menu.</div>
                           <div className="helpSampleButtons" >
                     <Button variant="secondary"  >And what's the population</Button>
                     <Button variant="secondary"  >Tell me more</Button>
                 </div>
-                <br/><br/>
                 
           </div>        
         )
@@ -97,8 +106,7 @@ export default class HomePageContent extends Component {
         <div className="component homePageComponent">
            
                     <ContentOne sendMessage={that.props.sendMessage} />
-                     <ContentTwo sendMessage={that.props.sendMessage}  />
-            
+                    
                     
               
         </div>

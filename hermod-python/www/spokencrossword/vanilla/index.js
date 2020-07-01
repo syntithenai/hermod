@@ -58,7 +58,7 @@ var HermodWebClient = function(config) {
         // default volumes
         var inputvolume = 1.0  // TODO also hotword volume?
         var outputvolume = 1.0
-        
+        var hotwordReady = false;
         //var site = null;
         
         //var inputGainNodes=[];
@@ -147,7 +147,7 @@ var HermodWebClient = function(config) {
                         if (onCallbacks.hasOwnProperty('startPlaying')) {
                             onCallbacks['startPlaying']()
                          } 
-                        playUrl(json.url).then(function() {
+                         playUrl(json.url).then(function() {
                             //console.log(['DONE speaker play']);
                             mqttClient.publish("hermod/"+site+"/speaker/finished",JSON.stringify({"id":uid})); 
                             if (onCallbacks.hasOwnProperty('stopPlaying')) {
@@ -590,6 +590,13 @@ var HermodWebClient = function(config) {
                         //startMicrophone()
                     }
                 };
+                let readyCallback = function() {
+                    console.log('hotword ready')
+                    hotwordReady = true;
+                    if (onCallbacks.hasOwnProperty('hotwordReady')) {
+                        onCallbacks['hotwordReady']()
+                    }
+                }
 
                 
                 let audioManagerErrorCallback = function (ex) {
@@ -606,7 +613,7 @@ var HermodWebClient = function(config) {
                     } 
                     porcupineManager = PorcupineManager("./porcupine/porcupine_worker.js",webpack  );
                 //}
-                porcupineManager.start(KeywordData, SENSITIVITIES, processCallback, audioManagerErrorCallback);
+                porcupineManager.start(KeywordData, SENSITIVITIES, processCallback, audioManagerErrorCallback, readyCallback);
                 console.log(    'HOW STARYTED')
                 hotwordInitialised = true;
             }

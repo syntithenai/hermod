@@ -52,6 +52,7 @@
 
         if (Porcupine.isLoaded()) {
             porcupine = Porcupine.create(keywordIDArray, sensitivities);
+            postMessage({ready: true});
         }
     }
 

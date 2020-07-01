@@ -1,7 +1,10 @@
+import logging
+import sys
 from sanic import Sanic
 from sanic.exceptions import ServerError
-from sanic.response import json, redirect, file, file_stream
+from sanic.response import json, redirect, file, file_stream, text, html
 from sanic.log import logger
+import json as jsonlib
 import asyncio
 import socket
 import os
@@ -9,7 +12,70 @@ import string
 import random
 from subprocess import call
 import time
+import motor
+import motor.motor_asyncio
+from bson.objectid import ObjectId
+from sanic_cors import CORS, cross_origin
+## DATABASE FUNCTIONS
 
+
+import types  
+from asyncio_mqtt import Client  
+
+CONFIG={
+    'mqtt_hostname':os.environ.get('MQTT_HOSTNAME','localhost'),
+    'mqtt_user':os.environ.get('MQTT_USER',''),
+    'mqtt_password':os.environ.get('MQTT_PASSWORD',''),
+    'mqtt_port':int(os.environ.get('MQTT_PORT','1883')) ,
+}
+
+
+class AuthenticatedMqttClient(Client):
+    def __init__(self,hostname,port,username='',password=''):
+        super(AuthenticatedMqttClient, self).__init__(hostname,port)
+        self._client.username_pw_set(username, password)    
+        
+    # hack to include topic in yielded    
+    def _cb_and_generator(self, *, log_context, queue_maxsize=0):
+        # Queue to hold the incoming messages
+        messages = asyncio.Queue(maxsize=queue_maxsize)
+        # Callback for the underlying API
+        def _put_in_queue(client, userdata, msg):
+            try:
+                # convert set to object
+                message = types.SimpleNamespace()
+                message.topic = msg.topic
+                message.payload = msg.payload
+                messages.put_nowait(message)
+            except asyncio.QueueFull:
+                MQTT_LOGGER.warning(f'[{log_context}] Message queue is full. Discarding message.')
+        # The generator that we give to the caller
+        async def _message_generator():
+            # Forward all messages from the queue
+            while True:
+                yield await messages.get()
+        return _put_in_queue, _message_generator()
+
+
+
+async def publish(topic,payload): 
+    async with AuthenticatedMqttClient(CONFIG.get('mqtt_hostname','localhost'),CONFIG.get('mqtt_port',1883),CONFIG.get('mqtt_user',''),CONFIG.get('mqtt_password','')) as client:
+        await client.publish(topic,json.dumps(payload))
+
+
+
+
+def mongo_connect(collection):
+    # logger = logging.getLogger(__name__)
+    # print('MONGO CONNECT ')
+    # print(str(os.environ.get('MONGO_CONNECTION_STRING')))
+    
+    client = motor.motor_asyncio.AsyncIOMotorClient(os.environ.get('MONGO_CONNECTION_STRING'))
+
+    db = client['hermod']
+    collection = db[collection]
+    return collection
+  
 def get_password(stringLength=10):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
@@ -78,6 +144,7 @@ async def ssl_serve_file(request,path):
 app.add_route(ssl_catch_all_root,'/')    
 # app.add_route(ssl_catch_all,'/<path:path>') 
 app.add_route(ssl_serve_file,'/<path:path>')
+logging.getLogger('sanic_cors').level = logging.DEBUG
 
 # old plain javascript version
 app.static('/vanilla','/app/www/spokencrossword/vanilla/static', stream_large_files=True)
@@ -107,6 +174,82 @@ async def get_hermod_config(request):
   
 app.add_route(get_hermod_config, "/config")
 
+
+
+# CROSSWORDS
+async def get_crosswords(request):
+    search = request.args.get('search','')
+    difficulty = request.args.get('difficulty','')
+    # print('CROSSWORDS')
+    # print(request)
+    # print([search, difficulty])
+    try:
+        # print('FIND FACT conn')
+        collection = mongo_connect('crosswords') 
+
+        # collection = mongo_connect('crosswords') 
+        print('FIND FACT CONNECTED')
+        andParts = []
+        if len(search) > 0:
+            andParts.append({'title':{'$regex':search}})
+        if len(difficulty) > 0:
+            andParts.append({'$or':[{'difficulty':difficulty},{'difficulty':int(difficulty)}]})
+
+        query={}
+        if len(andParts) > 0:
+            query = {'$and':andParts}
+        # print(query)
+        crosswords = []
+        cursor = collection.find(query)
+        cursor.limit(20)
+        async for document in cursor:
+            document['_id'] = str(document.get('_id'))
+            print(document)
+            crosswords.append(document)
+        #document = await collection.find_many(query)
+        #print(crosswords)
+        return json(crosswords)
+    except:
+        print('FIND FACT ERR')
+        e = sys.exc_info()
+        print(e)
+        
+        
+async def get_crossword(request,collection):
+    # print('CROSSWORD')
+    # print(request.args)
+    # print(request.args.get('id'))
+    if request.args.get('id',False):
+        # crosswordId = None #request.getid
+        # print([crosswordId])
+        try:
+            # print('FIND FACT conn')
+            collection = mongo_connect('crosswords') 
+
+            # print('FIND FACT CONNECTED')
+            query = {'_id':ObjectId(request.args.get('id'))}
+            # print(query)
+            document = await collection.find_one(query)
+            # crosswords = []
+            # async for document in collection.find(query):
+                # print(document)
+                # crosswords.append(document)
+            # #document = await collection.find_many(query)
+            # print(document)
+            document['_id'] = str(document.get('_id'))
+            # if request.args.get('site',False):
+                # await publish('hermod'+request.args.get('site')+'rasa/setslots',{"slots":[{"crossword":document['_id']}]})
+            return  json(document)
+        except:
+            print('FIND FACT ERR')
+            e = sys.exc_info()
+            print(e)        
+
+
+app.add_route(get_crossword, "/api/crossword")
+app.add_route(get_crosswords, "/api/crosswords")
+
+
 class WebService():
 
     def __init__(self,config,loop):
@@ -116,7 +259,7 @@ class WebService():
         # generate_certificates(config['services']['WebService'].get('domain_name'),config['services']['WebService'].get('email'))
                 
     async def run(self):
-        print('RUN')
+        # print('RUN')
         # print(self.config)
         cert_path = self.config['services']['WebService'].get('certificates_folder')
         # print(cert_path)
@@ -124,6 +267,8 @@ class WebService():
             #hostname = self.config.get('hostname','localhost')
             ssl = {'cert': cert_path+"/cert.pem", 'key': cert_path+"/privkey.pem"}
             server = secureredirector.create_server(host="0.0.0.0", port=80, access_log = True, return_asyncio_server=True)
+            # cors = CORS(app) #, resources={r"/api/*": {"origins": "*"}})
+
             ssl_server = app.create_server(host="0.0.0.0", port=443, access_log = True, return_asyncio_server=True,ssl=ssl)
             # print('RUN ssl')
             ssl_task = asyncio.ensure_future(ssl_server)

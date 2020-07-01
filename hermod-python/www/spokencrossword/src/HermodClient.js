@@ -36,16 +36,19 @@ export default withRouter(class HermodClient extends Component {
             frame: '',
             images: [],
             image: '',
-            buttons: []
+            buttons: [],
+            connected: false
         } 
         this.useAnalytics = false;
         this.toggleMicrophone = this.toggleMicrophone.bind(this)
         this.setQuestion = this.setQuestion.bind(this)
         this.initClient = this.initClient.bind(this)
-        this.sendMessage = this.sendMessage.bind(this)  
         this.showFrame = this.showFrame.bind(this)  
         this.showWindow = this.showWindow.bind(this)  
         this.analyticsEvent = this.analyticsEvent.bind(this)
+        this.startWaiting = this.startWaiting.bind(this)
+        this.stopWaiting = this.stopWaiting.bind(this)
+        this.sendMessage = this.sendMessage.bind(this)
         console.log('hc constr')
         console.log(this.props.history)
     }
@@ -100,8 +103,13 @@ export default withRouter(class HermodClient extends Component {
                 
                 config['javascript_environment'] = 'react'
                 that.client = new HermodWebClient(config)
+                that.setState({client:that.client})
+                console.log('CREATED CLIENT')
                 that.client.bind('hotwordDetected',function() {
                    //that.setState({isListening: true})
+                })
+                that.client.bind('hotwordReady',function() {
+                   that.setState({hotwordReady: true})
                 })
                 that.client.bind('microphoneStart',function() {
                    that.setState({microphoneState: 3})
@@ -116,13 +124,13 @@ export default withRouter(class HermodClient extends Component {
                    that.setState({microphoneState: 2})
                 })
                 that.client.bind('disconnect',function() {
-                   that.setState({microphoneState: 0})
+                   that.setState({microphoneState: 0, connected: false})
                 })
                 that.client.bind('reconnect',function() {
-                   that.setState({microphoneState: 0})
+                   that.setState({microphoneState: 0, connected: true})
                 })
                 that.client.bind('connect',function() {
-                  that.setState({microphoneState: 1})
+                  that.setState({microphoneState: 1, connected: true})
                 })
                 that.client.bind('startSpeaking',function() {
                     console.log('START SPEAKING')
@@ -154,11 +162,23 @@ export default withRouter(class HermodClient extends Component {
                         }
                         return pl;
                     }
-                    
+                    payload = jsonPayload(payloadIn)
+                    // bind topics to functions passed down from parent component
+                    var altparts = message.split("/")
+                    altparts[1] = '+';
+                    var alttopic = altparts.join("/")
+                    //console.log(alttopic)
+                    //console.log(that.props.bindTopic)
+                    if (that.props.bindTopic && alttopic in that.props.bindTopic && that.props.bindTopic[alttopic] !== null) {
+                        try {
+                            that.props.bindTopic[alttopic](payload)
+                        } catch (e) {
+                            console.log(e)
+                        }
+                    }
                     
                     if (parts.length > 3 && parts[2] === "display" && parts[3] === "show" ) {
                         //console.log('DISPLAYMESSAGE')
-                        payload = jsonPayload(payloadIn)
                         if (payload.url && payload.url.length > 0) {
                             that.client.showUrl(payload.url)
                         }
@@ -187,13 +207,12 @@ export default withRouter(class HermodClient extends Component {
                         
                 
                     } else if (parts.length > 3 && parts[2] === "dialog"  && parts[3] === "slots") {
-                        //console.log('slots')
-                        payload = jsonPayload(payloadIn)
-                        that.setState({slots: payload.slots})
+                        console.log('SET SLOTS')
+                        console.log(payload)
+                        that.setState({slots: payload})
                         //showSlots(payload)
                     } else if (parts.length > 3 && parts[2] === "asr"  && parts[3] === "text") {
                         //console.log('asr text')
-                        payload = jsonPayload(payloadIn)
                         that.setState({transcript: payload.text, nlu:'', say:''})
                         if (clearSpeechTimeout) clearTimeout(clearSpeechTimeout) 
                         clearSpeechTimeout = setTimeout(function() {
@@ -201,7 +220,6 @@ export default withRouter(class HermodClient extends Component {
                         },3000)
                     } else if (parts.length > 3 && parts[2] === "nlu"  && parts[3] === "intent") {
                         //console.log('nlu intent')
-                        payload = jsonPayload(payloadIn)
                         var intentName = payload.intent && payload.intent.name ? payload.intent.name : '' 
                         var cleanEntities = {}
                         if (intentName.length > 0 && payload.entities) {
@@ -216,7 +234,6 @@ export default withRouter(class HermodClient extends Component {
                             that.analyticsEvent(intentName + JSON.stringify(cleanEntities))
                         }
                     }  else if (parts.length > 2 && parts[2] === "tts"  && parts[3] === "say") {
-                        payload = jsonPayload(payloadIn)
                         console.log('say text '+payload.text)
                         that.setState({say: payload.text}) 
                     }  else if (parts.length > 3  && parts[2] === "display" && parts[3] === "startwaiting") {
@@ -333,13 +350,9 @@ export default withRouter(class HermodClient extends Component {
                   action:  page
                 });
           }
-      }; 
-      
-      sendMessage(text) {
-          console.log('SNED MESSAGE '+text)
-          this.client.sendASRTextMessage(this.state.config.site,text)
       }
       
+
       showFrame(url) {
           this.setState({"frame":url})
           this.props.history.push('/frame');
@@ -364,23 +377,39 @@ export default withRouter(class HermodClient extends Component {
         displayWindow = window.open(url)
       }
       
+      startWaiting() {
+        this.setState({isWaiting: true})
+      }
+      
+      stopWaiting() {
+        this.setState({isWaiting: false})
+      }
+      
+      sendMessage(text) {
+          console.log('SNED MESSAGE '+text)
+          this.client.sendASRTextMessage(this.state.config.site,text)
+       }
 
     
     render() {
-        var api = {
-            toggleMicrophone:this.toggleMicrophone,
-            setQuestion:this.setQuestion,
-            client: this.client,
-            sendMessage: this.sendMessage,
-            showFrame: this.showFrame,
-            showWindow: this.showWindow
-        }
+        if (this.state.config) {
+                var api = {
+                toggleMicrophone:this.toggleMicrophone,
+                setQuestion:this.setQuestion,
+                client: this.state.client,
+                showFrame: this.showFrame,
+                showWindow: this.showWindow,
+                startWaiting: this.startWaiting,
+                stopWaiting: this.stopWaiting,
+                sendMessage: this.sendMessage
+            }
 
-      return (
-        <div className="HermodClient">
-        {this.props.children(this.state,api)}
-        </div>
-      );
+          return (
+            <div className="HermodClient">
+            {this.props.children(this.state,api)}
+            </div>
+          );
+        } else return null
     }
 })
 

@@ -13,6 +13,10 @@ from signal import signal, SIGINT
 
 from rasa_sdk.endpoint import create_app
 
+async def server_error_handler(request, exception):
+            console.log(exception)
+            return text("Oops, server error", status=500)
+
 class RasaActionsService():
 
     def __init__(self,config,loop):
@@ -22,19 +26,24 @@ class RasaActionsService():
         # generate_certificates(config['services']['WebService'].get('domain_name'),config['services']['WebService'].get('email'))
                 
     async def run(self):
-        print('RUN')
-        # print(self.config)
-        app = create_app('actions')
         
-        @app.listener('after_server_start')
-        async def after_start_test(app, loop):
-            print("Async Server Started!")
-        
-        server = app.create_server(host="0.0.0.0", port=5055, access_log = False, return_asyncio_server=True)
-        loop = asyncio.get_event_loop()
-        # print("got loop")
-        print(loop)
+
+        # app.error_handler.add(Exception, server_error_handler)
+        print('try')
         try:
+            # print('RUN')
+            # print(self.config)
+            app = create_app('actions')
+            # print('app')
+            # @app.listener('after_server_start')
+            # async def after_start_test(app, loop):
+                # print("Async Server Started!")
+            
+            
+            server = app.create_server(host="0.0.0.0", port=5055, access_log = False, return_asyncio_server=True)
+            loop = asyncio.get_event_loop()
+            # print("got loop")
+            # print(loop)
             serv_task = asyncio.ensure_future(server)
             # print("srv task")
             # signal(SIGINT, lambda s, f: loop.stop())

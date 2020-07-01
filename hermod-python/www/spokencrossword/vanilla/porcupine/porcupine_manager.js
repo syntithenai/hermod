@@ -15,7 +15,7 @@ var WebVoiceProcessor = require('./web_voice_processor')
 PorcupineManager = (function (porcupineWorkerScript, webpack = false) {
     let porcupineWorker;
     
-    let start = function (keywordIDs, sensitivities, detectionCallback, errorCallback) {
+    let start = function (keywordIDs, sensitivities, detectionCallback, errorCallback, readyCallback) {
         porcupineWorker = new Worker(porcupineWorkerScript); //
         //porcupineWorker = work(require('./porcupine_worker.js')) //window.PorcupineWorker);
         porcupineWorker.postMessage({
@@ -25,7 +25,14 @@ PorcupineManager = (function (porcupineWorkerScript, webpack = false) {
         });
 
         porcupineWorker.onmessage = function (e) {
-            detectionCallback(e.data.keyword);
+            
+            if (e.data.ready) {
+                console.log('WORKER MSG')
+                console.log(e.data)
+                readyCallback()
+            } else {
+                detectionCallback(e.data.keyword);
+            }
         };
 
        WebVoiceProcessor.start([this], errorCallback, webpack);
