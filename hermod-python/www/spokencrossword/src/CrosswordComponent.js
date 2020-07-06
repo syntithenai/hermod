@@ -166,7 +166,7 @@ export default class CrosswordComponent extends Component {
                 if (this.props.startWaiting) this.props.startWaiting()
                 console.log(this.props.hermodClient)
                 if (this.props.hermodClient && this.props.hermodClient.config && this.props.hermodClient.config.site) { 
-                    fetch('/api/crossword?id='+this.props.match.params.id+"&site="+ this.props.hermodClient.config)
+                    fetch('/api/crossword?id='+this.props.match.params.id+"&site="+ this.props.hermodClient.config.site)
                     .then(function(response) {
                         //console.log(response.text())
                         return response.json()

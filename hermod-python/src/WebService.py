@@ -60,7 +60,7 @@ class AuthenticatedMqttClient(Client):
 
 async def publish(topic,payload): 
     async with AuthenticatedMqttClient(CONFIG.get('mqtt_hostname','localhost'),CONFIG.get('mqtt_port',1883),CONFIG.get('mqtt_user',''),CONFIG.get('mqtt_password','')) as client:
-        await client.publish(topic,json.dumps(payload))
+        await client.publish(topic,jsonlib.dumps(payload))
 
 
 
