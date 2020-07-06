@@ -198,7 +198,7 @@ export default class CrosswordComponent extends Component {
           return (
             <div className="componentd dfirst-component" style={{ width:'100%'}}>
                 <div className="acontent-block" style={{ width:'100%'}}>
-                <a style={{  float:'left' ,marginLeft:'0.2em'}} target="_new" href={that.state.link}><Button>Download</Button></a>
+                {that.state.link && <a style={{  float:'left' ,marginLeft:'0.2em'}} target="_new" href={that.state.link}><Button>Download</Button></a>}
                 
                 <Link style={{float:'right', marginRight:'0.2em'}}  to="/crosswords"><Button variant="success">Start a new crossword</Button></Link>
                 <h3 style={{ clear:'both', marginRight:'0.2em', width:'100%'}}>{that.state.title} </h3>
@@ -219,7 +219,7 @@ export default class CrosswordComponent extends Component {
                 }
                 
 
- {(that.state.data && that.props.hermodClient.connected) && <Crossword data={that.state.data} 
+ {(that.state.data && that.props.hermodClient.connected) && <Crossword style={{zIndex:1}}  data={that.state.data} 
                       storageKey={'guesses_'+this.props.match.params.ids} 
                       ref={that.props.crosswordRef}
                       onCorrect={that.onCorrect}

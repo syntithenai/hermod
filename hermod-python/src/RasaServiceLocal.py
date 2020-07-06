@@ -102,7 +102,7 @@ class RasaServiceLocal(MqttService):
         # self.log(payload)
         if topic == 'hermod/' + site + '/rasa/set_slots':
             if payload: 
-                await self.set_slots(payload)
+                await self.set_slots(site,payload)
                 
         elif topic == 'hermod/' + site + '/nlu/parse':
             if payload: 
@@ -161,7 +161,8 @@ class RasaServiceLocal(MqttService):
     
         
     async def reset_tracker(self,site):
-        self.log('RESSET tracker '+site)
+        pass
+        # self.log('RESSET tracker '+site)
         # tracker = self.tracker_store.get_or_create_tracker(site)
         # tracker._reset()
         # pass
@@ -231,7 +232,7 @@ class RasaServiceLocal(MqttService):
             await self.finish(site,payload)
         
     
-    async def set_slots(self,payload):
+    async def set_slots(self,site,payload):
         tracker = self.tracker_store.get_or_create_tracker(site)
         if payload :
             #tracker.current_slot_values();
@@ -293,7 +294,7 @@ class RasaServiceLocal(MqttService):
                 await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
             else:
                 await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
-        self.send_slots(site)  
+        await self.send_slots(site)  
         await self.client.publish('hermod/'+site+'/core/ended',json.dumps(payload));      
 # event_loop = asyncio.get_event_loop()
 # Then later, inside your Thread:

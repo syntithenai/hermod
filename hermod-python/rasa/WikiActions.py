@@ -596,8 +596,8 @@ class ActionSearchWiktionary(Action):
                         slotsets.append(SlotSet("hermod_force_end", "true"))      
             else:
                 dispatcher.utter_message(text="I couldn't find the meaning of "+word)   
-            await publish('hermod/'+site+'/display/show',{'question':'Define the word '+word})
-            slotsets.append(SlotSet("hermod_force_continue", "true"))  
+                # await publish('hermod/'+site+'/display/show',{'question':'Define the word '+word})
+                # slotsets.append(SlotSet("hermod_force_continue", "true"))  
              
         else:
             dispatcher.utter_message(text="I didn't hear the word you want defined. Try again")

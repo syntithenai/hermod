@@ -237,8 +237,8 @@ async def get_crossword(request):
             # #document = await collection.find_many(query)
             print(document)
             document['_id'] = str(document.get('_id'))
-            # if request.args.get('site',False):
-                # await publish('hermod'+request.args.get('site')+'rasa/setslots',{"slots":[{"crossword":document['_id']}]})
+            if request.args.get('site',False):
+                await publish('hermod'+request.args.get('site')+'rasa/setslots',{"slots":[{"crossword":document['_id']}]})
             return  json(document)
         except:
             print('FIND FACT ERR')
