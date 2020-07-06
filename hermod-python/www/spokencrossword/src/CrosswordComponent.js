@@ -88,26 +88,29 @@ export default class CrosswordComponent extends Component {
 
     constructor(props) {
       super(props);
-      this.state = {_id:'',title:'',data:data}
+      this.state = {_id:'',title:'',data:data, forcereload: 0}
       this.onCorrect = this.onCorrect.bind(this)
       this.onLoadedCorrect = this.onLoadedCorrect.bind(this)
       this.onCrosswordCorrect = this.onCrosswordCorrect.bind(this)
       this.onCellChange = this.onCellChange.bind(this)
       this.loadCrossword = this.loadCrossword.bind(this)
-     
     }
     
     componentDidMount() {
+        let that = this;
         console.log(['ATUPmnt',this.props.match])
-         this.loadCrossword();
+        // wait for config to load
+         setTimeout(function() {console.log('TRIGGER') ; that.setState({forcereload:23})},500)
 	}
     
     componentDidUpdate(props,state) {
-        //console.log(['ATUPDATE'])
-        //console.log(props.api.client)
-        //console.log(this.props.api.client)
+        console.log(['ATUPDATE'])
+        console.log(state.forcereload)
+        console.log(this.state.forcereload)
+        console.log(props.api.connected)
+        console.log(this.props.api.connected)
         //console.log(this.props.match.params.id)
-        if (props.hermodClient.connected != props.hermodClient.connected || (this.props.match && this.props.match.params && this.state._id.length > 0 && this.props.match.params.id != this.state._id)) {
+        if (props.hermodClient.connected != props.hermodClient.connected || this.state.forcereload != state.forcereload) { // || (this.props.match && this.props.match.params && this.state._id.length > 0 && this.props.match.params.id != this.state._id)) {
 		//	this.loadSubscribers();
         console.log(['ATUPDATErea'])
 			this.loadCrossword();
@@ -161,19 +164,23 @@ export default class CrosswordComponent extends Component {
                that.setState(stash[this.props.match.params.id]) 
             } else {
                 if (this.props.startWaiting) this.props.startWaiting()
-                fetch('/api/crossword?id='+this.props.match.params.id+"&site="+this.props.hermodClient['config'].get('site'))
-                .then(function(response) {
-                    //console.log(response.text())
-                    return response.json()
-                }).then(function(crossword) {
-                    console.log(crossword)
-                    var saveMe = {_id:crossword._id,data:crossword.data, title:crossword.title}
-                    stash[crossword._id] = saveMe
-                    localStorage.setItem('crosswords',JSON.stringify(stash))
-                    that.setState(saveMe)
-                }).finally(function() {
-                    if (that.props.stopWaiting) that.props.stopWaiting()  
-                })
+                console.log(this.props.hermodClient)
+                if (this.props.hermodClient && this.props.hermodClient.config && this.props.hermodClient.config.site) { 
+                    fetch('/api/crossword?id='+this.props.match.params.id+"&site="+ this.props.hermodClient.config)
+                    .then(function(response) {
+                        //console.log(response.text())
+                        return response.json()
+                    }).then(function(crossword) {
+                         console.log('LOADED CW******************************')
+                        console.log(crossword)
+                        var saveMe = {_id:crossword._id,data:crossword.data, title:crossword.title, author:crossword.author, copyright:crossword.copyright ? crossword.copyright.replace(/[^\w\s!?]/g,'') : '', copyright_link:crossword.copyright_link, link:crossword.link}
+                        stash[crossword._id] = saveMe
+                        localStorage.setItem('crosswords',JSON.stringify(stash))
+                        that.setState(saveMe)
+                    }).finally(function() {
+                        if (that.props.stopWaiting) that.props.stopWaiting()  
+                    })
+                }
             }
             console.log(['SENDMESSAGE',that.props,that.props.api,that.props.site,{slots:[{crossword:that.props.match.params.id}]}])
             if (that.props.api && that.props.api.client) {
@@ -189,11 +196,30 @@ export default class CrosswordComponent extends Component {
         let that = this;
         if (this.props.match.params.id) { 
           return (
-            <div className="componentd dfirst-component">
-                <div className="acontent-block">
-                <h3 style={{ clear:'both', marginRight:'0.2em'}}>{this.state.title}</h3>
-                <Link style={{float:'left', clear:'both', marginRight:'0.2em'}}  to="/crosswords"><Button>Start a new crossword</Button></Link>
-                    {(that.state.data && that.props.hermodClient.connected) && <Crossword data={that.state.data} 
+            <div className="componentd dfirst-component" style={{ width:'100%'}}>
+                <div className="acontent-block" style={{ width:'100%'}}>
+                <a style={{  float:'left' ,marginLeft:'0.2em'}} target="_new" href={that.state.link}><Button>Download</Button></a>
+                
+                <Link style={{float:'right', marginRight:'0.2em'}}  to="/crosswords"><Button variant="success">Start a new crossword</Button></Link>
+                <h3 style={{ clear:'both', marginRight:'0.2em', width:'100%'}}>{that.state.title} </h3>
+                <div>
+                </div>   
+                {that.state.copyright &&  
+                    <span>
+                        {that.state.author &&  <span> by {that.state.author}</span>} 
+                        <span> &copy; <a target="_new"  href={this.state.copyright_link}>{that.state.copyright}</a></span>
+                    </span>
+                }
+                
+
+                {!that.state.copyright &&  
+                    <span>
+                        {that.state.author &&  <span> by <a target="_new" href={this.state.copyright_link}>{that.state.author}></a></span>} 
+                    </span>
+                }
+                
+
+ {(that.state.data && that.props.hermodClient.connected) && <Crossword data={that.state.data} 
                       storageKey={'guesses_'+this.props.match.params.ids} 
                       ref={that.props.crosswordRef}
                       onCorrect={that.onCorrect}

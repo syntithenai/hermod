@@ -82,7 +82,7 @@ class ActionNavigateTo(Action):
         # # # home => 
         # # # crossword =>
         # # logger.debug(search_term)
-        dispatcher.utter_message(text="navigate")
-        await publish("hermod/"+site+"/display/show",{"navigate":"/"})
+        dispatcher.utter_message(text="ok")
+        await publish("hermod/"+site+"/display/show",{'navigate':'/'+search_term})
         return []
         # [SlotSet("hermod_force_continue", "true"), SlotSet("hermod_force_end", None)] 

@@ -31,7 +31,7 @@ function SuggestionButtonsComponent(props) {
     var renderedButtons = []
     var i = 0;
     const sendMessage = function(e) {
-         props.sendMessage(e.target.getAttribute('data-frame'))
+         props.sendMessage(e.target.getAttribute('data-message'))
     }
     const showFrame = function(e) {
         props.showFrame(e.target.getAttribute('data-frame'))

@@ -11,7 +11,8 @@ export default class SpeechBubbleComponent extends Component {
             position: "fixed",
             top: "4em",
             right: "8em",
-            minWidth: "15em"
+            minWidth: "15em",
+            zIndex:99
       }
       
       const bubbleStyle = {
@@ -34,7 +35,6 @@ export default class SpeechBubbleComponent extends Component {
         <div style={wrapStyle} className="speechBubbleComponent">
          {visible &&   <div  style={bubbleStyle} id="speechbubble" className="speech-bubble">
              <div style={{fontWeight: 'bold'}} >{that.props.hermodClient.transcript}</div>
-             {that.props.hermodClient.nlu && <div><i>{that.props.hermodClient.nlu}</i></div>}
              {that.props.hermodClient.say && <div>{that.props.hermodClient.say}</div>}
              </div>}
         </div>
@@ -42,3 +42,5 @@ export default class SpeechBubbleComponent extends Component {
     }
 }
 
+//{that.props.hermodClient.nlu && <div><i>{that.props.hermodClient.nlu}</i></div>}
+             

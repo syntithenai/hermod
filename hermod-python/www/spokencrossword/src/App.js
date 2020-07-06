@@ -52,12 +52,13 @@ export default class App extends Component {
                 <HermodClient bindTopic={{"hermod/+/crossword/fill": that.fillCrossword}} >
                 {(hermodClient, api) => (
                     <div>
-                        <PropsRoute  path="/" hermodClient={hermodClient} component={HeaderComponent}  showFrame={api.showFrame} showWindow={api.showWindow} sendMessage={api.sendMessage} toggleMicrophone={api.toggleMicrophone} setQuestion={api.setQuestion} />
+                        <PropsRoute  path="/" hermodClient={hermodClient} component={HeaderComponent} api={api} showFrame={api.showFrame} showWindow={api.showWindow} sendMessage={api.sendMessage} toggleMicrophone={api.toggleMicrophone} setQuestion={api.setQuestion} />
                         <div style={{marginTop:"9em"}}>
+                        <div>{JSON.stringify(this.props.hermodClient)}</div>
                             <PropsRoute  exact={true} path="/" hermodClient={hermodClient} component={HomeContentComponent} sendMessage={api.sendMessage}  />
                             <PropsRoute  exact={true} path="/home"  hermodClient={hermodClient}  component={HomeContentComponent} sendMessage={api.sendMessage}   />
-                            <PropsRoute  exact={true} path="/crossword"  site={hermodClient.config.site} api={api} hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
-                            <PropsRoute  exact={true} path="/crossword/:id" site={hermodClient.config.site} api={api}  hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
+                            <PropsRoute  exact={true} path="/crossword" connected={hermodClient.connected} site={hermodClient.config.site} api={api} hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
+                            <PropsRoute  exact={true} path="/crossword/:id" connected={hermodClient.connected} site={hermodClient.config.site} api={api}  hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
                             <PropsRoute  exact={true} path="/crosswords"  hermodClient={hermodClient}  component={CrosswordListComponent} startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
                             <PropsRoute  exact={true} path="/frame"  hermodClient={hermodClient}  component={IFrameComponent}   />
                             <PropsRoute  exact={true} path="/youtube"  hermodClient={hermodClient}  component={YoutubeComponent}   />

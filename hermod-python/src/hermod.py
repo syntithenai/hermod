@@ -29,7 +29,7 @@ from flask import Flask, redirect, url_for, cli, redirect
 from flask_dance.contrib.google import make_google_blueprint, google
 from subprocess import call, run
 #import AuthService
-import WebService
+# import WebService
 from dotenv import load_dotenv
 load_dotenv()
 from rasa.train import train
@@ -190,7 +190,8 @@ def generate_certificates():
     cert_path = '/etc/letsencrypt/live/'+domain
     if domain == "localhost":
         print('GEN LOCALHOST SSL KEY')
-        cmd = ['openssl','req','-x509','-newkey','rsa:4096','-keyout',cert_path+'/privkey.pem','-out',cert_path+'/cert.pem','-days','365','-nodes','-subj',"'/CN=localhost'"]
+        p1 = call(['mkdir','-p',cert_path])
+        cmd = ['openssl','req','-x509','-newkey','rsa:4096','-keyout',cert_path+'/privkey.pem','-out',cert_path+'/cert.pem','-days','365','-nodes','-subj','/CN=localhost']
         p = call(cmd)
         
     else:

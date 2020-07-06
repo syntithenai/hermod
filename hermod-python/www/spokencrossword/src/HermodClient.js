@@ -30,6 +30,7 @@ export default withRouter(class HermodClient extends Component {
             slots:[],
             transcript:'',
             nlu:'',
+            nlu_json:{},
             say:'',
             isWaiting:false,
             question: '',
@@ -49,8 +50,17 @@ export default withRouter(class HermodClient extends Component {
         this.startWaiting = this.startWaiting.bind(this)
         this.stopWaiting = this.stopWaiting.bind(this)
         this.sendMessage = this.sendMessage.bind(this)
+        this.navigateTo = this.navigateTo.bind(this)
+        this.setNluJson = this.setNluJson.bind(this)
+        
         console.log('hc constr')
         console.log(this.props.history)
+    }
+    
+    navigateTo(target) {
+        console.log('NAV '+target)
+        this.props.history.push(target)
+        
     }
     
     initClient() {
@@ -131,6 +141,8 @@ export default withRouter(class HermodClient extends Component {
                 })
                 that.client.bind('connect',function() {
                   that.setState({microphoneState: 1, connected: true})
+                  that.client.sendMessage('hermod/'+config.site+'/rasa/get_domain',{})
+    
                 })
                 that.client.bind('startSpeaking',function() {
                     console.log('START SPEAKING')
@@ -201,23 +213,32 @@ export default withRouter(class HermodClient extends Component {
                         if (payload.buttons && payload.buttons.length > 0) {
                             that.setState({buttons: payload.buttons})
                         }
-                        if (payload.question && payload.question.length > 0) {
-                            that.setState({question: payload.question})
+                        //if (payload.question && payload.question.length > 0) {
+                            //that.setState({question: payload.question})
+                        //}
+                        if (payload.navigate && payload.navigate.length > 0) {
+                            console.log("NAVMSG")
+                            console.log(payload)
+                            that.navigateTo(payload.navigate)
                         }
-                        
                 
                     } else if (parts.length > 3 && parts[2] === "dialog"  && parts[3] === "slots") {
                         console.log('SET SLOTS')
                         console.log(payload)
                         that.setState({slots: payload})
-                        //showSlots(payload)
+                    } else if (parts.length > 3 && parts[2] === "rasa"  && parts[3] === "domain") {
+                        console.log('SET DOMAIN')
+                        console.log(payload)
+                        that.setState({domain: payload})
+                        
                     } else if (parts.length > 3 && parts[2] === "asr"  && parts[3] === "text") {
-                        //console.log('asr text')
-                        that.setState({transcript: payload.text, nlu:'', say:''})
+                        that.setState({question:payload.text, transcript: payload.text, nlu:'', say:''})
                         if (clearSpeechTimeout) clearTimeout(clearSpeechTimeout) 
                         clearSpeechTimeout = setTimeout(function() {
                             that.setState({transcript: ''})
                         },3000)
+                    } else if (parts.length > 3 && parts[2] === "dialog"  && parts[3] === "end") {
+                        that.setState({transcript: ""})
                     } else if (parts.length > 3 && parts[2] === "nlu"  && parts[3] === "intent") {
                         //console.log('nlu intent')
                         var intentName = payload.intent && payload.intent.name ? payload.intent.name : '' 
@@ -230,8 +251,24 @@ export default withRouter(class HermodClient extends Component {
                                     cleanEntities[entity.entity] = entity.value
                                 }
                             }
-                            that.setState({nlu: intentName + JSON.stringify(cleanEntities), buttons: []})
+                            that.setState({nlu_json: payload,nlu_json_original:JSON.stringify(payload), nlu: intentName + JSON.stringify(cleanEntities), buttons: []})
                             that.analyticsEvent(intentName + JSON.stringify(cleanEntities))
+                        }
+                    } else if (parts.length > 3 && parts[2] === "nlu"  && parts[3] === "externalintent") {
+                        console.log('nlu external intent')
+                        console.log(payload)
+                        var intentName = payload.intent && payload.intent.name ? payload.intent.name : '' 
+                        var cleanEntities = {}
+                        if (intentName.length > 0 && payload.entities) {
+                            for (var i in payload.entities) {
+                                var entity = payload.entities[i]
+                                console.log(entity)
+                                if (entity.entity && entity.entity.length > 0 && entity.value && entity.value.length > 0 ) {
+                                    cleanEntities[entity.entity] = entity.value
+                                }
+                            }
+                            that.setState({nlu_json: payload, nlu: intentName + JSON.stringify(cleanEntities)})
+                            //that.analyticsEvent(intentName + JSON.stringify(cleanEntities))
                         }
                     }  else if (parts.length > 2 && parts[2] === "tts"  && parts[3] === "say") {
                         console.log('say text '+payload.text)
@@ -305,7 +342,10 @@ export default withRouter(class HermodClient extends Component {
         let that = this;
         var state = this.state.microphoneState;
         if (that.state.isPlaying) {
+            console.log('ONCLICK WHILE TALKING')
             that.client.stopPlaying()
+            that.client.sendMessage('hermod/'+that.state.config.site+'/tts/finished',{})
+            
         } else {          
             if (state === 1) { // connected stopped
                 that.client.stopMicrophone()
@@ -320,7 +360,9 @@ export default withRouter(class HermodClient extends Component {
                 that.client.stopMicrophone()
                 that.client.stopHotword()
                 that.client.sendMessage('hermod/'+that.state.config.site+'/dialog/end',{})
-            } 
+            } else {
+                
+            }
             //else if (state === 4) {
                 //that.client.stopPlaying()
                 //that.client.stopMicrophone()
@@ -334,6 +376,10 @@ export default withRouter(class HermodClient extends Component {
         
         //setTimeout(function() {that.setState({isWaiting: false})},1000)
         
+    }
+    
+    setNluJson(json) {
+        this.setState({nlu_json:json})
     }
     
     setQuestion(event) {
@@ -401,7 +447,8 @@ export default withRouter(class HermodClient extends Component {
                 showWindow: this.showWindow,
                 startWaiting: this.startWaiting,
                 stopWaiting: this.stopWaiting,
-                sendMessage: this.sendMessage
+                sendMessage: this.sendMessage,
+                setNluJson: this.setNluJson
             }
 
           return (

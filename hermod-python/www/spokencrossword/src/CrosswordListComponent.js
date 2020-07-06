@@ -22,14 +22,10 @@ export default class CrosswordListComponent extends Component {
     
       componentDidMount() {
         console.log('APP dMOUNT')
-        this.crossword =  React.createRef();
-        //this.fillCrossword=this.fillCrossword.bind(this)
-      };
-      
-       componentWillMount() {
-           let that = this;
+        let that = this;
+           var crosswords = []
            if (localStorage.getItem('crossword_list_entry')) {
-               var crosswords = []
+               
                try {
                    crosswords = JSON.parse(localStorage.getItem('crossword_list_entry'))
                    this.setState({crosswords: crosswords})
@@ -39,13 +35,18 @@ export default class CrosswordListComponent extends Component {
                     })
                }
             }
-            if (crosswords.length == 0){
+            if (!crosswords || crosswords.length === 0){
                 this.searchCrosswords().then(function() {
                     localStorage.setItem('crossword_list_entry',JSON.stringify(that.state.crosswords))
                 })
                 
-            }
-       }
+            }        this.crossword =  React.createRef();
+        //this.fillCrossword=this.fillCrossword.bind(this)
+      };
+      
+       //componentWillMount() {
+           
+       //}
       updateSearchFor(e) {
           this.setState({searchFor:e.target.value})
           this.sendForm(e)
@@ -82,7 +83,7 @@ export default class CrosswordListComponent extends Component {
     
     sendForm(e) {
         console.log('SEMD FORM')
-        let that = this;
+        //let that = this;
         e.preventDefault()
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout)
@@ -94,19 +95,19 @@ export default class CrosswordListComponent extends Component {
     render () {
         let that = this
         var searchResults = []
-        var crosswordItemStyle = {
+        //var crosswordItemStyle = {
             
-        }
-        var difficultyMap = {1:"Kids",2:"Easy",3:"Medium",4:"Hard",5:"Cryptic"}
+        //}
+        var difficultyMap = {"1":"Kids","2":"Easy","3":"Medium","4":"Hard","5":"Cryptic"}
         var categoryItems={}
         for (var i in this.state.crosswords) {
             var crossword = this.state.crosswords[i]
-            var difficulty = crossword.difficulty > 0 ? crossword.difficulty : 1;
+            var difficulty = Number(crossword.difficulty > 0 ? crossword.difficulty : 1).toString();
             if (! categoryItems.hasOwnProperty(difficulty)) {
                 categoryItems[difficulty] = []
             }
-            categoryItems[difficulty].push(<div key={i} style={{width:'90%', textAlign:'left', padding:'1em'}} ><Link to={"/crossword/"+crossword._id} ><Button style={{minWidth:'18em'}}><span style={{float:'right', marginLeft:'0.5em'}} className="badge badge-light">{difficultyMap.hasOwnProperty(i) ? difficultyMap[i]:"Unknown"}</span>Start the {crossword.title} crossword</Button></Link></div>)
-            searchResults.push(<div key={i} style={{width:'90%', textAlign:'left', padding:'1em'}} ><Link to={"/crossword/"+crossword._id} ><Button style={{minWidth:'18em'}}><span style={{float:'right', marginLeft:'0.5em'}} className="badge badge-light">{difficultyMap.hasOwnProperty(i) ? difficultyMap[i]:"Unknown"}</span>Start the {crossword.title} crossword</Button></Link></div>)
+            categoryItems[difficulty].push(<div key={i} style={{width:'90%', textAlign:'left', padding:'1em'}} ><Link to={"/crossword/"+crossword._id} ><Button style={{minWidth:'18em'}}><span style={{float:'right', marginLeft:'0.5em'}} className="badge badge-light">{difficultyMap.hasOwnProperty(crossword.difficulty) ? difficultyMap[crossword.difficulty]:"Unknown"}</span>Start the {crossword.title} crossword</Button></Link></div>)
+            searchResults.push(<div key={i} style={{width:'90%', textAlign:'left', padding:'1em'}} ><Link to={"/crossword/"+crossword._id} ><Button style={{minWidth:'18em'}}><span style={{float:'right', marginLeft:'0.5em'}} className="badge badge-light">{difficultyMap.hasOwnProperty(crossword.difficulty) ? difficultyMap[crossword.difficulty]:"Unknown"}</span>Start the {crossword.title} crossword</Button></Link></div>)
         }
         var categoryStyle={backgroundColor: 'orange', minWidth: '30%', float: 'left', minHeight: '7em', border: '1px solid blue', marginLeft: '0.8em' , marginTop: '0.8em' , fontSize:'2em', textAlign:'center', align:'center'
             }

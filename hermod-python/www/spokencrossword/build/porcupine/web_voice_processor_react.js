@@ -7,7 +7,7 @@ WebVoiceProcessor = (function () {
 
     let isRecording = false;
 
-    let start = function (engines, errorCallback,webpack = false) {
+    let start = function (engines, errorCallback) {
         if (!downsampler) {
             navigator.mediaDevices.getUserMedia({audio: true})
                 .then(stream => {
@@ -24,14 +24,10 @@ WebVoiceProcessor = (function () {
                     audioSource.connect(node);
                     node.connect(audioContext.destination);
                     // react
-                    let downsampler;
-                    if (webpack) {
-                        downsampler = workwp(require.resolve('./downsampling_worker.js'));
-                    } else {
+                    downsampler = workwp(require.resolve('./downsampling_worker.js'));
                     // vanilla
-                        downsampler = work(require('./downsampling_worker.js'));
-                    }
-                    //downsampler = new Worker(downsamplerScript);
+                    //downsampler = work(require('./downsampling_worker.js'));
+                    
                     downsampler.postMessage({command: "init", inputSampleRate: audioSource.context.sampleRate});
                     downsampler.onmessage = function (e) {
                         engines.forEach(function (engine) {

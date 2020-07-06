@@ -25,8 +25,8 @@ class ActionTellTime(Action):
         slotsets = []
         dt = datetime.now().strftime("%I:%M %p")
         dispatcher.utter_message(text="The time is {}".format(dt))
-        slotsets.append(SlotSet("hermod_force_end", None ))
-        slotsets.append(SlotSet("hermod_force_continue","true"))
+        slotsets.append(SlotSet("hermod_force_continue",None))
+        slotsets.append(SlotSet("hermod_force_end", "true"))      
         return slotsets
 
 class ActionTellDate(Action):

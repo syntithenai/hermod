@@ -12,7 +12,7 @@ export default class ImageListComponent extends Component {
         if (this.props.images && this.props.images.length > 0) { 
             let images = []
             for (var i = 0; i< that.props.images.length; i++) {
-                images.push(<span  key={i} ><img src={that.props.images[i].url} style={{width: '90%'}} /><div>{that.props.images[i].attribution}</div></span>)
+                images.push(<span  key={i} ><img alt={that.props.images[i].attribution} src={that.props.images[i].url} style={{width: '90%'}} /><div>{that.props.images[i].attribution}</div></span>)
             }
             return (
             <div className="images-list" >

@@ -120,8 +120,9 @@ class ActionFillCrossword(Action):
             site = tracker.current_state().get('sender_id')
             # dispatcher.utter_message(text="crossword")
             slots = tracker.current_state().get('slots')
+            
             slotsets = []
-            if slots.get('crossword'):
+            if slots.get('crossword') and len(slots.get('crossword')) > 0:
                 crossword = await  get_crossword(slots.get('crossword'))
                 if crossword:
                     crossword_position = self.extract_entities(tracker,['crossword_position'])
@@ -164,23 +165,27 @@ class ActionFillCrossword(Action):
                                         dispatcher.utter_message(text="Nope, try again")
                                         slotsets.append(SlotSet("hermod_force_continue", "true"))
                                         slotsets.append(SlotSet("hermod_force_end", None)) 
+                                        await publish('hermod/'+site+'/display/show',{'question':just_number + ' '  + direction +' is ' })
                                 else: 
                                     dispatcher.utter_message(text="I didn't hear the word you wanted to fill")
                                     slotsets.append(SlotSet("hermod_force_continue", "true"))
                                     slotsets.append(SlotSet("hermod_force_end", None)) 
+                                    await publish('hermod/'+site+'/display/show',{'question':just_number + ' '  + direction +' is ' })
                             else:
                                 dispatcher.utter_message(text="I didn't hear which direction you wanted to fill")
                                 slotsets.append(SlotSet("hermod_force_continue", "true"))
                                 slotsets.append(SlotSet("hermod_force_end", None)) 
+                                await publish('hermod/'+site+'/display/show',{'question':crossword_position})
                         else: 
                             dispatcher.utter_message(text="I didn't hear the number you wanted to fill")
                             slotsets.append(SlotSet("hermod_force_continue", "true"))
                             slotsets.append(SlotSet("hermod_force_end", None)) 
-
+                            await publish('hermod/'+site+'/display/show',{'question':crossword_position})
                     else:
                         dispatcher.utter_message(text="I didn't hear the position you wanted to fill")
                         slotsets.append(SlotSet("hermod_force_continue", "true"))
                         slotsets.append(SlotSet("hermod_force_end", None)) 
+                        await publish('hermod/'+site+'/display/show',{'question':crossword_position})
             
             #hermod/+/crossword/fill
         except Exception as e:

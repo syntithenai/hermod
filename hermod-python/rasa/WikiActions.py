@@ -592,7 +592,8 @@ class ActionSearchWiktionary(Action):
                                 else:
                                     meaning_parts.append(' with a synonym {}'.format(meaning2.get('synonyms')[0]))
                         dispatcher.utter_message(text="".join(meaning_parts))
-                        slotsets.append(SlotSet("hermod_force_continue", "true"))  
+                        slotsets.append(SlotSet("hermod_force_continue", None))
+                        slotsets.append(SlotSet("hermod_force_end", "true"))      
             else:
                 dispatcher.utter_message(text="I couldn't find the meaning of "+word)   
             await publish('hermod/'+site+'/display/show',{'question':'Define the word '+word})
@@ -1157,8 +1158,11 @@ class ActionSpellWord(Action):
             
                 await send_to_wikipedia(word,site)
                 # slotsets.append(FollowupAction('action_end'))  
+                slotsets.append(SlotSet("hermod_force_continue", None))
+                slotsets.append(SlotSet("hermod_force_end", "true"))      
             else:
                 dispatcher.utter_message(text="I don't know the word "+word+". Try again")
+                slotsets.append(SlotSet("hermod_force_continue", "true"))
             await publish('hermod/'+site+'/display/show',{'question':'Spell the word '+word})
         else:
             dispatcher.utter_message(text="I didn't hear the word you want to spell. Try again")
@@ -1205,6 +1209,8 @@ class ActionSynonymsWord(Action):
                     if len(collatedSynonyms) > 0:
                          dispatcher.utter_message(text='The word '+word_record.get('word')+' has synonyms {}.'.format(", ".join(collatedSynonyms))  )
                          await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word_record.get('word')})
+                         slotsets.append(SlotSet("hermod_force_continue", None))
+                         slotsets.append(SlotSet("hermod_force_end", "true"))      
                     else :
                         dispatcher.utter_message(text="I don't know any synonyms for the word "+word_record.get('word') )
                         await publish('hermod/'+site+'/display/show',{'frame':'https://en.wiktionary.org/wiki/'+word_record.get('word')})

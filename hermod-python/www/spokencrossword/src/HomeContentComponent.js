@@ -2,26 +2,26 @@ import React from "react";
 import {Component} from 'react';
 import { Button } from "react-bootstrap";
 import { BrowserRouter as Router, Link } from "react-router-dom";
-import FullPageScrollerComponent from './FullPageScrollerComponent'
+//import FullPageScrollerComponent from './FullPageScrollerComponent'
 import logo from './logo.svg';
 
 
-const ContentLast = ({children}) => (
-  <div className="component" >
-  <header className="App-header">
-    <img src={logo} className="App-logo" alt="logo" />
+//const ContentLast = ({children}) => (
+  //<div className="component" >
+  //<header className="App-header">
+    //<img src={logo} className="App-logo" alt="logo" />
     
-    <a
-      className="App-link"
-      href="https://reactjs.org"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Learn React
-    </a>
-  </header>
-  </div>
-);
+    //<a
+      //className="App-link"
+      //href="https://reactjs.org"
+      //target="_blank"
+      //rel="noopener noreferrer"
+    //>
+      //Learn React
+    //</a>
+  //</header>
+  //</div>
+//);
  
 //const askButtonClick = function(e) {
     //console.log(e)
@@ -33,7 +33,7 @@ class ContentOne extends Component {
     render() {
         let that = this;
         return (
-          <div className="component" >
+          <div className="component" style={{marginLeft:'0.3em'}} >
           <h2 style={{clear: "both"}} >Hi, I'm Edison</h2>
              
             <div>Say <b>"Hey Edison"</b> or click on the microphone to trigger me,  then ask a question. I turn <b>Green</b> when I'm listening. </div>
@@ -57,16 +57,25 @@ class ContentOne extends Component {
                  
                   <div style={{clear: "both"}} >As we chat I'll suggest some follow up questions in the top menu.</div>
                           <div className="helpSampleButtons" >
-                    <Button variant="secondary"  >And what's the population</Button>
-                    <Button variant="secondary"  >Tell me more</Button>
-                </div>
-            <br/>  <br/>  <br/>
-                    <div style={{clear: "both"}} >With all that information at hand, lets see if you can solve a crossword</div>
-               
-                    <Link  to='/crossword' ><Button variant="success"   size="lg"  >Start a crossword</Button></Link>
-                    <div style={{clear: "both"}} >I can help with that too (when you are looking at a crossword) </div>
+                            <Button variant="secondary"  >And what's the population</Button>
+                            <Button variant="secondary"  >Tell me more</Button>
+                        </div>
+            <br/> <br/>  <br/><hr/>
+                    <div style={{clear: "both"}} >I can also help you fill in the answers of crosswords by speaking. (You need to be looking at the crossword for this to work.)</div>
                     <Button variant="secondary"  >One across is Canberra</Button>
+                 <br/>     <div style={{clear: "both"}} >With all that information at hand, lets see if you can solve a crossword</div>
+                 
+                    <Link  to='/crossword' ><Button variant="success"   size="lg"  >Start a crossword</Button></Link>
                      
+                 </div>
+            <br/> <br/>  <br/>
+            <hr/>
+                    <div style={{clear: "both"}} >
+                    I'm still learning to speak your language. If I make a mistake you can update your question with the tools at the top of the page.
+                    <br/>
+                    <b>Select some text from your question and then press one of the buttons to update the search values.</b>
+                    <br/>
+                    As well as getting to the information you want, your updates will be integrated to improve the language models so we get it right next time.
                  </div>
                  <br/>  <br/>  <br/>
                  <br/>  <br/>  <br/>
@@ -76,22 +85,22 @@ class ContentOne extends Component {
     }
 }
 
-class ContentTwo extends Component {
-    render() {
-        let that = this;
-        return (
-          <div className="component" >
-            <div style={{clear: "both"}} >As we chat I'll suggest some follow up questions in the top menu.</div>
-                          <div className="helpSampleButtons" >
-                    <Button variant="secondary"  >And what's the population</Button>
-                    <Button variant="secondary"  >Tell me more</Button>
-                </div>
+//class ContentTwo extends Component {
+    //render() {
+        ////let that = this;
+        //return (
+          //<div className="component" >
+            //<div style={{clear: "both"}} >As we chat I'll suggest some follow up questions in the top menu.</div>
+                          //<div className="helpSampleButtons" >
+                    //<Button variant="secondary"  >And what's the population</Button>
+                    //<Button variant="secondary"  >Tell me more</Button>
+                //</div>
                 
-          </div>        
-        )
-    }
-}
-//const ContentTwo = ({props}) => (
+          //</div>        
+        //)
+    //}
+//}
+////const ContentTwo = ({props}) => (
 
 //);
 //<div style={{marginTop: '0.5em' ,clear: "both"}} >You can also ask me to remember facts. </div>
@@ -104,7 +113,7 @@ export default class HomePageContent extends Component {
         let that = this;
       return (
         <div className="component homePageComponent">
-           
+
                     <ContentOne sendMessage={that.props.sendMessage} />
                     
                     

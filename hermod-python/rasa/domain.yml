@@ -33,25 +33,85 @@ entities:
 - crossword_position
 
 intents:
-- tell_me_about
-- ask_attribute
-- ask_followup_attribute
-- tell_me_more
-- define
-- spell_word
-- what_can_i_say
-- ask_time
-- ask_date
-- quit
+- tell_me_about:
+    use_entities:
+    - word
+    - person
+    - place
+    - thing
+- ask_attribute:
+    use_entities:
+    - attribute
+    - word
+    - person
+    - place
+    - thing
+- ask_followup_attribute:
+    use_entities:
+    - attribute
+    - word
+    - person
+    - place
+    - thing
+- tell_me_more:
+    use_entities:
+    - word
+    - person
+    - place
+    - thing
+- define:
+    use_entities:
+    - word
+- spell_word:
+    use_entities:
+    - word
+- what_can_i_say:
+    use_entities: []
+- ask_time:
+    use_entities: []
+- ask_date:
+    use_entities: []
+- quit:
+    use_entities: []
+- affirmative:
+    use_entities: []
+- negative:
+    use_entities: []
+- speak_mnemonic:
+    use_entities:
+    - attribute
+    - word
+    - person
+    - place
+    - thing
+- navigate_to:
+    use_entities:
+    - nav_target
+- search_youtube:
+    use_entities:
+    - word
+    - person
+    - place
+    - thing
+- show_me_picture:
+    use_entities:
+    - word
+    - person
+    - place
+    - thing
+- fill_crossword:
+    use_entities:
+    - crossword_position
+    - word
+    - person
+    - place
+    - thing
+- synonyms_word:
+    use_entities:
+    - word
 #- save_fact
-- affirmative
-- negative
-- speak_mnemonic
-- navigate_to
-- search_youtube
-- show_me_picture
-- fill_crossword
-- synonyms_word
+
+
 
 responses:
   utter_goodbye:
@@ -76,7 +136,7 @@ responses:
   
 session_config:
   carry_over_slots_to_new_session: true
-  session_expiration_time: 60
+  session_expiration_time: 5
 
 slots:
   hermod_client:

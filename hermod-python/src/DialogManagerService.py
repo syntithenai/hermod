@@ -264,6 +264,7 @@ class DialogManagerService(MqttService):
             
         elif topic == prep + 'dialog/init':
             # self.log('INITIALISE '+site)
+            await self.client.publish('hermod/'+site+'/rasa/get_domain',json.dumps({}))
             await self.client.publish('hermod/'+site+'/hotword/activate',json.dumps({}))
             await self.client.publish('hermod/'+site+'/asr/activate',json.dumps({}))
             await self.client.publish('hermod/'+site+'/microphone/start',json.dumps({}))

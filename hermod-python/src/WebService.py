@@ -215,8 +215,8 @@ async def get_crosswords(request):
         print(e)
         
         
-async def get_crossword(request,collection):
-    # print('CROSSWORD')
+async def get_crossword(request):
+    print('CROSSWORD')
     # print(request.args)
     # print(request.args.get('id'))
     if request.args.get('id',False):
@@ -235,7 +235,7 @@ async def get_crossword(request,collection):
                 # print(document)
                 # crosswords.append(document)
             # #document = await collection.find_many(query)
-            # print(document)
+            print(document)
             document['_id'] = str(document.get('_id'))
             # if request.args.get('site',False):
                 # await publish('hermod'+request.args.get('site')+'rasa/setslots',{"slots":[{"crossword":document['_id']}]})

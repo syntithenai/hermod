@@ -19,17 +19,11 @@ export default class HeaderComponent extends Component {
   constructor(props) {
       super(props);
       //let that = this;
-      this.sendForm = this.sendForm.bind(this)
+     
     }
 
-    sendForm(e) {
-        console.log('SEMD FORM')
-        let that = this;
-        e.preventDefault()
-        that.props.sendMessage(that.props.hermodClient.question)
-        return false;
-    }
-
+ 
+    
     render() {
         let that = this;
       return (
@@ -39,17 +33,16 @@ export default class HeaderComponent extends Component {
           <div id="buttons" style={{float: "left", marginRight: "0.5em", padding: "0.5em"}}>
             <span  className="fixedButtons" id="fixedButtons" style={{float: "left", marginRight: "0.5em"}} >
                  <Link  to='/' ><Button style={{float: 'left'}} variant="secondary"  size="lg" >Home</Button></Link>
-                 <Link  to='/crossword' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>
+                 {(this.props.hermodClient.slots && this.props.hermodClient.slots.crossword) && <Link  to={'/crossword/'+this.props.hermodClient.slots.crossword} ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>}
+                 {!(this.props.hermodClient.slots && this.props.hermodClient.slots.crossword) && <Link  to='/crosswords' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>}
             </span>
             <SuggestionButtonsComponent  buttons={that.props.hermodClient.buttons} sendMessage={that.props.sendMessage}  showFrame={that.props.showFrame}  showWindow={that.props.showWindow}/>
         </div>
         
-        <div style={{float: "left",marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "90%"}}  >
-              <form onSubmit={that.sendForm} ><input style={{fontSize: "1.8em" , width: "100%"}} id="text_input" type='text' value={that.props.hermodClient.question} onChange={that.props.setQuestion} placeholder='Type your question here' /></form>
-        </div> 
+      
         
         <div style={{float: "left",marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "90%"}}  >
-             <NluFixerComponent intents={[]}   entities={[]}  />  
+             <NluFixerComponent  intents={[]}   entities={[]} hermodClient={this.props.hermodClient}  api={this.props.api} setQuestion={this.props.setQuestion} />  
         </div>
         </div>
       );

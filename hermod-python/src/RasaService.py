@@ -21,7 +21,7 @@ class RasaService(MqttService):
         self.config = config
         # self.recursion_depth = {}
         self.rasa_server = self.config['services']['RasaService'].get('rasa_server','http://localhost:5005/')
-        self.subscribe_to = 'hermod/+/rasa/set_slots,hermod/+/dialog/ended,hermod/+/dialog/init,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
+        self.subscribe_to = 'hermod/+/core/ended,hermod/+/dialog/end,hermod/+/rasa/get_domain,hermod/+/rasa/set_slots,hermod/+/dialog/ended,hermod/+/dialog/init,hermod/+/nlu/externalparse,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
         
         
     async def connect_hook(self):
@@ -89,7 +89,12 @@ class RasaService(MqttService):
                 text = payload.get('query')
                 await self.nlu_parse_request(site,text,payload)
                 await self.client.publish('hermod/'+site+'/display/stopwaiting',json.dumps({}))
-            
+                
+        elif topic == 'hermod/' + site + '/nlu/externalparse':
+            if payload: 
+                text = payload.get('query')
+                await self.nlu_external_parse_request(site,text,payload)
+                
         elif topic == 'hermod/' + site + '/intent':
             if payload:
                 await self.client.publish('hermod/'+site+'/display/startwaiting',json.dumps({}))
@@ -104,14 +109,35 @@ class RasaService(MqttService):
         elif topic == 'hermod/' + site + '/dialog/started':
             # await self.client.publish('hermod/'+site+'/display/stopwaiting',{})
             await self.reset_tracker(site) 
-        
+            
         elif topic == 'hermod/' + site + '/ ':
             #pass
             # save dialog init data to slots for custom actions
             await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "slot", "name": "hermod_client", "value": json.dumps(payload)}])
-   
+        
+        elif topic == 'hermod/' + site + '/rasa/get_domain':
+            await self.send_domain(site)     
+            
+        elif topic == 'hermod/' + site + '/core/ended':
+            await self.send_story(site,payload)
+            
+    async def send_story(self,site,payload):
+        # text = payload.get('text','')
+        response = await self.request_get_text(self.rasa_server+"/conversations/"+site+"/story",{})
+        await self.client.publish('hermod/'+site+'/rasa/story',json.dumps({'id':payload.get('id',''),'story':response}))
+
+    async def send_domain(self,site):
+        # print('SEND DOMAIN')
+        response = await self.request_get(self.rasa_server+"/domain",{},{"Accept": "application/json"})
+        # print(response)
+        if response:
+            # print('SEND DOMAIN REAL')
+            await self.client.publish('hermod/'+site+'/rasa/domain',json.dumps(response))
+        
     
     async def reset_tracker(self,site):
+        self.log('RESSET tracker '+site)
+        # await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "session_started"}])
         pass
         # backup slots
         # response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
@@ -121,7 +147,7 @@ class RasaService(MqttService):
         # # reset tracker
         # # await self.request_put(self.rasa_server+"/conversations/"+site+"/tracker/events",[])
         # # #self.log('RESSET tracker '+site)
-        # #await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "restart"}])
+        #await self.request_post(self.rasa_server+"/conversations/"+site+"/tracker/events",[{"event": "restart"}])
         
         # # restore slots ?? this should work with event 
         # slotsets = []
@@ -142,9 +168,11 @@ class RasaService(MqttService):
         # #requests.put(self.rasa_server+"/conversations/"+site+"/tracker/events",json.dumps([]),headers = {'content-type': 'application/json'})
         
     async def handle_intent(self,topic,site,payload):
-        await self.client.publish('hermod/'+site+'/core/started',json.dumps({}));
+        await self.client.publish('hermod/'+site+'/core/started',json.dumps(payload));
         #self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))
         #response = requests.post(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')}),headers = {'content-type': 'application/json'})
+        self.log('RASA HANDLE INTENT'+site)
+        # self.log({"name": payload.get('intent').get('name'),"entities": payload.get('entities',[])})
         response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
         # #self.log('resp RASA TRIGGER')
         # #self.log(response)
@@ -158,14 +186,14 @@ class RasaService(MqttService):
             await self.client.subscribe('hermod/'+site+'/tts/finished')
             #self.log('SEND MESSAGES sub finish')
             await self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message, "id":payload.get('id','')}))
-            #self.log('SEND MESSAGES sent text '+message)
+            self.log('SEND MESSAGES sent text '+message)
             # send action messages from server actions to client action
             # for message in messages:
                 # #self.log(message)
                 # # if hasattr(message,'action') and message.action:
                     # # await self.client.publish('hermod/'+site+'/action',json.dumps(message.action))
         else:
-            # #self.log('SEND finish')
+            self.log('SEND finish'+site)
             await self.finish(site,payload)
      
     async def send_slots(self,site):
@@ -178,7 +206,7 @@ class RasaService(MqttService):
         await self.client.publish('hermod/'+site+'/dialog/slots',json.dumps(slots));
         
     async def finish(self,site,payload):
-        ##self.log('finish')
+        self.log('RASA finish '+site)
         #response = requests.get(self.rasa_server+"/conversations/"+site+"/tracker",json.dumps({}))
         response = await self.request_get(self.rasa_server+"/conversations/"+site+"/tracker",{})
         events = response.get('events',[])
@@ -209,7 +237,8 @@ class RasaService(MqttService):
                 await self.client.publish('hermod/'+site+'/dialog/continue',json.dumps({"id":payload.get("id","")}));
             else:
                 await self.client.publish('hermod/'+site+'/dialog/end',json.dumps({"id":payload.get("id","")}));
-        await self.send_slots(site)        
+        await self.send_slots(site)  
+        await self.client.publish('hermod/'+site+'/core/ended',json.dumps(payload));
 # event_loop = asyncio.get_event_loop()
 # Then later, inside your Thread:
 
@@ -223,21 +252,45 @@ class RasaService(MqttService):
         # #self.log(json.dumps({"text":text,"message_id":site})    )
         response = await self.request_post(self.rasa_server+"/model/parse",{"text":text,"message_id":site})
         #response = requests.post(self.rasa_server+"/model/parse",data = json.dumps({"text":text,"message_id":site}),headers = {'content-type': 'application/json'})
-        #self.log('PARSE RESPONSE')
-        #self.log(response)
-        # if payload and 'id' in payload:
-            # response['id'] = payload.get('id','')
+        # self.log('PARSE RESPONSE')
+        # self.log(response)
+        if payload and 'id' in payload:
+            response['id'] = payload.get('id','')
         #self.log('PARSE RESPONSE presend')
         await self.client.publish('hermod/'+site+'/nlu/intent',json.dumps(response))
         #self.log('PARSE RESPONSE sent')
-        
 
-    async def request_get(self,url,json):
+    async def nlu_external_parse_request(self,site,text,payload):
+        #self.log('PARSE REQUEST')
+        #self.log(text)
+        #self.log(payload)
+        # #self.log(self.rasa_server+"/model/parse")
+        # #self.log(json.dumps({"text":text,"message_id":site})    )
+        response = await self.request_post(self.rasa_server+"/model/parse",{"text":text,"message_id":site})
+        #response = requests.post(self.rasa_server+"/model/parse",data = json.dumps({"text":text,"message_id":site}),headers = {'content-type': 'application/json'})
+        # self.log('PARSE RESPONSE')
+        # self.log(response)
+        if payload and 'id' in payload:
+            response['id'] = payload.get('id','')
+        #self.log('PARSE RESPONSE presend')
+        await self.client.publish('hermod/'+site+'/nlu/externalintent',json.dumps(response))
+        #self.log('PARSE RESPONSE sent')
+                
+
+    async def request_get(self,url,json, extraHeaders={}):
+        extraHeaders['content-type'] = 'application/json'
         with async_timeout.timeout(10):
             async with aiohttp.ClientSession() as session:
-                async with session.get(url,json = json, headers = {'content-type': 'application/json'}) as resp:
+                async with session.get(url,json = json, headers = extraHeaders) as resp:
                     # print(resp.status)
+                    # print(resp.text)
                     return await resp.json()
+
+    async def request_get_text(self,url,json, extraHeaders={}):
+        with async_timeout.timeout(10):
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url,json = json, headers = extraHeaders) as resp:
+                    return await resp.text()
 
     async def request_post(self,url,json):
         with async_timeout.timeout(25):

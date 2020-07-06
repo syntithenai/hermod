@@ -1,4 +1,5 @@
 {
+     "webserver": "https://peppertrees.asuscomm.com", 
     "server": "wss://peppertrees.asuscomm.com:9001", 
     "username": "hermod_admin",
     "password": "talk2mebaby",
