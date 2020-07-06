@@ -181,24 +181,24 @@ services:
       #- ./hermod-python/mosquitto:/etc/mosquitto 
       ## host tts cache for delivery via web
       #- ./tts_cache:/app/www/static/tts
-# rasa
-  rasa:
-    image: syntithenai/hermod-python
-    restart: always
-    #build: ./hermod-python/
-    container_name: rasa
-    #entrypoint: ['sleep','1000000']
-    entrypoint: ['python','/app/src/hermod.py','-r'] # -t
-    environment:
-      DUCKLING_URL: http://duckling:8000
-      RASA_ACTIONS_URL: http://hermod:5055/webhook
-    volumes:
-      # map in host localtime
-      - /etc/localtime:/etc/localtime:ro
-      - ./hermod-python/src:/app/src 
-      - ./hermod-python/rasa:/app/rasa  
-    #ports:
-    #  - 5005
+## rasa
+  #rasa:
+    #image: syntithenai/hermod-python
+    #restart: always
+    ##build: ./hermod-python/
+    #container_name: rasa
+    ##entrypoint: ['sleep','1000000']
+    #entrypoint: ['python','/app/src/hermod.py','-r'] # -t
+    #environment:
+      #DUCKLING_URL: http://duckling:8000
+      #RASA_ACTIONS_URL: http://hermod:5055/webhook
+    #volumes:
+      ## map in host localtime
+      #- /etc/localtime:/etc/localtime:ro
+      #- ./hermod-python/src:/app/src 
+      #- ./hermod-python/rasa:/app/rasa  
+    ##ports:
+    ##  - 5005
       
 # rasa action server
   #rasa_actions:
