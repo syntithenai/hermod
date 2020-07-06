@@ -155,7 +155,7 @@ class RasaServiceLocal(MqttService):
         # print(response)
         # if response:
             # print('SEND DOMAIN REAL')
-        await self.client.publish('hermod/'+site+'/rasa/domain',json.dumps(self.agent.domain.as_dict()}))
+        await self.client.publish('hermod/'+site+'/rasa/domain',json.dumps(self.agent.domain.as_dict()))
         
     
     
@@ -235,7 +235,7 @@ class RasaServiceLocal(MqttService):
         tracker = self.tracker_store.get_or_create_tracker(site)
         if payload :
             #tracker.current_slot_values();
-            for slot in payload.get('slots',[]:
+            for slot in payload.get('slots',[]):
                 # print('SETSLOT loc')
                 # print([slot])
                 tracker.update(SlotSet(slot.get('slot'),slot.get('value')))
