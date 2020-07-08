@@ -113,7 +113,7 @@ export default class CrosswordListComponent extends Component {
             if (! categoryItems.hasOwnProperty(difficulty)) {
                 categoryItems[difficulty] = []
             }
-            categoryItems[difficulty].push(<div key={i} style={{width:'90%', textAlign:'left', padding:'1em'}} ><Link to={"/crossword/"+crossword._id} ><Button style={{minWidth:'18em'}}><span style={{float:'right', marginLeft:'0.5em'}} className="badge badge-light">{difficultyMap.hasOwnProperty(crossword.difficulty) ? difficultyMap[crossword.difficulty]:"Unknown"}</span>Start the {crossword.title} crossword</Button></Link></div>)
+            categoryItems[difficulty].push(<div key={i} style={{width:'90%', textAlign:'left'}} ><Link to={"/crossword/"+crossword._id} ><Button style={{minWidth:'18em'}}><span style={{float:'right', marginLeft:'0.5em'}} className="badge badge-light">{difficultyMap.hasOwnProperty(crossword.difficulty) ? difficultyMap[crossword.difficulty]:"Unknown"}</span>Start the {crossword.title} crossword</Button></Link></div>)
             searchResults.push(<div key={i} style={{width:'90%', textAlign:'left', padding:'1em'}} ><Link to={"/crossword/"+crossword._id} ><Button style={{minWidth:'18em'}}><span style={{float:'right', marginLeft:'0.5em'}} className="badge badge-light">{difficultyMap.hasOwnProperty(crossword.difficulty) ? difficultyMap[crossword.difficulty]:"Unknown"}</span>Start the {crossword.title} crossword</Button></Link></div>)
         }
         var categoryStyle={backgroundColor: 'orange', minWidth: '30%', float: 'left', minHeight: '7em', border: '1px solid blue', marginLeft: '0.8em' , marginTop: '0.8em' , fontSize:'2em', textAlign:'center', align:'center'
@@ -125,7 +125,7 @@ export default class CrosswordListComponent extends Component {
         
         
         for (var i in categoryItems) {
-            categories.push(<div className='col-5' onClick={function(i) { return function() {that.searchDifficulty(i)}}(i)} style={categoryStyle} key={i} >{difficultyMap.hasOwnProperty(i) ? difficultyMap[i]:"Unknown"}
+            categories.push(<div className='col-10 col-md-5' onClick={function(i) { return function() {that.searchDifficulty(i)}}(i)} style={categoryStyle} key={i} >{difficultyMap.hasOwnProperty(i) ? difficultyMap[i]:"Unknown"}
                 <div >{categoryItems[i]}</div>
             </div>)
         }
