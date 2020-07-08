@@ -42,8 +42,8 @@ code {
 }
 
 .crossword {
-  height: 15em;
-  width:80%;      
+  height: 18em;
+  width:95%;      
 }
 
 .speech-bubble:hover, .speech-bubble:active, .speech-bubble:focus, .speech-bubble:visited {

@@ -9,6 +9,8 @@ services:
       #MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     #volumes:
         #- ./hermod-python/mongo_data:/data/db
+    #ports:
+      #- 27017:27017
 
   #mongo-express:
     #image: mongo-express
@@ -71,6 +73,8 @@ services:
     ports:
       - ${HTTP_PORT}:80
       - ${HTTPS_PORT}:443
+      # dev npm server
+      - 3000:3000
     environment:
       MQTT_HOSTNAME: ${MQTT_HOSTNAME}
       MQTT_USER: ${MQTT_USER}
@@ -181,7 +185,7 @@ services:
       #- ./hermod-python/mosquitto:/etc/mosquitto 
       ## host tts cache for delivery via web
       #- ./tts_cache:/app/www/static/tts
-## rasa
+##  rasa
   #rasa:
     #image: syntithenai/hermod-python
     #restart: always

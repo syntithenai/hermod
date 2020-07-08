@@ -352,7 +352,7 @@
                             //</select></Button>
     //                              <Dropdown.Toggle style={{marginLeft:'0.3em',backgroundColor:"#c88eda",border: 'none'}}  size="sm" >&nbsp;+&nbsp;</Dropdown.Toggle>
                       form = <form onSubmit={function() { return false} } style={{display:'inline'}}>
-                            {(parsedIntent) &&    <Dropdown key={i}   style={{clear:'both',border: '1px solid #6a4077' ,marginLeft:'0.3em',backgroundColor:"#c88eda", zIndex:1}}  as={ButtonGroup}>
+                            {(parsedIntent) &&    <Dropdown key={i}   style={{clear:'both',border: '1px solid #6a4077' ,marginLeft:'0.3em',backgroundColor:"#c88eda"}}  as={ButtonGroup}>
 
                           <Dropdown.Toggle split style={{marginLeft:'0.3em',backgroundColor:"#c88eda",border: 'none'}}  size="sm"  id="dropdown-split-basic" >{parsedIntent}</Dropdown.Toggle>
                         
@@ -373,17 +373,17 @@
                                 </Dropdown>
                             }
                           
-                          {this.state.changed && <Button onClick={this.sendForm} className='btn' size="sm"  style={{marginLeft:'1em', backgroundColor:"#82b77c"}} >Try Again</Button>}
+                          {that.state.changed && <Button onClick={that.sendForm} className='btn' size="sm"  style={{marginLeft:'1em', backgroundColor:"#82b77c"}} >Try Again</Button>}
                         </form>
                   }
                   return (
                     <div style={{height:'1em', textAlign:'left'}} className="nluFixerComponent">
 
 
-                        <div style={{float: "left",marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "90%"}}  >
+                        <div style={{marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "90%"}}  >
                           <form style={{clear:'both'}} onSubmit={that.sendFormQuestion} ><input style={{clear:'both'}} ref={that.questionInput} onKeyUp={this.onQuestionKeyup} onFocus={this.onQuestionFocus} onBlur={this.onQuestionBlur} onSelect={this.onQuestionSelect} style={{fontSize: "1.3em" , width: "100%"}} id="text_input" type='text' value={that.props.hermodClient.question} onChange={that.props.setQuestion} placeholder='Ask a question' /></form>
                         </div>     
-                        {form}
+                        <div style={{zIndex:999}} >{form}</div>
                     </div>
                   )
             }
@@ -403,6 +403,7 @@
                 var data = {'text':question}
                 console.log(['SEMD FORM q real',data])
                 that.props.api.client.sendMessage('hermod/'+that.props.hermodClient.config.site+'/asr/text',data)
+                that.setState({changed: false})
             }
             return false;
         }       
@@ -411,12 +412,15 @@
             let that = this;
             console.log('SEMD FORM')
             console.log(that.props.hermodClient)
-            if (that.props.hermodClient && that.props.hermodClient.nlu_json && that.props.hermodClient.nlu_json.id) {
+            if (that.props.hermodClient && that.props.hermodClient.nlu_json) {
                 let nlu_json = that.props.hermodClient.nlu_json;
+                nlu_json.text = that.props.hermodClient.question
                 e.preventDefault()
-                console.log(['SEMD FORM real',{'id':nlu_json.id,'query':nlu_json}])
+                //let nlu_clean = {intent:that.props.hermodClient.nlu_json.intent, entities: that.props.hermodClient.nlu_json.entities, 'id':(nlu_json.hasOwnProperty('id') ? nlu_json.id : '') , 'text': that.props.hermodClient.question }
+                console.log(['SEMD FORM real',{'id':(nlu_json.hasOwnProperty('id') ? nlu_json.id : ''),'query':nlu_json}])
                 that.props.api.client.sendMessage('hermod/'+that.props.hermodClient.config.site+'/nlu/intent',nlu_json)
             }
+            that.setState({changed: false})
             return false;
         }
         

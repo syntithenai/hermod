@@ -25,80 +25,7 @@ from string import ascii_lowercase
             # },
 
 
-  
-        
-def mongo_connect(collection):
-    # logger = logging.getLogger(__name__)
-    # logger.debug('MONGO CONNECT ')
-    # logger.debug(str(os.environ.get('MONGO_CONNECTION_STRING')))
-    
-    client = motor.motor_asyncio.AsyncIOMotorClient(os.environ.get('MONGO_CONNECTION_STRING'))
-
-    db = client['hermod']
-    collection = db[collection]
-    return collection
-
-
-      
-async def get_crossword(uid):
-    print('CROSSWORD')
-    print(uid)
-    if uid:
-        # crosswordId = None #request.getid
-        # print([crosswordId])
-        try:
-            # print('FIND FACT conn')
-            
-            collection = mongo_connect('crosswords') 
-            print('FIND FACT CONNECTED')
-            query = {'_id':ObjectId(uid)}
-            # print(query)
-            document = await collection.find_one(query)
-            # crosswords = []
-            # async for document in collection.find(query):
-                # print(document)
-                # crosswords.append(document)
-            # #document = await collection.find_many(query)
-            # print(document)
-            document['_id'] = str(document.get('_id'))
-            return document
-        except:
-            print('FIND FACT ERR')
-            e = sys.exc_info()
-            print(e)  
-            
-            
-
-async def save_crossword(crossword):
-    
-    try:
-        if crossword: 
-            collection = mongo_connect('crosswords') 
-            # does fact already exist and need update ?
-            # query = {'$and':[{'attribute':attribute},{'thing':thing}]}
-            # # logger.debug(query)
-            # document = await collection.find_one(query)
-            # # logger.debug(document)
-            # if document:
-                # # logger.debug('FOUND DOCUMENT MATCH')
-                # document['answer'] = answer
-                # site_parts = site.split('_')
-                # username = '_'.join(site_parts[:-1])
-                # document['user'] = username
-                # document['updated'] = time.time()
-                # result = await collection.replace_one({"_id":document.get('_id')},document)
-                # #logger.debug(result)
-            # else:
-                # logger.debug('SAVE FACT not found')
-            
-            crossword['created'] = time.time()
-            crossword['updated'] = time.time()
-            result = await collection.insert_one(crossword)
-                # logger.debug('result %s' % repr(result.inserted_id))
-    except:
-        print('SAVE CROSSWORD ERR')
-        e = sys.exc_info()
-        print(e)
+from crossword_mongodb import save_crossword
             
 async def import_puz(data_in,link,url):
     data={"across":{}, "down":{}}    
@@ -150,7 +77,23 @@ async def import_puz(data_in,link,url):
     
     
 async def run():
-    await scrape('https://web.archive.org/web/20191017043942/http://www.macnamarasband.com/dlpuz.html')
+    # a = 0
+    # while a < 700:
+        # a = a + 1
+        # await scrape('https://www.brendanemmettquigley.com/medium/page/'+str(a)+'/')
+    
+    # a = 0
+    # while a < 700:
+        # a = a + 1
+        # await scrape('https://www.brendanemmettquigley.com/easy/page/'+str(a)+'/')
+        # await scrape('https://www.brendanemmettquigley.com/hard/page/'+str(a)+'/')
+    
+    # await scrape('http://gridsthesedays.blogspot.com/')
+    # await scrape('https://www.private-eye.co.uk/sections.php?section_link=crossword&')
+    # await scrape('https://tmcaylifeasapuzzle.wordpress.com/category/puzzles/')
+    # await scrape('https://pmxwords.com/2020-contest-puzzles/')
+    # await scrape('https://crosswordfiend.com/download/')
+    # await scrape('https://web.archive.org/web/20191017043942/http://www.macnamarasband.com/dlpuz.html')
     
 async def scrape(url):
     url_parts = url.split('/')
@@ -158,28 +101,32 @@ async def scrape(url):
     print(clean_url)
     response = requests.get(url)
     links_page = response.text
+    # print(response.text)
     soup = BeautifulSoup(links_page, "html.parser")
     a=1000
     for link in soup.find_all('a'):
-        if a <= 0:
-            break;
-        final_link = link.get('href')
-        # print(link.get('href'))
-        # relative links
-        if not link.get('href').startswith('http://') and not link.get('href').startswith('https://') :
-            final_link = clean_url + '/' + link.get('href')
-            # print(final_link)
-        
-        # href=link.get('href')
-        if final_link.endswith('.puz'):
-            response = requests.get(final_link)
-            # print(response.text)
-            try :
-                await import_puz(response.content,final_link,url)
-            except Exception as e:
-                print(e)
-                pass
-            a = a - 1
+        # print('LINK')
+        # print(link)
+        if link.get('href',False):
+            if a <= 0:
+                break;
+            final_link = link.get('href','')
+            # print(link.get('href'))
+            # relative links
+            if not link.get('href','').startswith('http://') and not link.get('href','').startswith('https://') :
+                final_link = clean_url + '/' + link.get('href','')
+                # print(final_link)
+            
+            # href=link.get('href')
+            if final_link.endswith('.puz'):
+                response = requests.get(final_link)
+                print(final_link)
+                try :
+                    await import_puz(response.content,final_link,url)
+                except Exception as e:
+                    print(e)
+                    pass
+                a = a - 1
         
           
     

@@ -136,7 +136,7 @@ async def ssl_serve_file(request,path):
             file_path = 'index.html'
         return await file_stream(root_path + file_path)
     except FileNotFoundError:
-        raise ServerError("Not found", status_code=400)
+        # raise ServerError("Not found", status_code=400)
         return await file_stream(root_path + 'index.html')
     except:
         raise ServerError("Server Error", status_code=500)
@@ -182,13 +182,13 @@ async def get_crosswords(request):
     difficulty = request.args.get('difficulty','')
     # print('CROSSWORDS')
     # print(request)
-    # print([search, difficulty])
+    print([search, difficulty])
     try:
         # print('FIND FACT conn')
         collection = mongo_connect('crosswords') 
 
         # collection = mongo_connect('crosswords') 
-        print('FIND FACT CONNECTED')
+        # print('FIND FACT CONNECTED')
         andParts = []
         if len(search) > 0:
             andParts.append({'title':{'$regex':search}})
@@ -201,13 +201,20 @@ async def get_crosswords(request):
         # print(query)
         crosswords = []
         cursor = collection.find(query)
-        cursor.limit(20)
+        cursor.sort('title', 1).limit(2000)
+        results_per_difficulty = 5
+        # for empty search limit results per difficulty value to results_per_difficulty
+        difficulty_tallies = {}
         async for document in cursor:
             document['_id'] = str(document.get('_id'))
-            print(document)
-            crosswords.append(document)
+            # print(document)
+            difficulty_tally = int(difficulty_tallies.get(str(document.get('difficulty')),'0'))
+            difficulty_tallies[str(document.get('difficulty'))] = difficulty_tally + 1
+            # print(difficulty_tallies)
+            if difficulty_tallies[str(document.get('difficulty'))] < results_per_difficulty or len(andParts) > 0:
+                crosswords.append(document)
         #document = await collection.find_many(query)
-        #print(crosswords)
+        # print(crosswords)
         return json(crosswords)
     except:
         print('FIND FACT ERR')

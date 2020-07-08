@@ -9,10 +9,18 @@ import async_timeout
 
 from rasa.core.agent import Agent
 from rasa.core.tracker_store import InMemoryTrackerStore
-from rasa.core.interpreter import NaturalLanguageInterpreter
-from rasa.core.utils import EndpointConfig
 from rasa.core.events import SlotSet
 from rasa.core.channels.channel import UserMessage
+from rasa.core.interpreter import NaturalLanguageInterpreter, RegexInterpreter, RasaNLUInterpreter
+from rasa.core.utils import EndpointConfig
+
+from rasa.exceptions import ModelNotFound
+from rasa.model import (
+    get_model_subdirectories,
+    get_latest_model,
+    unpack_model,
+    get_model,
+)
 
 
 # async def run():
@@ -42,6 +50,7 @@ class RasaServiceLocal(MqttService):
 
     def __init__(
             self,
+
             config,
             loop
     ):
@@ -54,12 +63,21 @@ class RasaServiceLocal(MqttService):
         self.subscribe_to = 'hermod/+/rasa/get_domain,hermod/+/rasa/set_slots,hermod/+/dialog/ended,hermod/+/dialog/init,hermod/+/nlu/externalparse,hermod/+/nlu/parse,hermod/+/intent,hermod/+/intent,hermod/+/dialog/started'
         # self.log("ENDPOINT:"+config.get('rasa_actions_url',''))
         # self.log(config)
+        model_path = get_model('/app/rasa/models/model.tar.gz')
         endpoint = EndpointConfig(config['services']['RasaServiceLocal'].get('rasa_actions_url'))
         # print('loading model') 
         domain = 'domain.yml'
         self.tracker_store = InMemoryTrackerStore(domain)
-        self.agent = Agent.load('/app/rasa/models/model.tar.gz', action_endpoint = endpoint, tracker_store=self.tracker_store)
+        # self.interpreter = NaturalLanguageInterpreter.create(interpreter)
+        regex_interpreter = RegexInterpreter()
+        # print(await a.parse('/ask_time{"fred":"joe"}'))
+        self.text_interpreter = RasaNLUInterpreter(model_path+'/nlu') #, action_endpoint = endpoint)
+        #print(await a.parse('what is the capital of Germany'))
         
+        
+        self.agent = Agent.load(model_path, action_endpoint = endpoint, tracker_store=self.tracker_store, interpreter = regex_interpreter)
+        # from rasa.core.interpreter import RegexInterpreter
+        # self.agent.interpreter = RegexInterpreter()
         
     async def connect_hook(self):
         # self.log("Connected with result code {}".format(result_code))
@@ -117,6 +135,7 @@ class RasaServiceLocal(MqttService):
                 await self.nlu_external_parse_request(site,text,payload)
         
         elif topic == 'hermod/' + site + '/intent':
+            
             if payload:
                 await self.client.publish('hermod/'+site+'/display/startwaiting',json.dumps({}))
                 await self.handle_intent(topic,site,payload)
@@ -199,38 +218,52 @@ class RasaServiceLocal(MqttService):
         # self.log('SEND RASA TRIGGER {}  {} '.format(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')})))
         #response = requests.post(self.rasa_server+"/conversations/"+site+"/trigger_intent",json.dumps({"name": payload.get('intent').get('name'),"entities": payload.get('entities')}),headers = {'content-type': 'application/json'})
         # self.log('HANDLE INTENT '+site)
-        # self.log(payload.get('text'))
-        
-        # messages = await self.agent.handle_message(UserMessage(parse_data = payload, sender_id=site))
-        messages=[]
-        responses = await self.agent.handle_text(payload.get('text'),sender_id=site,  output_channel=None)
-        for response in responses:
-            messages.append(response.get("text"))
-            # print(response.get("text"))
-        # response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
-        # # self.log('resp RASA TRIGGER')
-        # # self.log(response)
-        # messages = response.get('messages')
-        # self.log('HANDLE INTENT MESSAGES')
-        # self.log(messages)
-        if len(messages) > 0:
-            # self.log('SEND MESSAGES')
-            message = '. '.join(messages) 
-            #map(lambda x: x.get('text',''   ),messages))
-            # self.log(message)
-            await self.client.subscribe('hermod/'+site+'/tts/finished')
-            # self.log('SEND MESSAGES sub finish')
-            await self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message, "id":payload.get('id','')}))
-            # self.log('SEND MESSAGES sent text '+message)
-            # send action messages from server actions to client action
-            # for message in messages:
+        # self.log(payload)
+        if payload:
+            intent_name = payload.get('intent',{}).get('name','')
+            entities_json = {}
+            entities = payload.get('entities',[])
+            # print('entities')
+            # print(entities)
+            for entity in entities:
+                # print('entity')
+                # print(entity)
+                entities_json[entity.get('entity')] = entity.get('value')
+            intent_json = "/" + intent_name+json.dumps(entities_json)
+            self.log(['INTENT JSON',intent_json])
+            # messages = await self.agent.handle_message(UserMessage(parse_data = payload, sender_id=site))
+            messages=[]
+            responses = await self.agent.handle_text(intent_json,sender_id=site,  output_channel=None)
+            for response in responses:
+                messages.append(response.get("text"))
+                # print(response.get("text"))
+            # response =await self.request_post(self.rasa_server+"/conversations/"+site+"/trigger_intent",{"name": payload.get('intent').get('name'),"entities": payload.get('entities')})
+            # # self.log('resp RASA TRIGGER')
+            # # self.log(response)
+            # messages = response.get('messages')
+            self.log('HANDLE INTENT MESSAGES')
+            # self.log(messages)
+            if len(messages) > 0:
+                # self.log('SEND MESSAGES')
+                message = '. '.join(messages) 
+                #map(lambda x: x.get('text',''   ),messages))
                 # self.log(message)
-                # # if hasattr(message,'action') and message.action:
-                    # # await self.client.publish('hermod/'+site+'/action',json.dumps(message.action))
+                await self.client.subscribe('hermod/'+site+'/tts/finished')
+                # self.log('SEND MESSAGES sub finish')
+                await self.client.publish('hermod/'+site+'/tts/say',json.dumps({"text":message, "id":payload.get('id','')}))
+                # self.log('SEND MESSAGES sent text '+message)
+                # send action messages from server actions to client action
+                # for message in messages:
+                    # self.log(message)
+                    # # if hasattr(message,'action') and message.action:
+                        # # await self.client.publish('hermod/'+site+'/action',json.dumps(message.action))
+            else:
+                # self.log('SEND finish')
+                await self.finish(site,payload)
         else:
-            # self.log('SEND finish')
+            self.log('ERROR RASA CORE HANDLER - no payload')
+            
             await self.finish(site,payload)
-        
     
     async def set_slots(self,site,payload):
         tracker = self.tracker_store.get_or_create_tracker(site)
@@ -302,11 +335,15 @@ class RasaServiceLocal(MqttService):
 # asyncio.ensure_future(my_coro(), loop=event_loop)
 
     async def nlu_parse_request(self,site,text,payload):
-        response = await self.agent.parse_message_using_nlu_interpreter(text)
+        response =  await self.text_interpreter.parse(text)
+        response['id'] = payload.get('id','')
+        #response = await self.agent.parse_message_using_nlu_interpreter(text)
         await self.client.publish('hermod/'+site+'/nlu/intent',json.dumps(response))
 
     async def nlu_external_parse_request(self,site,text,payload):
-        response = await self.agent.parse_message_using_nlu_interpreter(text)
+        response =  await self.text_interpreter.parse(text)
+        response['id'] = payload.get('id','')
+        #response = await self.agent.parse_message_using_nlu_interpreter(text)
         await self.client.publish('hermod/'+site+'/nlu/externalintent',json.dumps(response))
         
         

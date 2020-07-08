@@ -16,6 +16,7 @@ export default class CrosswordListComponent extends Component {
        this.updateSearchFor = this.updateSearchFor.bind(this)
        this.sendForm = this.sendForm.bind(this)
        this.updateSearchFor =this.updateSearchFor.bind(this)
+       this.searchDifficulty = this.searchDifficulty.bind(this)
        this.searchTimeout = null
     }
 
@@ -91,6 +92,12 @@ export default class CrosswordListComponent extends Component {
         this.searchTimeout = setTimeout(this.searchCrosswords,1000)
         return false;
     }
+    
+    searchDifficulty(difficulty) {
+        console.log(['SD',difficulty])
+        this.setState({difficulty:difficulty})
+        this.searchCrosswords()
+    }
 //<Button style={{float:'left', color:'yellow'}}>Difficulty {crossword.difficulty}</Button>
     render () {
         let that = this
@@ -112,24 +119,24 @@ export default class CrosswordListComponent extends Component {
         var categoryStyle={backgroundColor: 'orange', minWidth: '30%', float: 'left', minHeight: '7em', border: '1px solid blue', marginLeft: '0.8em' , marginTop: '0.8em' , fontSize:'2em', textAlign:'center', align:'center'
             }
             
-          console.log(categoryItems)  
+        console.log(categoryItems)  
         var categories = [
         ]
         
         
         for (var i in categoryItems) {
-            categories.push(<span style={categoryStyle} key={i} >{difficultyMap.hasOwnProperty(i) ? difficultyMap[i]:"Unknown"}
-                <div>{categoryItems[i]}</div>
-            </span>)
+            categories.push(<div className='col-5' onClick={function(i) { return function() {that.searchDifficulty(i)}}(i)} style={categoryStyle} key={i} >{difficultyMap.hasOwnProperty(i) ? difficultyMap[i]:"Unknown"}
+                <div >{categoryItems[i]}</div>
+            </div>)
         }
         
         
       return (
-        <div className="crosswordListComponent">
-              <div style={{float: "left",marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "50%"}}  >
+        <div className="crosswordListComponent row">
+              <div style={{marginLeft: "0.5em", marginRight: "0.5em", clear: "both" , width: "50%"}}  >
                   <form onSubmit={that.sendForm} ><input style={{fontSize: "1.8em" , width: "100%"}} id="text_input" type='text' value={that.state.searchFor} onChange={that.updateSearchFor} placeholder='Search crosswords' /></form>
             </div> 
-            <div className="crosswordSearchResults" style={{clear:'both'}}>
+            <div className="crosswordSearchResults" style={{clear:'both', width: '100%'}}>
             {this.state.searchFor.length > 0 && searchResults}
             {this.state.searchFor.length ==0 && categories}
             </div>

@@ -48,7 +48,7 @@ class DataLoggerService(MqttService):
         prep = 'hermod/' + site + '/'
         if topic == prep + 'asr/text':
             text = payload.get('text','')
-            # self.log('LOGGER TEXT {}'.format(text))
+            self.log('LOGGER TEXT {}'.format(text))
             if text and len(text) > 0:
                 if payload.get("id",False):
                     # self.log('LOGGER TEXT {}'.format(text))
@@ -57,8 +57,9 @@ class DataLoggerService(MqttService):
                     self.last_text[site] = text
                     
         elif topic == prep + 'nlu/intent':
-            # self.log('LOGGER INTENT '+payload.get("id",'none'))
-            # self.log(self.dialogs)
+            self.log('LOGGER INTENT '+payload.get("id",'none'))
+            self.log(payload)
+            self.log(self.dialogs)
             if payload.get("id",False):
                 if not payload.get("id") in self.dialogs:
                     self.dialogs[payload.get("id")] = {"text": self.last_text[site]}
@@ -69,6 +70,8 @@ class DataLoggerService(MqttService):
                 self.dialogs[payload.get("id")]["entities"] = entities
                 self.dialogs[payload.get("id")]["payload"] = payload
                 self.dialogs[payload.get("id")]["site"] = site
+                if payload.get("text",False):
+                    self.dialogs[payload.get("id")]["text"] = payload.get("text")
                 await self.write_nlu(payload.get("id"))
     
         elif topic == prep + 'rasa/story':
@@ -107,7 +110,7 @@ class DataLoggerService(MqttService):
 
     
     async def write_nlu(self,uid):
-        # self.log(['DATA LOGGER WRITE NLU',uid,self.dialogs.get(uid)])
+        self.log(['DATA LOGGER WRITE NLU',uid,self.dialogs.get(uid)])
         if uid in self.dialogs:
             payload = self.dialogs.get(uid)
             nlu_example=[]

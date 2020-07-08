@@ -219,14 +219,14 @@ export default class CrosswordComponent extends Component {
                 }
                 
 
- {(that.state.data && that.props.hermodClient.connected) && <Crossword style={{zIndex:1}}  data={that.state.data} 
-                      storageKey={'guesses_'+this.props.match.params.ids} 
+ {(that.state.data && that.props.hermodClient.connected) && <div style={{zIndex:1}} ><Crossword   data={that.state.data} 
+                      storageKey={'guesses_'+this.props.match.params.id} 
                       ref={that.props.crosswordRef}
                       onCorrect={that.onCorrect}
                       onLoadedCorrect={that.onLoadedCorrect}
                       onCrosswordCorrect={that.onCrosswordCorrect}
                       onCellChange={that.onCellChange}
-                    />}
+                    /></div>}
                 </div>
             </div>
           )

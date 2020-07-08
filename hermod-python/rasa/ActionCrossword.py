@@ -163,28 +163,28 @@ class ActionFillCrossword(Action):
                                         
                                     else :
                                         dispatcher.utter_message(text="Nope, try again")
-                                        slotsets.append(SlotSet("hermod_force_continue", "true"))
-                                        slotsets.append(SlotSet("hermod_force_end", None)) 
+                                        slotsets.append(SlotSet("hermod_force_continue", None))
+                                        slotsets.append(SlotSet("hermod_force_end", "true")) 
                                         await publish('hermod/'+site+'/display/show',{'question':just_number + ' '  + direction +' is ' })
                                 else: 
                                     dispatcher.utter_message(text="I didn't hear the word you wanted to fill")
-                                    slotsets.append(SlotSet("hermod_force_continue", "true"))
-                                    slotsets.append(SlotSet("hermod_force_end", None)) 
+                                    slotsets.append(SlotSet("hermod_force_continue", None))
+                                    slotsets.append(SlotSet("hermod_force_end", "true")) 
                                     await publish('hermod/'+site+'/display/show',{'question':just_number + ' '  + direction +' is ' })
                             else:
                                 dispatcher.utter_message(text="I didn't hear which direction you wanted to fill")
-                                slotsets.append(SlotSet("hermod_force_continue", "true"))
-                                slotsets.append(SlotSet("hermod_force_end", None)) 
+                                slotsets.append(SlotSet("hermod_force_continue", None))
+                                slotsets.append(SlotSet("hermod_force_end", "true")) 
                                 await publish('hermod/'+site+'/display/show',{'question':crossword_position})
                         else: 
                             dispatcher.utter_message(text="I didn't hear the number you wanted to fill")
-                            slotsets.append(SlotSet("hermod_force_continue", "true"))
-                            slotsets.append(SlotSet("hermod_force_end", None)) 
+                            slotsets.append(SlotSet("hermod_force_continue", None))
+                            slotsets.append(SlotSet("hermod_force_end", "true")) 
                             await publish('hermod/'+site+'/display/show',{'question':crossword_position})
                     else:
                         dispatcher.utter_message(text="I didn't hear the position you wanted to fill")
-                        slotsets.append(SlotSet("hermod_force_continue", "true"))
-                        slotsets.append(SlotSet("hermod_force_end", None)) 
+                        slotsets.append(SlotSet("hermod_force_continue", None))
+                        slotsets.append(SlotSet("hermod_force_end", "true")) 
                         await publish('hermod/'+site+'/display/show',{'question':crossword_position})
             
             #hermod/+/crossword/fill
