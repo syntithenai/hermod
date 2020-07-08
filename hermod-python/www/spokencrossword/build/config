@@ -1,0 +1,12 @@
+{
+     "webserver": "https://peppertrees.asuscomm.com", 
+    "server": "wss://peppertrees.asuscomm.com:9001", 
+    "username": "hermod_admin",
+    "password": "talk2mebaby",
+    "subscribe": "hermod/hermod_admin_web/#",
+    "hotwordsensitivity" : 0.5    ,
+    "site" :"hermod_admin_web",
+    "adsense_key": "",
+    "adsense_slot": "",
+    "analytics_code": "UA-3712973-3"
+}
