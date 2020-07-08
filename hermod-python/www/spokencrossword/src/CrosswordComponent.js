@@ -99,8 +99,9 @@ export default class CrosswordComponent extends Component {
     componentDidMount() {
         let that = this;
         console.log(['ATUPmnt',this.props.match])
+        this.loadCrossword();
         // wait for config to load
-         setTimeout(function() {console.log('TRIGGER') ; that.setState({forcereload:23})},500)
+         //setTimeout(function() {console.log('TRIGGER') ; that.setState({forcereload:23});  if (that.props.crosswordRef.current) that.props.crosswordRef.current.forceLoadGuesses()},50)
 	}
     
     componentDidUpdate(props,state) {
@@ -155,13 +156,24 @@ export default class CrosswordComponent extends Component {
         } catch(e) {
             
         }
-        console.log(this.props)            
-        console.log('SEARCHcw')
+        console.log(['GUESSES1 SEARCHcw',this.props])
+        console.log('GUESSES1 SEARCHcw')
         that.setState({_id:'',data:null, title:''})
         if (this.props.match && this.props.match.params && this.props.match.params.id && this.props.match.params.id.length > 0)  {
-            console.log('SEARCHcwISD'+this.props.match.params.id)
+            console.log('GUESSES1 SEARCHcwISD'+this.props.match.params.id)
             if (stash.hasOwnProperty(this.props.match.params.id))  {
-               that.setState(stash[this.props.match.params.id]) 
+                var useStash = stash[this.props.match.params.id]
+                var across = useStash.data.across
+                var down = useStash.data.down
+                if (this.props.data) useStash.data = this.props.data
+                useStash.data.across = across 
+                useStash.data.down = down
+                //JSON.parse(JSON.stringify(this.props.data))
+               that.setState(useStash) 
+               console.log(['CROSSREF LOAD GUESSES1',that.props.crosswordRef])
+                //if (that.props.crosswordRef.current) {
+                    //that.props.crosswordRef.current.forceLoadGuesses()
+                //}
             } else {
                 if (this.props.startWaiting) this.props.startWaiting()
                 console.log(this.props.hermodClient)
@@ -177,6 +189,8 @@ export default class CrosswordComponent extends Component {
                         stash[crossword._id] = saveMe
                         localStorage.setItem('crosswords',JSON.stringify(stash))
                         that.setState(saveMe)
+                        console.log(['CROSSREF LOAD GUESSES'])
+                        //that.props.crosswordRef.current.forceLoadGuesses()
                     }).finally(function() {
                         if (that.props.stopWaiting) that.props.stopWaiting()  
                     })

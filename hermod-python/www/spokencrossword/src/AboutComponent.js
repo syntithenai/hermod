@@ -9,7 +9,8 @@ export default () => {
         
         <div>The software is freely available under a FreeBSD Open Source License.<br/></div>
 
-        <a  target="_new" href='https://github.com/syntithenai/hermod' >Github</a>
+        <a  target="_new" href='https://github.com/syntithenai/hermod' ><Button style={{marginLeft:'1em'}}  >Developer Documentation</Button></a>
+        <a href="https://github.com/syntithenai/hermod/issues" target="_new"  ><Button style={{marginLeft:'1em'}}  >Report a problem</Button></a>
         <br/>
         <div>
             Built using 

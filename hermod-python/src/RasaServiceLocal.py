@@ -266,12 +266,14 @@ class RasaServiceLocal(MqttService):
             await self.finish(site,payload)
     
     async def set_slots(self,site,payload):
+        print('RASA LOCAL SETSLOT loc' + site)
+                
         tracker = self.tracker_store.get_or_create_tracker(site)
         if payload :
             #tracker.current_slot_values();
             for slot in payload.get('slots',[]):
-                # print('SETSLOT loc')
-                # print([slot])
+                print('SETSLOT loc')
+                print([slot])
                 tracker.update(SlotSet(slot.get('slot'),slot.get('value')))
             self.tracker_store.save(tracker)
             

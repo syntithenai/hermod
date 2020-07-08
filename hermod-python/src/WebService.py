@@ -245,6 +245,8 @@ async def get_crossword(request):
             print(document)
             document['_id'] = str(document.get('_id'))
             if request.args.get('site',False):
+                print('SEND SET SLOTS')
+                e = sys.exc_info()
                 await publish('hermod'+request.args.get('site')+'rasa/setslots',{"slots":[{"crossword":document['_id']}]})
             return  json(document)
         except:

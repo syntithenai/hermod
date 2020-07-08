@@ -139,6 +139,7 @@ export function clearGuesses(storageKey) {
 }
 
 export function saveGuesses(gridData, storageKey) {
+    console.log('SAVE GUESSES')
   const { localStorage } = window;
   if (!localStorage) {
     return;
@@ -150,7 +151,7 @@ export function saveGuesses(gridData, storageKey) {
     date: Date.now(),
     guesses,
   };
-
+    console.log(saveData)
   localStorage.setItem(storageKey, JSON.stringify(saveData));
 }
 
@@ -170,6 +171,7 @@ export function serializeGuesses(gridData) {
 }
 
 export function loadGuesses(gridData, storageKey) {
+    console.log('load GUESSES')
   const { localStorage } = window;
   if (!localStorage) {
     return;
@@ -181,7 +183,7 @@ export function loadGuesses(gridData, storageKey) {
   }
 
   const saveData = JSON.parse(saveRaw);
-
+   console.log(saveData)
   // TODO: check date for expiration?
   deserializeGuesses(gridData, saveData.guesses);
 }

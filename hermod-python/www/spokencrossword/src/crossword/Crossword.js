@@ -587,7 +587,7 @@ const Crossword = React.forwardRef(
         focus: () => {
           focus();
         },
-
+        
         /**
          * Resets the entire crossword; clearing all answers in the grid and
          * also any persisted data.
@@ -674,7 +674,33 @@ const Crossword = React.forwardRef(
             onLoadedCorrect(loadedCorrect);
           }
         },
+        forceLoadGuesses: () => {
+              const { size, gridData, clues } = createGridData(data);
+console.log('FORCE LOAD GUESSES')
+              let loadedCorrect;
+                loadGuesses(gridData, defaultStorageKey);
+                loadedCorrect = findCorrectAnswers(data, gridData);
 
+                loadedCorrect.forEach(([direction, num]) => {
+                  const clueInfo = clues[direction].find((i) => i.number === num);
+                  clueInfo.correct = true;
+                });
+              
+              setSize(size);
+              setGridData(gridData);
+              setClues(clues);
+
+              // Should we start with 1-across highlighted/focused?
+
+              // TODO: track input-field focus so we don't draw highlight when we're not
+              // really focused, *and* use first actual clue (whether across or down?)
+              setFocusedRow(0);
+              setFocusedCol(0);
+              setCurrentDirection('across');
+              setCurrentNumber('1');
+
+              setBulkChange(null);
+        },
         /**
          * Fills all the answers in the grid and calls the `onLoadedCorrect`
          * callback with _**every**_ answer.

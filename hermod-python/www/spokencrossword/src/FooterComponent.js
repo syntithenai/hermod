@@ -11,8 +11,7 @@ export default (props) => {
     
       
       <Link style={{float:'right', marginRight:'0.8em'}} to='/about' ><Button style={{float: 'left'}} variant="primary"  size="sm" >About the Software  </Button></Link>
- <b style={{float:'left', marginRight:'0.8em'}}>&nbsp;&nbsp;<a rel="noopener noreferrer" target="_blank" href='https://github.com/syntithenai/hermod' >Copyleft Steve Ryan</a>&nbsp;&nbsp;</b>
-      <span style={{float:'left', marginLeft:'1.8em',color:'#e64848'}} >&nbsp;&nbsp;<b><i >WARNING: Your questions are used to improve our language models.</i></b></span>
+ <b style={{float:'left', marginRight:'0.8em'}}>&nbsp;&nbsp;<a rel="noopener noreferrer" target="_blank" style={{color: 'lightgrey'}} href='https://github.com/syntithenai/hermod' >Copyleft Steve Ryan</a>&nbsp;&nbsp;</b>
      
        <SlotListComponent slots={props.slots} />
      
@@ -26,3 +25,5 @@ export default (props) => {
         ///>
  //
   //   <div>{JSON.stringify(props.hermodClient)}</div>
+// <span style={{float:'left', marginLeft:'1.8em',color:'#e64848'}} >&nbsp;&nbsp;<b><i >WARNING: Your questions are used to improve our language models.</i></b></span>
+     
