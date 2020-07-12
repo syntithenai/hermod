@@ -194,7 +194,8 @@ async def get_crosswords(request):
             andParts.append({'title':{'$regex':search}})
         if len(difficulty) > 0:
             andParts.append({'$or':[{'difficulty':difficulty},{'difficulty':int(difficulty)}]})
-
+        andParts.append({ 'access': { '$exists': False, '$nin': [''] } })
+        
         query={}
         if len(andParts) > 0:
             query = {'$and':andParts}
