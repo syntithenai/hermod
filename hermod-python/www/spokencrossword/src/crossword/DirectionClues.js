@@ -1,22 +1,26 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+
 // import styled from 'styled-components';
 
 import Clue from './Clue';
 
-export default function DirectionClues({ direction, clues }) {
+export default function DirectionClues({ direction, clues , clue_data}) {
   return (
     <div className="direction">
       {/* use something other than h3? */}
       <h3 className="header">{direction.toUpperCase()}</h3>
+     
+               
       {clues.map(({ number, clue, correct }) => (
         <Clue
           key={number}
           direction={direction}
           number={number}
           correct={correct}
+          clue_data={clue_data[number]}
         >
-          {clue}
+          {clue} 
         </Clue>
       ))}
     </div>

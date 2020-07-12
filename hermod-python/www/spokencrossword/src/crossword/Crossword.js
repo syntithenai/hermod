@@ -676,7 +676,6 @@ const Crossword = React.forwardRef(
         },
         forceLoadGuesses: () => {
               const { size, gridData, clues } = createGridData(data);
-console.log('FORCE LOAD GUESSES')
               let loadedCorrect;
                 loadGuesses(gridData, defaultStorageKey);
                 loadedCorrect = findCorrectAnswers(data, gridData);
@@ -698,7 +697,6 @@ console.log('FORCE LOAD GUESSES')
               setFocusedCol(0);
               setCurrentDirection('across');
               setCurrentNumber('1');
-
               setBulkChange(null);
         },
         /**
@@ -818,7 +816,7 @@ console.log('FORCE LOAD GUESSES')
                 cells in the <svg>.
               */}
                 <div style={{ margin: 0, padding: 0, position: 'relative' }}>
-                  <svg viewBox="0 0 100 100">
+                   <svg viewBox="0 0 100 100">
                     <rect
                       x={0}
                       y={0}
@@ -864,6 +862,7 @@ console.log('FORCE LOAD GUESSES')
                     }}
                   />
                 </div>
+                 <br/>  <br/>  <br/> 
               </GridWrapper>
               <CluesWrapper>
                 {clues &&
@@ -872,6 +871,7 @@ console.log('FORCE LOAD GUESSES')
                       key={direction}
                       direction={direction}
                       clues={clues[direction]}
+                      clue_data={data[direction]}
                     />
                   ))}
               </CluesWrapper>

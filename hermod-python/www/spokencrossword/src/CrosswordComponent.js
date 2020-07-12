@@ -212,26 +212,16 @@ export default class CrosswordComponent extends Component {
           return (
             <div className="componentd dfirst-component" style={{ width:'100%'}}>
                 <div className="acontent-block" style={{ width:'100%'}}>
-                {that.state.link && <a style={{  float:'left' ,marginLeft:'0.2em'}} target="_new" href={that.state.link}><Button>Download</Button></a>}
                 
-                <Link style={{float:'right', marginRight:'0.2em'}}  to="/crosswords"><Button variant="success">Start a new crossword</Button></Link>
-                <h3 style={{ clear:'both', marginRight:'0.2em', width:'100%'}}>{that.state.title} </h3>
+                <Link style={{float:'left', marginRight:'0.2em'}}  to="/crosswords"><Button variant="success">Start a new crossword</Button></Link>
+                <h3 style={{ clear:'both', marginRight:'0.2em', width:'100%'}}> <a target="_new" href={this.state.link}>{that.state.title}</a> </h3>
                 <div>
-                </div>   
-                {that.state.copyright &&  
                     <span>
                         {that.state.author &&  <span> by {that.state.author}</span>} 
-                        <span> &copy; <a target="_new"  href={this.state.copyright_link}>{that.state.copyright}</a></span>
                     </span>
-                }
-                
-
-                {!that.state.copyright &&  
-                    <span>
-                        {that.state.author &&  <span> by <a target="_new" href={this.state.copyright_link}>{that.state.author}></a></span>} 
-                    </span>
-                }
-                
+                </div>   
+                {(that.state.copyright && that.state.copyright_link) && <span> &copy; <a target="_new"  href={this.state.copyright_link}>{that.state.copyright}</a></span>}
+                {(that.state.copyright && !that.state.copyright_link) && <span> &copy; {that.state.copyright}</span>}                
 
  {(that.state.data && that.props.hermodClient.connected) && <div style={{zIndex:1}} ><Crossword   data={that.state.data} 
                       storageKey={'guesses_'+this.props.match.params.id} 
@@ -250,6 +240,8 @@ export default class CrosswordComponent extends Component {
     }
      
 }
+// {JSON.stringify(that.state)}
+               
 //onCorrect={that.onCorrect}
                   //onLoadedCorrect={that.onLoadedCorrect}
                   //onCrosswordCorrect={that.onCrosswordCorrect}

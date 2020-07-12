@@ -105,7 +105,7 @@ export default class CrosswordListComponent extends Component {
         //var crosswordItemStyle = {
             
         //}
-        var difficultyMap = {"1":"Kids","2":"Easy","3":"Medium","4":"Hard","5":"Cryptic"}
+        var difficultyMap = {"1":"Kids","2":"Adult Easy","3":"Adult Medium","4":"Adult Hard","5":"Cryptic","10":"Junior Primary School","11":"Middle Primary School","12":"Upper Primary School","13":"Junior High School","14":"Senior High School"}
         var categoryItems={}
         for (var i in this.state.crosswords) {
             var crossword = this.state.crosswords[i]

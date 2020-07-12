@@ -28,7 +28,7 @@ export default class HeaderComponent extends Component {
         let that = this;
       return (
         <div className="hermodHeader" style={{backgroundColor: "#b5a5f3", minHeight: "9em", width: "100%", top: 0, left: 0, position: 'fixed'}}>
-          <MicrophoneComponent hermodClient={that.props.hermodClient} toggleMicrophone={this.props.toggleMicrophone}/>
+          <MicrophoneComponent hermodClient={that.props.hermodClient} toggleMicrophone={this.props.toggleMicrophone} api={this.props.api} />
           <SpeechBubbleComponent hermodClient={that.props.hermodClient} />
           <div id="buttons" style={{float: "left", marginRight: "0.5em", padding: "0.5em"}}>
             <span  className="fixedButtons" id="fixedButtons" style={{float: "left", marginRight: "0.5em"}} >

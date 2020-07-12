@@ -1,6 +1,6 @@
-import React, { useCallback, useContext } from 'react';
+import React, { useCallback, useContext ,useState} from 'react';
 import PropTypes from 'prop-types';
-
+import {Button,Modal} from 'react-bootstrap';
 import styled, { ThemeContext } from 'styled-components';
 
 import { CrosswordContext } from './context';
@@ -20,6 +20,14 @@ export default function Clue({
   correct,
   ...props
 }) {
+  const [show, setShow] = useState('false');
+  const handleClose = () => setShow('false');
+  const handleShow = () => setShow('true');
+  
+  const [showImage, setShowImage] = useState('false');
+  const handleCloseImage = () => setShowImage('false');
+  const handleShowImage = () => setShowImage('true');
+
   const { highlightBackground } = useContext(ThemeContext);
   const {
     focused,
@@ -49,7 +57,38 @@ export default function Clue({
       onClick={handleClick}
       aria-label={`clue-${number}-${direction}`}
     >
-      {number}: {children}
+        {(props.clue_data.medialink && props.clue_data.autoshow_media === "true") && <div><img src={props.clue_data.medialink} alt='media' style={{float:'right',maxHeight:'3em'}}/></div>}
+      {props.clue_data.infolink && <Button style={{marginRight:'0.2em',zIndex:'500'}}  onClick={function(e) { window.open(props.clue_data.infolink) }} ><img src='/svg/external-link.svg' alt="More Information" style={{height  :'1.1em'}} /></Button>}
+      {props.clue_data.extraclue &&  <Button style={{marginRight:'0.2em'}} onClick={handleShow} ><img src='/svg/question-mark.svg' alt="Memory Aid" style={{height  :'1.1em'}} /></Button>}
+      {(props.clue_data.medialink && props.clue_data.autoshow_media !== "true") && <Button style={{marginRight:'0.2em'}} onClick={handleShowImage} ><img src='/svg/image.svg' alt="Image" style={{height  :'1.1em'}} /></Button>}
+      {show==="true" &&      
+
+      <Modal show={show} onHide={handleClose}>
+        <Modal.Header closeButton>
+          <Modal.Title>Memory Aid</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>{props.clue_data.extraclue}</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleClose}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>}
+      {showImage==="true" &&      
+
+      <Modal show={show} onHide={handleCloseImage}>
+        <Modal.Header closeButton>
+          <Modal.Title>Image</Modal.Title>
+        </Modal.Header>
+        <Modal.Body><img src={props.clue_data.medialink} style={{width:'60%'}} /></Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseImage}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>}
+        {number}: {children}
+        
     </ClueWrapper>
   );
 }
