@@ -25,6 +25,8 @@ The hermod services run in a single threaded asyncio loop to allow for scalabili
 
 Services can be distributed across hardware connected by a shared MQTT server.
 
+![hermod_mqtt](https://raw.githubusercontent.com/syntithenai/hermod/master/docs/hermod_mqtt.svg)
+
 > **This project has recently been ported from nodejs to python.**
 > In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
 > Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
@@ -68,7 +70,7 @@ sudo docker-compose up
 
 
 ```
-Open  (http://localhost)[http://localhost] in a web browser.
+Open  (https://localhost)[https://localhost] in a web browser.
 
 Say "Hey Edison" or click the microphone button to enable speech and then ask a question.
 
