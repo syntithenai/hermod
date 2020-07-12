@@ -7,11 +7,6 @@ It can also be used to build standalone alexa like devices that do not need the 
 
 Demo [https://edison.syntithenai.com](https://edison.syntithenai.com)
 
-> **This project has recently been ported from nodejs to python.**
-> In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
-> Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
-> Access the historic nodejs version remains available via the [nodejs branch](https://github.com/syntithenai/hermod/tree/nodejs)
-
 
 The software is provided as a suite of microservices that collaborate using a shared MQTT server.
 Services include
@@ -29,6 +24,12 @@ The client uses mqtt over websockets for live communication and streaming audio 
 The hermod services run in a single threaded asyncio loop to allow for scalability.
 
 Services can be distributed across hardware connected by a shared MQTT server.
+
+> **This project has recently been ported from nodejs to python.**
+> In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
+> Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
+> Access the historic nodejs version remains available via the [nodejs branch](https://github.com/syntithenai/hermod/tree/nodejs)
+
 
 
 ## Quickstart
@@ -73,8 +74,6 @@ Say "Hey Edison" or click the microphone button to enable speech and then ask a 
 
 If local audio is enabled, you can use the hotword "Picovoice" to activate a local dialog session.
 
-**This will only work if you are running the server software on localhost. To serve hermod over a network, SSL must be enabled.**
-
 
 
 ## Compatibility
@@ -115,23 +114,16 @@ There are also operating system requirements including
 *See the hermod-python/Dockerfile for install instructions.**
 
 
-The folder hermod-python contains a number of shell scripts for various development tasks using hermod as a docker image.
-
-- run.sh - start hermod with all the related services in a single docker container
-- bash.sh - start duckling then run bash inside the hermod container to allow CLI access
-- ....
-
-
-*See the source code for details.*
 
 
 ### Installation on AWS
 
 Demo [https://edison.syntithenai.com](https://edison.syntithenai.com) runs on 
 
-t3a.small instance (2 cores, 2G memory)
+t3a.micro instance (1 cores, 1G memory)
 with a 16G root file system
 
+It's not enough memory to train a model on this type of instance.
 
 
 
@@ -151,8 +143,6 @@ The docker image includes a build of mosquitto 1.6.7
 The entrypoint for the source code is the file services.py which has a number of command line arguments to enable and disable various features of the software suite.
 
 Environment variables are also used to configure the hermod services.
-
-The file hermod-python/src/config-all.yml provides base configuration which is modified by the services file to account for arguments and environment variables and passed on to the hermod services.
 
 
 ### Arguments
@@ -224,8 +214,6 @@ If google credentials are provided, the DeepSpeechASR and IBMASR services will b
 
 
 
-Because the microphone is often restarted after executing an action, some requests to the service are very short bursts of silence which still incur the 15s minimum cost.
-
 **22/05/2020**
 The first 240 (< 15s) requests are free.
 After than $0.024 USD/minute.
@@ -278,36 +266,6 @@ The standard plan costs $0.0412 USD / minute.
 
 ### Authentication
 
-A standalone server with local audio does not require authentication and uses the admin password preconfigured in the sample mosquitto file.
-
-
-When using the web server, a user must uniquely identify themselves. When a user logs in, the authentication details for the mosquitto server are provided to the web client.
-
-It is possible to run without authentication in which case the user is automatically assigned the username no_login_user.
-
-Currently authentication with github is the only option. To setup, ensure that the web service has access to the environment variables
-```
-GITHUB_OAUTH_CLIENT_ID=11111111111-kjhlskjdfhglskjdf.apps.googleusercontent.com
-GITHUB_OAUTH_CLIENT_SECRET=secret
-```
-
-The web server uses Flask Dance to implement the oauth flow. Flask dance supports many providers including google, facebook, twitter, ...
-
-[At this time, the google provider fails.   It works to the extent that a code is returned by google however the authorize endpoint fails with invalid client exception ??]
-
-
-Access to the mqtt server is partitioned by sites. A site corresponds to a mosquitto login user.
-The mqtt service has access rules so that an authenticated user can read and write to any topic underneath hermod/theirsiteid/
-
-For example if the user logs in as fred@gmail.com they can connect and subscribe to hermod/fred__gmail_com/asr/text
-
-In the example, the web service generates a password when the user logs in and then uses mosquitto_password to update the mosquitto password file via a shared volume with the mosquitto server.
-The mosquitto server runs an additional thread to watch for changes to its password file and send a HUP signal to mosquitto to trigger a reload when the passwords change.
-The web server delivers the generated password to the browser client via a templated HTML content.
-
-There is also a global admin user configured in the mosquitto sample files 
-- username hermod_server
-- password hermod
 
 The admin user credentials are used by the hermod services which listen and respond to messages from many sites (all topics under hermod/)
 The admin credentials must be provided as environment variables.
@@ -318,6 +276,17 @@ MQTT_USER: hermod_server
 MQTT_PASSWORD: hermod
 MQTT_PORT: 1883    
 ```
+A standalone server with local audio does not require authentication and uses the admin credentials from the environment.
+
+Authentication details are generated for web users when they load the site. 
+
+Access to the mqtt server is partitioned by sites. A site corresponds to a mosquitto login user.
+The mqtt service has access rules so that an authenticated user can read and write to any topic underneath hermod/theirsiteid/
+
+In the example, the web service generates a password when the user logs in and then uses mosquitto_password to update the mosquitto password file via a shared volume with the mosquitto server.
+The mosquitto server runs an additional thread to watch for changes to its password file and send a HUP signal to mosquitto to trigger a reload when the passwords change.
+The web server delivers the generated password to the browser client via a templated HTML content.
+
 
 
 ### Docker commands
@@ -341,32 +310,23 @@ Start a shell in the running web container
 ### SSL
 
 Recent web browsers will not allow access to the microphone unless the connection is made over SSL.
-Localhost is an exception so the web site works fine from a browser on the same machine but exposing it to the Internet takes more work.
 
-If using SSL for the webserver, the mosquitto web sockets server must also use SSL.
+Certificates are generated using certbot when the mqtt service starts. Set environment variables  to specify your Internet accessible hostname.
 
-Certbot can be used to make free certificates if your host is exposed to the Internet.
+```
+SSL_DOMAIN_NAME=myhost.asuscomm.com
+SSL_EMAIL=joe@gmail.com
+```
 
+Mosquitto web sockets is exposed on port 9001 using SSL.
 
-To enable SSL for both the web service and the mqtt service set the path to the certificates files.
+The web server exposes https on port 443 and http on port 80 which redirects to https.
+These ports can be adjusted (to avoid existing services) using environment variables.
 
-```SSL_CERTIFICATES_FOLDER=/path/to/cert/files```
-
-To enable SSL, three files must be present in this folder
-/SSL_CERTIFICATES_FOLDER/cert.pem
-/SSL_CERTIFICATES_FOLDER/fullchain.pem
-/SSL_CERTIFICATES_FOLDER/privkey.pem
-
-
-Using docker-compose, SSL_CERTIFICATES_FOLDER is set to /app/certs/. 
-Edit docker-compose.yml to host mount a folder to that path in both the mqtt and hermodweb containers.
+HTTP_PORT=8080
+HTTPS_PORT=4430
 
 
-When services.py starts mosquitto, it checks if the files exist. If they do it rewrites mosquitto-ssl.conf to reflect the path and starts mosquitto using mosquitto-ssl.conf.
-If the certificate files are not available, mosquitto starts without SSL.
-In both cases, mosquitto web sockets is exposed on port 9001.
-
-The web server serves https on port 443 if the certificate files are available otherwise http on port 80.
 
 
 ### Local Audio
@@ -424,9 +384,9 @@ When using docker without pulse, these files will need to be customised using vo
 
 ### RASA
 
+
 To train the model when using docker compose.
 ```docker-compose run rasa -t```
-
 
 RASA requires URLs to duckling and rasa action services to be specified in the configuration files for your RASA model.
 
@@ -452,7 +412,7 @@ eg
 action_endpoint:
   url: "${RASA_ACTIONS_URL}"
 ```
-If RASA_ACTIONS_URL is present in the environment when starting services.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable.
+If RASA_ACTIONS_URL is present in the environment when starting services.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable when RASA starts.
 
 
 
@@ -467,16 +427,11 @@ To build training data from the chatito files
 
 - Start the services  with ```docker-compose up``` to create a container with the correct environment variables then,
 
-- Start a shell in the rasa container
-```docker exec -it -w /app/rasa rasa bash```
+- Start a shell in the hermod container
+```docker exec -it -w /app/rasa hermod bash```
 
 - Then build training data, convert to md format and run training
-```
-cd chatito
-python ./buildnlu.py
-cd ..
-rasa train --data data/stories.md data/nlu.md chatito/nlu.md
-```
+```docker-compose run rasa -g```
 
 
 
@@ -500,9 +455,9 @@ The AudioService and the javascript client send an initialisation message `hermo
 
 The DialogManagerService listens for these messages and sends appropriate activate and start messages for asr, hotword and microphone.
 
-The TTS services also listen for these messages and cache the client information so that clients who have registered via a web platform are sent TTS audio as a url rather than the default of splitting into mqtt audio packets for final reassembly and playback.  Streaming playback using MQTT by reconstructing audio streams is difficult. A web server is designed for the job.
+The TTS services also listens for these messages and caches the client information so that clients who have registered via a web platform are sent TTS audio as a url rather than the default of splitting into mqtt audio packets for final reassembly and playback.  Streaming playback using MQTT by reconstructing audio streams is difficult. A web server is designed for the job.
 
-The RASA service also listens for these messages and saves the payload as a slot hermod_client so that the information is available to custom actions to respond based on supported features of the client.
+The RASA service also listens for these messages and saves the payload as a slot `hermod_client` so that the information is available to custom actions to respond based on supported features of the client.
 
 ### Automatically restarting the microphone
 
@@ -551,7 +506,6 @@ If both slots are set, hermod_force_continue takes precedence.
 For fallback actions, a sample implementation of action_default_fallback is included with the action server that sets the slot to force the microphone to restart.
 
 
-
 After a period of silence or failed recognition attempts, the microphone will turn itself back to hotword mode.
 
 
@@ -576,38 +530,36 @@ TODO implement intent filters with thresholds
 
 ### Logging
 
+Any mqtt client (mqttbox, hbmqtt, mosquitto_sub) can be used to show communication between the services as a dialog progresses.
+
+Using the mqtt admin credentials from your environment file,
 
 ```
 mosquitto_sub -v -u hermod_server -P  hermod -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/# &
 mosquitto_sub -v -u hermod_admin -P  talk2mebaby -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/# &
-mosquitto_sub -v -u hermod_admin -P  thisistalking -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/start -t hermod/+/speaker/stop &
+mosquitto_sub -v -u hermod_admin -P  talk2mebaby -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/nlu/# -t hermod/+/core/#  -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/start -t hermod/+/speaker/stop -t hermod/+/rasa/# &
 ```
-
-mosquitto_sub -v -h mqtt -u hermod_admin -P  thisistalking -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/start -t hermod/+/speaker/stop &
-mosquitto_pub  -h mqtt -u hermod_admin -P  thisistalking -t hermod/hermod_server/asr/text -m '{"text":"what is the date"}'
 
 
 ### Example Web Service
-
-The web service hosts a sample page with oauth login via google. When a user logs in, a password is generated and the mosquitto server password file is updated and reloaded.
-
-If environment variables are set for google oauth, users can login using google to identify themselves.
-If not set, the user defaults to no_user_login and all browsers accessing the page will share messages.
-
-The sample web application provides a microphone and UI elements including buttons an iframe and an image.
-The sample actions send MQTT hermod/mysite/display messages with parameters for url, image and buttons.
-The microphone shows a dialog when the user speaks and when hermod replies.
 
 
 
 ### Web Client
 
-The hermod web client in hermod-python/www/static/bundle.js provides a vanilla javascript library for starting and stopping hotword and speech recognition/audio streaming.
+An example web application answers questions usings wikipedia and other sources.
 
->To make changes to the library you will need to run watchify to repack.
+The hermod web client in hermod-python/www/static/bundle.js provides a vanilla javascript library for starting and stopping hotword and speech recognition/audio streaming in a browser.
+
+The example applications provides dual implementations using either vanilla javascript or using React.
+
+If using the library with vanilla javascript, changes to the library will require a rebuild using watchify.
 >```watchify index.js -o static/bundle.js```
 
-*See the example hermod-python/www/index.html  for usage.**
+The file hermod-python/www/index.html  shows vanilla usage.
+
+The file hermod-python/www/spokencrossword/src/HermodClient.js shows how the vanilla script can be wrapped into a React component.
+
 
 
 First construct a client with configuration as follows. In the following example, email, password and site are generated from server template variables in python.
@@ -674,17 +626,6 @@ The client exposes methods including
 
 
 
-
-### Monitoring
-
-All communication between services is via mqtt so you can monitor by listening for messages
-
-```apt install mosquitto-clients```
-
-To track the conversation progress, use the admin login details and subscribe to a bunch of topics.
-```
-mqtt_sub -h localhost -u hermod -P -hermod_server  -v -t 'hermod/+/asr/+' -t 'hermod/+/nlu/+' -t 'hermod/+/dialog/+' -t 'hermod/+/hotword/+' -t 'hermod/+/intent' -t 'hermod/+/action' -t 'hermod/+/action/#' -t 'hermod/+/core/#' -t 'hermod/+/tts/#' -t 'hermod/+/speaker/started' -t 'hermod/+/speaker/finished'
-```
 
 ### Tests
 
@@ -958,7 +899,7 @@ The NLU service is implemented using RASA. RASA configuration allows for a pipel
 
 ### Dialog Manager 
 
-# TODO doc id
+
 
 The dialog manager coordinates the services by listening for MQTT messages and responding with MQTT messages to further the dialog.
 
@@ -1030,11 +971,6 @@ In general, a service should send message to let the dialog manager know when it
 
 
 
-<img src='message-flow-hermod.svg.png' style="background-color:white" />
-
-
-
-
 When the dialog manager starts, it sends
 
 - `hermod/<siteId>/microphone/start`
@@ -1100,7 +1036,6 @@ Offline TTS implementations include Mycroft Mimic, picovoice, MaryTTS, espeak, [
 
 Online TTS implementation include Amazon Polly and Google. These services support SSML markup.
 
-[SuperSnipsTTS](https://gist.github.com/Psychokiller1888/cf10af3220b5cd6d9c92c709c6af92c2) provides a service implementation that can be configured to use a variety of implementations and fall back to offline implementations where required.
 
 #### Message Reference
 
@@ -1136,8 +1071,6 @@ Online TTS implementation include Amazon Polly and Google. These services suppor
 
 ## Wishlist
 
-- build all skills script
-- generate domain from config and skills folders  	
 	
 - rasa 2 stage fallback
 https://rasa.com/docs/core/master/policies/#two-stage-fallback-policy
@@ -1152,17 +1085,6 @@ https://rasa.com/docs/core/master/policies/#two-stage-fallback-policy
 
 - deepspeech asr component frequency filtering (as per deepspeech nodejs example)
 
-- tests
-	- mqtt based check each layer of service
-	- rasa segregated training data for testing 
-
-- story and model builder UI 
-	- define some actions
-	- start an interactive learning session
-	- also explicit add intent, slot, action, template
-
-- ARM image for pi with lightweight services - snips hotword/ASR/NLU and kaldi asr
-
 - Service Monitoring (TODO) ? partially present
 The dialog manager tracks the time duration between some messages so it can determine if services are not meeting performance criteria and provide useful feedback.
 Where a services is deemed unresponsive, an error message is sent and the session is ended by sending `hermod/<siteId>/dialog/end`.
@@ -1174,8 +1096,31 @@ Services are considered unresponsive in the following circumstances
 *   For the TTS service, if the time between tts/say and tts/finished
 *   For the media streaming service, if the time between speaker/play and speaker/finished
 
+  
+- load testing.
 
-### Dialog Extensions (TODO)???
+- chomecast web client
+
+- capture training data
+    - NLU DONE
+    - stories
+    - integrate into base training data 
+   ``` services.py -t```
+
+- HDASR
+    - single service that switches between google and deepspeech
+        - explicitly triggered by actions for a single following utterance. Useful for capturing arbitrary text to a slot.
+        - triggered when NLU fails and calls action_default (or 2 stage fallback)
+    - enable Google with daily limits
+
+- auto adjust to ambient volume (per mycroft)
+
+
+- RASA
+    - [multi intents](https://blog.rasa.com/how-to-handle-multiple-intents-per-input-using-rasa-nlu-tensorflow-pipeline/?_ga=2.50044902.1771157212.1575170721-2034915719.1563294018)
+
+
+-  Dialog Extensions (TODO)???
 
 The dialog manager tracks when multiple ASR or NLU services of the same type indicate that they have started. It waits for all final responses and selects the highest confidence before sending the next message.
 
@@ -1195,57 +1140,7 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
 ?? The debounce introduces a short delay between hearing a hotword and starting transcription. To avoid requiring the user pause after the hotword, the ASR needs audio from immediately after the hotword is detected and before transcription is started. To support this, the media server maintains a short ring buffer of audio that is sent before audio data from the hardware. The length of audio that is sent can be controlled by a parameter prependAudio in the JSON body of a message to hermod/<siteId>/microphone/start
 
 
-
-
-
-
-## Done
-
-- unify config
-  - env, config.yml, args, secrets
-  - docker compose
-  - SSL
-  
-  
- ## Todo 
-  
-- Dockerfile load rasa training data from external repository. 
-   
-- load testing.
-
-- chomecast web client
-
-- capture training data
-    - NLU DONE
-    - stories
-    - integrate into base training data 
-   ``` services.py -t```
-
-- wikipedia example 
-    - refine chatito data and rebuild model
-    - topic disambiguation
-        -  ? wiki disambiguation pages?
-    -  rasa two stage fallback with proactive suggest next intent at stage 2.            
-    -  example using rasa forms
-    -  extend available wikidata attributes
-    -  show me (failing display mode ... fallback to wiki lookup page/attribute). eg show me the flag of peru
-
-
-- local storage of facts. See RASA knowledgebasebot DONE
-
-- HDASR
-    - single service that switches between google and deepspeech
-        - explicitly triggered by actions for a single following utterance. Useful for capturing arbitrary text to a slot.
-        - triggered when NLU fails and calls action_default (or 2 stage fallback)
-    - enable Google with daily limits
-
-- auto adjust to ambient volume (per mycroft)
-
-
-
-- RASA
-    - [multi intents](https://blog.rasa.com/how-to-handle-multiple-intents-per-input-using-rasa-nlu-tensorflow-pipeline/?_ga=2.50044902.1771157212.1575170721-2034915719.1563294018)
-
+ 
 ## Links
 
 - Contribute to the Mozilla Open Source Voice Dataset)[https://voice.mozilla.org/en/speak]
