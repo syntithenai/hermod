@@ -38,7 +38,67 @@ def mongo_connect(collection):
     collection = db[collection]
     return collection
 
+        
+def mongo_connect_mnemo(collection):
+    # logger = logging.getLogger(__name__)
+    # print('MONGO CONNECT ')
+    # print(str(os.environ.get('MNEMO_CONNECTION_STRING')))
+    
+    client = motor.motor_asyncio.AsyncIOMotorClient(os.environ.get('MNEMO_CONNECTION_STRING'))
 
+    db = client['mnemo']
+    collection = db[collection]
+    return collection
+
+async def scrape_mnemo(table,filterQuery,config):
+    try:
+        # print('scrape mnemo ')
+        # print(table)
+        # print(filterQuery)
+        # print(config)
+        collection = mongo_connect_mnemo(table) 
+        # print('scrape mnemo CONNECTED')
+        crosswords = []
+        async for document in collection.find(filterQuery):
+            # print(document)
+            crosswords.append({
+            'word' : config.get('word')(document),
+            'clue' : config.get('clue')(document),
+            'author' : config.get('author')(document),
+            'copyright' : config.get('copyright')(document),
+            'copyright_link' : config.get('copyright_link')(document),
+            'link' : config.get('link')(document),
+            'suggestions' : config.get('suggestions')(document),
+            'title' : config.get('title')(document),
+            'medialink': config.get('medialink')(document), 
+            'infolink': config.get('infolink')(document), 
+            'extraclue': config.get('extraclue')(document)
+            })
+            # print(new_crossword)
+            # crosswords.append([word,clue])
+        #document = await collection.find_many(query)
+        # print(document)
+        # document['_id'] = str(document.get('_id'))
+        return crosswords
+    except:
+        print('scrape mnemo ERR')
+        e = sys.exc_info()
+        print(e) 
+    
+       # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'difficulty':10,
+    # 'country':lambda record:country,
+    # 'link':lambda record:link,
+    # 'queryFilter':{'topic':{'$regex':'English Vocab (junior high school)'}},
+    # 'word': lambda record:last_word(record.get('question')), 
+    # 'clue': lambda record:record.get('answer'), 
+    # 'suggestions': lambda record:[], 
+    # #'title': lambda record:record:record.get('topic'), 
+    # 'title': lambda record:'English Vocab (Junior High School) '+ record.get('count'), 
+    # 'width': 15,
+    # 'height': 15 
       
 async def get_crossword(uid):
     print('CROSSWORD')

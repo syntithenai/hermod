@@ -9,9 +9,11 @@ class Crossword(object):
         self.maxloops = maxloops
         self.available_words = available_words
         self.randomize_word_list()
+        # print(['AVAIL WORDS',   self.available_words])
         self.current_word_list = []
         self.debug = 0
         self.clear_grid()
+        # print(available_words)
  
     def clear_grid(self): # initialize grid and fill with empty character
         self.grid = []
@@ -25,9 +27,15 @@ class Crossword(object):
         temp_list = []
         for word in self.available_words:
             if isinstance(word, Word):
-                temp_list.append(Word(word.word, word.clue))
+                temp_list.append(Word(word.word, word.clue,word.extraclue,word.infolink,word.medialink,word.suggestions,word.autoshow_media))
             else:
-                temp_list.append(Word(word[0], word[1]))
+                if len(word) == 7:
+                    # print("WL")
+                    # print(len(word))
+                    temp_list.append(Word(word[0],word[1],word[2],word[3],word[4],word[5],word[6]))
+                else :
+                    # print("EEK")
+                    temp_list.append(Word(word[0],word[1]))
         random.shuffle(temp_list) # randomize word list
         temp_list.sort(key=lambda i: len(i.word), reverse=True) # sort by length
         self.available_words = temp_list
@@ -46,6 +54,7 @@ class Crossword(object):
             copy.randomize_word_list()
             x = 0
             while x < spins: # spins; 2 seems to be plenty
+                    
                 for word in copy.available_words:
                     if word not in copy.current_word_list:
                         copy.fit_and_add(word)
@@ -207,6 +216,7 @@ class Crossword(object):
  
     def set_word(self, col, row, vertical, word, force=False): # also adds word to word list
         if force:
+            # print(['STE WORD',word.word, word.clue,word.number, word.extraclue, word.infolink])
             word.col = col
             word.row = row
             word.vertical = vertical
@@ -297,8 +307,7 @@ class Crossword(object):
         for word in self.current_word_list:
             outStr += '%d. (%d,%d) %s: %s\n' % (word.number, word.col, word.row, word.down_across(), word.clue )
         return outStr
-   
-   
+        
    # //across: {
     # //1: {
       # //clue: 'capital of australia',
@@ -308,20 +317,24 @@ class Crossword(object):
     # //}, 
     def json(self): # must order first
         data = {"across":{},"down":{}}
+        words=[]
         for word in self.current_word_list:
             if word.down_across() == "across":
-                data["across"][str(word.number)]={"clue":word.clue,"answer":word.word,"row":word.row,"col":word.col}
+                words.append(word.word)
+                data["across"][str(word.number)]={"clue":word.clue,"answer":word.word,"row":word.row,"col":word.col,"extraclue":word.extraclue,"infolink":word.infolink,"medialink":word.medialink,"suggestions":word.suggestions,"autoshow_media":word.autoshow_media}
                 #outStr += '%d. (%d,%d) %s: %s\n' % (word.number, word.col, word.row, word.down_across(), word.clue )
         for word in self.current_word_list:
             if word.down_across() == "down":
-                data["down"][str(word.number)]={"clue":word.clue,"answer":word.word,"row":word.row,"col":word.col}
+                cleanword = "{}".format(word.word).lower()
+                words.append(cleanword)
+                data["down"][str(word.number)]={"clue":word.clue,"answer":word.word,"row":word.row,"col":word.col,"extraclue":word.extraclue,"infolink":word.infolink,"medialink":word.medialink,"suggestions":word.suggestions,"autoshow_media":word.autoshow_media}
                 #outStr += '%d. (%d,%d) %s: %s\n' % (word.number, word.col, word.row, word.down_across(), word.clue )
         
-        return data
+        return (words,data)
  
 
 class Word(object):
-    def __init__(self, word=None, clue=None):
+    def __init__(self, word=None, clue=None, extraclue=None, infolink=None, medialink=None, suggestions=None ,autoshow_media=None):
         self.word = re.sub(r'\s', '', word.lower())
         self.clue = clue
         self.length = len(self.word)
@@ -330,7 +343,13 @@ class Word(object):
         self.col = None
         self.vertical = None
         self.number = None
- 
+        self.extraclue = extraclue
+        self.infolink = infolink
+        self.medialink = medialink
+        self.suggestions = suggestions
+        self.autoshow_media = autoshow_media
+        # print(["NEW WORD",word,clue,extraclue,infolink,medialink,suggestions,autoshow_media])
+
     def down_across(self): # return down or across
         if self.vertical: 
             return 'down'
@@ -338,4 +357,4 @@ class Word(object):
             return 'across'
  
     def __repr__(self):
-        return self.word
+        return ",".join([str(self.word),str(self.clue),str(self.vertical),str(self.row),str(self.col),str(self.extraclue),str(self.infolink)])
