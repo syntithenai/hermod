@@ -81,24 +81,6 @@ If local audio is enabled, you can use the hotword "Picovoice" to activate a loc
 
 
 
-## Compatibility
-
-The suite was developed on using Ubuntu Desktop. It should work on most Linux systems.
-It is largely written in python and requires at least python 3.7
-
-As per the notes below, cross platform shouldn't be too much of a stretch.
-
-- The TTS service uses a Linux binary pico2wav to generate audio from text. The Google TTS service is cross platform but requires the Internet.
-
-- For strictly web based services, audio is handled by the client browser so no problems with audio devices.
-The local Audio Service relies on pyaudio and (optionally) pulseaudio for local microphone capture and playback. 
-Cross platform audio on python is challenging. In particular streaming with asyncio. 
-Implementation on Windows or OSX would require the use of an alternate python sound library that works for those platforms.
-
-- Raspberry pi4  with ARM runs deepspeech, picovoice and the rest of the hermod suite.
-However, at this time i haven't been able to install RASA on ARM (although I have in the past) due to missing libraries. 
-
-
 
 ## Installation
 
@@ -142,16 +124,40 @@ The docker image includes a build of mosquitto 1.6.7
 
 
 
+### Compatibility
+
+The suite was developed on using Ubuntu Desktop. It should work on most Linux systems.
+It is largely written in python and requires at least python 3.7
+
+As per the notes below, cross platform shouldn't be too much of a stretch.
+
+- The TTS service uses a Linux binary pico2wav to generate audio from text. The Google TTS service is cross platform but requires the Internet.
+
+- For strictly web based services, audio is handled by the client browser so no problems with audio devices.
+The local Audio Service relies on pyaudio and (optionally) pulseaudio for local microphone capture and playback. 
+Cross platform audio on python is challenging. In particular streaming with asyncio. 
+Implementation on Windows or OSX would require the use of an alternate python sound library that works for those platforms.
+
+- Raspberry pi4  with ARM runs deepspeech, picovoice and the rest of the hermod suite.
+However, at this time i haven't been able to install RASA on ARM (although I have in the past) due to missing libraries. 
+
+
 ## Configuration
 
-The entrypoint for the source code is the file services.py which has a number of command line arguments to enable and disable various features of the software suite.
+The entrypoint for the source code is the file ```hermod.py``` which has a number of command line arguments to enable and disable various features of the software suite.
 
 Environment variables are also used to configure the hermod services.
+
+Using docker-compose to access containers incorporates environment variables from .env
+
+Start a shell in the running web container
+
+```docker-compose exec hermod bash```
 
 
 ### Arguments
 
-Arguments to services.py are mainly used to specify which services should be activated.
+Arguments to hermod.py are mainly used to specify which services should be activated.
 
 Arguments include
 
@@ -164,14 +170,19 @@ Arguments include
 - **nl (--nolocalaudio)**   skip local audio and hotword services (instead use browser client)
 -  **t (train)**  train RASA model when starting local server
 
-For example to start the mosquitto, web and action servers as well as the main hermod services.
-```python services.py -dwarm```
 
+*The entrypoint script hermod.py must be executed from the rasa folder.*
 
-To start just the RASA server
-```python services.py -r```
+For example to start the mosquitto, web and action servers as well as the main hermod services with local audio disabled
+```
+cd /app/rasa
+python hermod.py -m -w - a -d -nl
+```
+
 
 ### Environment
+
+Environment variables are used for almost all configurable values needed by services.
 
 When using docker-compose, add environment variables to each services by editing the docker-compose.yml file OR using a .env file in the same folder. 
 
@@ -179,7 +190,31 @@ The .env file is excluded from git and is a good place to store secrets.  To ena
 
 ```cp .env-sample  .env```
 
-Without docker compose, environment variables should be present in the shell that runs ```python services.py```
+Without docker compose, environment variables should be present in the shell that runs ```python hermod.py```
+
+
+### Authentication
+
+
+The admin user credentials are used by the hermod services which listen and respond to messages from many sites (all topics under hermod/)
+The admin credentials must be provided as environment variables.
+
+```
+MQTT_HOSTNAME: mqtt
+MQTT_USER: hermod_server
+MQTT_PASSWORD: hermod
+MQTT_PORT: 1883    
+```
+A standalone server with local audio does not require authentication and uses the admin credentials from the environment.
+
+Authentication details are generated for web users when they load the site. 
+
+Access to the mqtt server is partitioned by sites. A site corresponds to a mosquitto login user.
+The mqtt service has access rules so that an authenticated user can read and write to any topic underneath hermod/theirsiteid/
+
+In the example, the web service generates a password when the user logs in and then uses mosquitto_password to update the mosquitto password file via a shared volume with the mosquitto server.
+The mosquitto server runs an additional thread to watch for changes to its password file and send a HUP signal to mosquitto to trigger a reload when the passwords change.
+The web server delivers the generated password to the browser client via a templated HTML content.
 
 
 
@@ -268,47 +303,6 @@ The standard plan costs $0.0412 USD / minute.
 
     
 
-### Authentication
-
-
-The admin user credentials are used by the hermod services which listen and respond to messages from many sites (all topics under hermod/)
-The admin credentials must be provided as environment variables.
-
-```
-MQTT_HOSTNAME: mqtt
-MQTT_USER: hermod_server
-MQTT_PASSWORD: hermod
-MQTT_PORT: 1883    
-```
-A standalone server with local audio does not require authentication and uses the admin credentials from the environment.
-
-Authentication details are generated for web users when they load the site. 
-
-Access to the mqtt server is partitioned by sites. A site corresponds to a mosquitto login user.
-The mqtt service has access rules so that an authenticated user can read and write to any topic underneath hermod/theirsiteid/
-
-In the example, the web service generates a password when the user logs in and then uses mosquitto_password to update the mosquitto password file via a shared volume with the mosquitto server.
-The mosquitto server runs an additional thread to watch for changes to its password file and send a HUP signal to mosquitto to trigger a reload when the passwords change.
-The web server delivers the generated password to the browser client via a templated HTML content.
-
-
-
-### Docker commands
-
-Using docker-compose to access containers incorporates environment variables.
-
-
-train the RASA model
-note -t argument to services default entrypoint.
-
-```docker-compose run rasa -t```
-
-
-Start a shell in the running web container
-
-```docker-compose exec -it --entrypoint bash hermodweb```
-
-
 
 
 ### SSL
@@ -326,10 +320,10 @@ Mosquitto web sockets is exposed on port 9001 using SSL.
 
 The web server exposes https on port 443 and http on port 80 which redirects to https.
 These ports can be adjusted (to avoid existing services) using environment variables.
-
+```
 HTTP_PORT=8080
 HTTPS_PORT=4430
-
+```
 
 
 
@@ -343,7 +337,7 @@ To enable local audio and hotword services is easiest using the default setup re
 
 Depending on your host, you may need to use paprefs or some other method to allow network access to your host pulse audio installation.
 
-To use pulse, the hermod services.py file needs to run with 
+To use pulse, the hermod hermod.py file needs to run with 
 - environment variables PULSE_SERVER and PULSE_COOKIE
 - access (? volume mount) to cookie file from host
 
@@ -388,35 +382,42 @@ When using docker without pulse, these files will need to be customised using vo
 
 ### RASA
 
-
-To train the model when using docker compose.
-```docker-compose run rasa -t```
-
-RASA requires URLs to duckling and rasa action services to be specified in the configuration files for your RASA model.
-
-Notably,the duckling URL is built into the RASA model when it is trained.
-
-- **config.yml** specifies the url to duckling
-- **entrypoints.yml**  specifies the url to the action server
-
-Hermod uses environment variables in these configuration files to allow dynamic assignment. (Although changes to the duckling url  will require model training)
-
-- **DUCKLING_URL** default http://localhost:8000 set in services.py 
-eg
+hermod.py can be used alongside an existing RASA installation by providing a url the the HTTP API. 
+The environment variable RASA URL is required.
 ```
-  - name: DucklingHTTPExtractor                                                     
-    url: ${DUCKLING_URL}  
+RASA_URL: http://rasa:5005
 ```
 
+It can also be used to start a RASA HTTP server using the -r argument. 
+The environment variables DUCKLING_URL and RASA_ACTIONS_URL are required.
+**Notably,the duckling URL is built into the RASA model when it is trained and the built value must match the environment variable.**
+If RASA_ACTIONS_URL is present in the environment when starting hermod.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable when RASA starts.
+
+```
+DUCKLING_URL: http://duckling:8000
+RASA_ACTIONS_URL: http://hermod:5055/webhook
+```
+
+For optimum performance, the RasaLocalService can be used which skips the HTTP server and loads and queries the RASA model directly.
+
+A path to the model file must be provided.
+```
+RASA_MODEL: /app/rasa/models/model.tar.gz
+```
+
+In a development environment it is ideal to run the RASA HTTP server in a different container to avoid restarts for code changes.
 
 
-- **RASA_ACTIONS_URL**  default http://localhost:5055 set in services.py 
-  eg
-```
-action_endpoint:
-  url: "${RASA_ACTIONS_URL}"
-```
-If RASA_ACTIONS_URL is present in the environment when starting services.py, the endpoints.yml file is updated to set the action_endpoint.url to match the environment variable when RASA starts.
+
+The hermod.py script provides options for training. 
+In the RASA folder ```data/nlu.md``` provides fixed training data
+The folder ```chatito``` includes many files which are used to generate training data into the file ```chatito/nlu.md```
+
+To generate training data from the chatito files.
+```docker-compose exec hermod ../src/hermod.py -g```
+
+To train the model using both fixed and chatito training data.
+```docker-compose exec hermod ../src/hermod.py -t```
 
 
 
@@ -427,21 +428,8 @@ Building a good model requires lots of samples. While generation from a DSL runs
 In particular entity matching from a large set defined as a lookup file, benefits from (integrating more samples of lookup values)[https://blog.bitext.com/improving-rasas-results-with-artificial-training-data-ii]
 
 
-To build training data from the chatito files
-
-- Start the services  with ```docker-compose up``` to create a container with the correct environment variables then,
-
-- Start a shell in the hermod container
-```docker exec -it -w /app/rasa hermod bash```
-
-- Then build training data, convert to md format and run training
-```docker-compose run rasa -g```
-
-
 
 ## Developing with Hermod
-
-It should be straight forward to build a model into the folder hermod-python/rasa/models and use either the local or web versions to speak to the model.
 
 Developing with hermod is mainly developing with RASA. Building/training a model and implementing actions.
 
@@ -513,23 +501,6 @@ For fallback actions, a sample implementation of action_default_fallback is incl
 After a period of silence or failed recognition attempts, the microphone will turn itself back to hotword mode.
 
 
-#### Fallback Requests
-
-experiment in place - action server provides action_custom_fallback and config.yml includes
-
-```
-  - name: "FallbackPolicy"
-    nlu_threshold: 0.5
-    core_threshold: 0.3
-    fallback_action_name: "action_custom_fallback"
-```
-
-But NLU confidence scores below 0.5 don't trigger fallback action.
-
-
-TODO implement intent filters with thresholds
-
-
 
 
 ### Logging
@@ -540,8 +511,8 @@ Using the mqtt admin credentials from your environment file,
 
 ```
 mosquitto_sub -v -u hermod_server -P  hermod -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/# &
-mosquitto_sub -v -u hermod_admin -P  talk2mebaby -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/# &
-mosquitto_sub -v -u hermod_admin -P  talk2mebaby -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/nlu/# -t hermod/+/core/#  -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/start -t hermod/+/speaker/stop -t hermod/+/rasa/# &
+mosquitto_sub -v -u hermod_server -P  hermod -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/# &
+mosquitto_sub -v -u hermod_server -P  hermod -t hermod/+/dialog/# -t hermod/+/asr/# -t hermod/+/nlu/# -t hermod/+/core/#  -t hermod/+/tts/# -t hermod/+/hotword/# -t hermod/+/speaker/start -t hermod/+/speaker/stop -t hermod/+/rasa/# &
 ```
 
 
@@ -1109,7 +1080,7 @@ Services are considered unresponsive in the following circumstances
     - NLU DONE
     - stories
     - integrate into base training data 
-   ``` services.py -t```
+   ``` hermod.py -t```
 
 - HDASR
     - single service that switches between google and deepspeech
