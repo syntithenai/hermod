@@ -11,7 +11,7 @@ Services include
 - audio to text - automated speech recognition(ASR)  using streaming for fastest transcriptions. Includes implementations for Deepspeech, IBM Watson and Google
 - hotword optimised audio to text using picovoice.
 - text to speech (TTS)
-- RASA based Natural Language Understanding (NLU) to determine intents and slots from text
+- [RASA](http://rasa.com) based Natural Language Understanding (NLU) to determine intents and slots from text
 - RASA routing using machine learning of stories to translate a history of intents and slots into a choice about the next action.
 
 A sequence of messages passes between the services as the dialog progresses from hotword triggering through speech to text, natural language understanding, 
