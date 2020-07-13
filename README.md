@@ -1,14 +1,11 @@
 This repository provides a framework for building voice based applications. 
 
-It was created to simplify integrating custom speech services into a website.
+It was created to simplify integrating custom speech services into a website. Demo [https://edison.syntithenai.com](https://edison.syntithenai.com)
 
-It can also be used to build standalone alexa like devices that do not need the Internet. 
-
-
-Demo [https://edison.syntithenai.com](https://edison.syntithenai.com)
+It can also be used to build standalone alexa like devices that do not need a network. 
 
 
-The software is provided as a suite of microservices that collaborate using a shared MQTT server.
+Inspired by Snips, the software is provided as a suite of microservices that collaborate using a shared MQTT server.
 Services include
 - audio capture and playback services for local hardware
 - audio to text - automated speech recognition(ASR)  using streaming for fastest transcriptions. Includes implementations for Deepspeech, IBM Watson and Google
@@ -17,21 +14,27 @@ Services include
 - RASA based Natural Language Understanding (NLU) to determine intents and slots from text
 - RASA routing using machine learning of stories to translate a history of intents and slots into a choice about the next action.
 
+A sequence of messages passes between the services as the dialog progresses from hotword triggering through speech to text, natural language understanding, 
+routing and finally text to speech in reply to the user.
+
+
+![hermod_mqtt](https://raw.githubusercontent.com/syntithenai/hermod/master/docs/hermod_mqtt.svg)
+
+
 
 The software also provides a vanilla javascript library and example for integrating a hotword and visual microphone into a web page as a client of the suite.
 The client uses mqtt over websockets for live communication and streaming audio back to the hermod server.
 
-The hermod services run in a single threaded asyncio loop to allow for scalability.
 
-Services can be distributed across hardware connected by a shared MQTT server.
+The hermod services run in a single threaded asyncio loop for optimimum performance on limited hardware. 
 
-![hermod_mqtt](https://raw.githubusercontent.com/syntithenai/hermod/master/docs/hermod_mqtt.svg)
+Services can be distributed across hardware for high concurrency applications or distributed LAN deployments (satellite mode with pi0)
+
 
 > **This project has recently been ported from nodejs to python.**
 > In particular on ARM, in my experience, stable packages for speech recognition were more difficult to achieve with nodejs than python.
 > Additionally [RASA](http://rasa.com) written in python is a core part of the suite so the portage unifies the development environment for the server side.
 > Access the historic nodejs version remains available via the [nodejs branch](https://github.com/syntithenai/hermod/tree/nodejs)
-
 
 
 ## Quickstart
@@ -125,8 +128,7 @@ Demo [https://edison.syntithenai.com](https://edison.syntithenai.com) runs on
 t3a.micro instance (1 cores, 1G memory)
 with a 16G root file system
 
-It's not enough memory to train a model on this type of instance.
-
+There is not enough memory to train a model on this type of instance so building locally and uploading model files is necessary.
 
 
 ### Mosquitto
