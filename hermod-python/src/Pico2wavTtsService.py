@@ -1,77 +1,76 @@
-"""
-This class listens for tts/say messages and triggers a sequence of messages
-that result in the text message being converted to wav audio and played through the speaker service
-TODO Where the text is very long, it is split into parts and sent sequentially.
-The speaker service sends start and end messages.
-This service iterates each part, waiting for each speaker/started and speaker/finished message
-and finally sends a tts/finished  message when all parts have finished playing
-Depends on os pico2wav install with path in config.yaml
-"""
+""" Pico2wav based Text to Speech Service """
 
 import json
 import os
-import aiofiles
 import concurrent.futures
 import asyncio
-from random import seed
-from random import randint
-from MqttService import MqttService
 import unicodedata
 import string
 from pathlib import Path
-        
-valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-char_limit = 240
+import aiofiles
+from MqttService import MqttService
 
-
-# seed random number generator
-seed(1)
+VALID_FILENAME_CHARS = "-_.() %s%s" % (string.ascii_letters, string.digits)
+CHAR_LIMIT = 240
 
 def os_system(command):
+    """ run an os command """
     os.system(command)
 
-def clean_filename(filename, whitelist=valid_filename_chars, replace=' '):
+
+def clean_filename(filename, whitelist=VALID_FILENAME_CHARS, replace=' '):
+    """ clean a string suitable for a filename """
     # replace spaces
-    for r in replace:
-        filename = filename.replace(r,'_')
-    
+    for letter in replace:
+        filename = filename.replace(letter, '_')
+
     # keep only valid ascii chars
-    cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode()
-    
+    cln_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode()
+
     # keep only whitelisted chars
-    cleaned_filename = ''.join(c for c in cleaned_filename if c in whitelist)
-    # if len(cleaned_filename)>char_limit:
-        # print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
-    return cleaned_filename[:char_limit]    
- 
+    cln_filename = ''.join(character for character in cln_filename if character in whitelist)
+    # if len(cleaned_filename)>CHAR_LIMIT:
+    # print("Warning, filename truncated because it was over {}. Filenames
+    # may no longer be unique".format(CHAR_LIMIT))
+    return cln_filename[:CHAR_LIMIT]
+
 
 class Pico2wavTtsService(MqttService):
-    """ Text to Speech Service Class """
-
+    """
+    This class listens for tts/say messages and triggers a sequence of messages
+    that result in the text message being converted to wav audio and played through the speaker
+    service
+    The speaker service sends start and end messages.
+    This service iterates each part, waiting for each speaker/started and speaker/finished message
+    and finally sends a tts/finished  message when all parts have finished playing
+    Depends on os pico2wav install with path in config.yaml
+    """
     def __init__(
             self,
             config,
             loop
     ):
+        """constructor"""
         super(
             Pico2wavTtsService,
-            self).__init__(config,loop)
+            self).__init__(config, loop)
         self.config = config
         self.clients = {}
         # subscribe to all sites
         self.subscribe_to = 'hermod/+/tts/say,hermod/+/dialog/init'
-        cache_path = self.config['services']['Pico2wavTtsService'].get('cache_path','/tmp/tts_cache')
+        cache_path = self.config['services']['Pico2wavTtsService'].get(
+            'cache_path', '/tmp/tts_cache')
         Path(cache_path).mkdir(parents=True, exist_ok=True)
 
-
-    async def on_message(self, msg):
-        topic = "{}".format(msg.topic)
+    async def on_message(self, message):
+        """handle mqtt message"""
+        topic = "{}".format(message.topic)
         parts = topic.split('/')
         site = parts[1]
         payload = {}
         try:
-            payload = json.loads(msg.payload)
-        except BaseException:
+            payload = json.loads(message.payload)
+        except json.JSONDecodeError:
             pass
         text = payload.get('text')
         if topic == 'hermod/' + site + '/tts/say':
@@ -86,24 +85,26 @@ class Pico2wavTtsService(MqttService):
         elif topic == 'hermod/' + site + '/dialog/init':
             self.clients[site] = payload
 
-    async def cleanup_file(self,short_text,file_name):
+    async def cleanup_file(self, short_text, file_name):
+        """ delete generated file after a short delay to allow download """
         await asyncio.sleep(1)
-         # cache short texts
-        if len(short_text) > self.config.get('cache_max_letters',100):
-             os.remove(file_name)
-        
-    """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
+        # cache short texts
+        if len(short_text) > self.config.get('cache_max_letters', 100):
+            os.remove(file_name)
+
     async def generate_audio(self, site, text, payload):
-        cache_path = self.config['services']['Pico2wavTtsService'].get('cache_path','/tmp/tts_cache')
-        value = payload.get('id','no_id')
-        
-        if len(text) > 0:
-            short_text = text[0:100].replace(' ','_').replace(".","")
+        """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
+        cache_path = self.config['services']['Pico2wavTtsService'].get(
+            'cache_path', '/tmp/tts_cache')
+        value = payload.get('id', 'no_id')
+
+        if text:
+            short_text = text[0:100].replace(' ', '_').replace(".", "")
             # speakable and limited
-            say_text = text[0:300].replace('(','').replace(')','')
+            say_text = text[0:300].replace('(', '').replace(')', '')
             short_file_name = clean_filename('tts-' + str(short_text)) + '.wav'
             file_name = os.path.join(cache_path, short_file_name)
-        
+
             # generate if file doesn't exist in cache
             if not os.path.isfile(file_name):
                 path = self.config['services']['Pico2wavTtsService']['binary_path']
@@ -111,24 +112,29 @@ class Pico2wavTtsService(MqttService):
                 executor = concurrent.futures.ProcessPoolExecutor(
                     max_workers=1,
                 )
-                await self.loop.run_in_executor(executor,os_system,command)
+                await self.loop.run_in_executor(executor, os_system, command)
 
-            async with aiofiles.open(file_name, mode='rb') as f:
-                audio_file = await f.read()
+            async with aiofiles.open(file_name, mode='rb') as send_file:
+                audio_file = await send_file.read()
                 await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
-                if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
-                    await self.client.publish(
-                        'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/tts/"+short_file_name}), qos=0)
+                if site in self.clients and self.clients[site].get(
+                        'platform', '') == "web" and self.clients[site].get('url', False):
+                    await self.client.publish(\
+                    'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({
+                        "url": self.clients[site].get('url') + "/tts/" + short_file_name
+                    }), qos=0)
                 else:
                     slice_length = 2048
+
                     def chunker(seq, size):
+                        """ return chunks"""
                         return (seq[pos:pos + size] for pos in range(0, len(seq), size))
-                    for slice in chunker(audio_file, slice_length):
-                        await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value), payload=bytes(slice), qos=0)
-                    
+                    for chunk in chunker(audio_file, slice_length):
+                        await self.client.publish('hermod/{}/speaker/cache/{}'.format(site, value)\
+                        , payload=bytes(chunk), qos=0)
+
                     # finally send play message with empty payload
                     await self.client.publish(
                         'hermod/{}/speaker/play/{}'.format(site, value), payload=None, qos=0)
-                
-                await self.cleanup_file(short_text,file_name)
-             
+
+                await self.cleanup_file(short_text, file_name)
