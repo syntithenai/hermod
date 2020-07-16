@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Link , Redirect} from "react-router-dom";
+import { Redirect} from "react-router-dom";
 
 const divStyle = {
     left: 0,
@@ -15,7 +15,7 @@ export default (props) => {
     if (props.hermodClient.frame && props.hermodClient.frame.length > 0) {
       return (
         <div className="component iframeComponent" style={{height:'90em'}}>
-          <iframe title="Wikipedia" style={divStyle}  src={props.hermodClient.frame}></iframe>
+          <iframe title="External" style={divStyle}  src={props.hermodClient.frame}></iframe>
         </div>
       );
     } else {

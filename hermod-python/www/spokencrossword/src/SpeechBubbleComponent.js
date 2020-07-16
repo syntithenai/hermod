@@ -1,6 +1,5 @@
 import React from 'react';
 import {Component} from 'react';
-//import { BrowserRouter as Router, Link } from "react-router-dom";
 
 export default class SpeechBubbleComponent extends Component {
     
@@ -41,6 +40,4 @@ export default class SpeechBubbleComponent extends Component {
       );
     }
 }
-
-//{that.props.hermodClient.nlu && <div><i>{that.props.hermodClient.nlu}</i></div>}
              

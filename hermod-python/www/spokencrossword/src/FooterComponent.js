@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "react-bootstrap";
-import { BrowserRouter as Router, Link } from "react-router-dom";
-import GoogleAds from 'react-google-ads'
+import {  Link } from "react-router-dom";
+//import GoogleAds from 'react-google-ads'
 
 import SlotListComponent from './SlotListComponent';
 
@@ -25,5 +25,3 @@ export default (props) => {
         ///>
  //
   //   <div>{JSON.stringify(props.hermodClient)}</div>
-// <span style={{float:'left', marginLeft:'1.8em',color:'#e64848'}} >&nbsp;&nbsp;<b><i >WARNING: Your questions are used to improve our language models.</i></b></span>
-     

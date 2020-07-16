@@ -18,21 +18,10 @@ export default class FullPageScrollerComponent extends React.Component {
 
   getPagesNumbers = () => {
     const pageNumbers = [];
-
-    //for (let i = 1; i <= 5; i++) {
-      //pageNumbers.push(
-        //<Pager.Item key={i} eventKey={i - 1} onSelect={this.handlePageChange}>
-          //{i}
-        //</Pager.Item>,
-      //);
-    //}
-
     return [...pageNumbers];
   };
 
   render() {
-    //const pagesNumbers = this.getPagesNumbers();
-
     return (
       <React.Fragment>
         <ReactPageScroller
@@ -48,6 +37,3 @@ export default class FullPageScrollerComponent extends React.Component {
     );
   }
 }
-        //<Pager className="pagination-additional-class" bsSize="large">
-          //{pagesNumbers}
-        //</Pager>

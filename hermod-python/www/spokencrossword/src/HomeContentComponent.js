@@ -1,34 +1,9 @@
 import React from "react";
 import {Component} from 'react';
 import { Button } from "react-bootstrap";
-import { BrowserRouter as Router, Link } from "react-router-dom";
-//import FullPageScrollerComponent from './FullPageScrollerComponent'
-import logo from './logo.svg';
+import { Link } from "react-router-dom";
 
-
-//const ContentLast = ({children}) => (
-  //<div className="component" >
-  //<header className="App-header">
-    //<img src={logo} className="App-logo" alt="logo" />
-    
-    //<a
-      //className="App-link"
-      //href="https://reactjs.org"
-      //target="_blank"
-      //rel="noopener noreferrer"
-    //>
-      //Learn React
-    //</a>
-  //</header>
-  //</div>
-//);
- 
-//const askButtonClick = function(e) {
-    //console.log(e)
-    //console.log(e.target.innerText)
-//}
 class ContentOne extends Component {
-//const ContentOne = ({children,props}) => (
 
     render() {
         let that = this;
@@ -85,48 +60,18 @@ class ContentOne extends Component {
     }
 }
 
-//class ContentTwo extends Component {
-    //render() {
-        ////let that = this;
-        //return (
-          //<div className="component" >
-            //<div style={{clear: "both"}} >As we chat I'll suggest some follow up questions in the top menu.</div>
-                          //<div className="helpSampleButtons" >
-                    //<Button variant="secondary"  >And what's the population</Button>
-                    //<Button variant="secondary"  >Tell me more</Button>
-                //</div>
-                
-          //</div>        
-        //)
-    //}
-//}
-////const ContentTwo = ({props}) => (
 
-//);
-//<div style={{marginTop: '0.5em' ,clear: "both"}} >You can also ask me to remember facts. </div>
-        //<div className="helpSampleButtons" >
-            //<Button variant="primary" >Remember that the capital of Australia is Tamworth</Button>
-         //</div>
+
+
 export default class HomePageContent extends Component {
     
     render() {
         let that = this;
       return (
         <div className="component homePageComponent">
-
-                    <ContentOne sendMessage={that.props.sendMessage} />
-                    
-                    
-              
+            <ContentOne sendMessage={that.props.sendMessage} />
         </div>
       );
     };
 } 
-//<FullPageScrollerComponent>
-  //</FullPageScrollerComponent> 
-// onClick="client.sendASRTextMessage(config.site,'Remember that the capital of Australia is Tamworth')"
-//onClick="client.sendASRTextMessage(config.site,'What is the capital of Australia')
-//onClick="client.sendASRTextMessage(config.site,'Spell the word fuzy')"
-//onClick="client.sendASRTextMessage(config.site,'define the word colloquial')" 
-//onClick="client.sendASRTextMessage(config.site,'what is the date')" 
-//onClick="client.sendASRTextMessage(config.site,'tell me about celery')" 
+

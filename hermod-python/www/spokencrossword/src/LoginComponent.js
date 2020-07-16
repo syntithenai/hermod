@@ -1,6 +1,5 @@
 import React from 'react';
 import { GoogleLogin } from 'react-google-login';
-import { BrowserRouter as Router, Link } from "react-router-dom";
 
 
 const responseGoogle = (response) => {

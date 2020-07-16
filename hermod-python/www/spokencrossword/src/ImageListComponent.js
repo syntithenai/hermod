@@ -1,13 +1,11 @@
 import React from "react";
 import {Component} from 'react';
-import { Button } from "react-bootstrap";
-import { BrowserRouter as Router, Link , Redirect} from "react-router-dom";
+import { Redirect} from "react-router-dom";
 
 
 export default class ImageListComponent extends Component {
     
     render() {
-        console.log(this.props.images)
         let that = this;
         if (this.props.images && this.props.images.length > 0) { 
             let images = []

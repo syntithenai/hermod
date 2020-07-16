@@ -7,22 +7,9 @@ import SuggestionButtonsComponent from './SuggestionButtonsComponent'
 import NluFixerComponent from './NluFixerComponent'
 
 
-import { BrowserRouter as Router, Link } from "react-router-dom";
-//style={{float: "left", marginRight: "0.5em"}}
-//style={{float: "left", marginRight: 0.5 +"em"}}
-// style={{float: 'left'}}
-
+import { Link } from "react-router-dom";
 
 export default class HeaderComponent extends Component {
-    
-    
-  constructor(props) {
-      super(props);
-      //let that = this;
-     
-    }
-
- 
     
     render() {
         let that = this;
@@ -34,7 +21,8 @@ export default class HeaderComponent extends Component {
             <span  className="fixedButtons" id="fixedButtons" style={{float: "left", marginRight: "0.5em"}} >
                  <Link  to='/' ><Button style={{float: 'left'}} variant="secondary"  size="lg" >Home</Button></Link>
                  {(this.props.hermodClient.slots && this.props.hermodClient.slots.crossword) && <Link  to={'/crossword/'+this.props.hermodClient.slots.crossword} ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>}
-                 {!(this.props.hermodClient.slots && this.props.hermodClient.slots.crossword) && <Link  to='/crosswords' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>}
+            {that.props.hermodClient.microphoneState !== 1 &&  <Link  to='/about_edison' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Help</Button></Link>}
+            
             </span>
             <SuggestionButtonsComponent  buttons={that.props.hermodClient.buttons} sendMessage={that.props.sendMessage}  showFrame={that.props.showFrame}  showWindow={that.props.showWindow}/>
         </div>
@@ -48,21 +36,5 @@ export default class HeaderComponent extends Component {
       );
     }
 };
-//<!--img style="height: 2em; width: 2em; padding: 0.4em" src='microphone-slash-solid.svg' /-->
-   
-    
-    //<div class="speech-bubble-wrap">
-        //<div id="speechbubble" class="speech-bubble">this is a bubble </div>
-    //</div>
-
-    //const divStyle = {
-        ////position: 'fixed',
-        ////top:0,
-        ////left:0,
-        //width: '98%',
-        ////height: '10em',
-        //border: '3px solid black',
-        //backgroundColor:'red',
-        ////padding:''
-    //}
-    //onClick="showHome()"
+//     {!(this.props.hermodClient.slots && this.props.hermodClient.slots.crossword) && <Link  to='/crosswords' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>}
+            

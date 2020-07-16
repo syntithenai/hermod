@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import 'whatwg-fetch'
 import { Button } from "react-bootstrap";
-import { BrowserRouter as Router, Link } from "react-router-dom";
+import {Link } from "react-router-dom";
 
 export default class CrosswordListComponent extends Component {
     
@@ -22,11 +22,9 @@ export default class CrosswordListComponent extends Component {
 
     
       componentDidMount() {
-        console.log('APP dMOUNT')
         let that = this;
            var crosswords = []
            if (localStorage.getItem('crossword_list_entry')) {
-               
                try {
                    crosswords = JSON.parse(localStorage.getItem('crossword_list_entry'))
                    this.setState({crosswords: crosswords})
@@ -42,21 +40,16 @@ export default class CrosswordListComponent extends Component {
                 })
                 
             }        this.crossword =  React.createRef();
-        //this.fillCrossword=this.fillCrossword.bind(this)
       };
       
-       //componentWillMount() {
-           
-       //}
       updateSearchFor(e) {
           this.setState({searchFor:e.target.value})
           this.sendForm(e)
       }
       
-    searchCrosswords() {
+      searchCrosswords() {
         let that = this
         return new Promise(function(resolve,reject) {
-            console.log('SEARCHcw')
             var queryParts = []
             if (that.state.searchFor.length > 0) {
                 queryParts.push("search="+that.state.searchFor)
@@ -64,16 +57,12 @@ export default class CrosswordListComponent extends Component {
             if (that.state.difficulty.length > 0) {
                 queryParts.push("difficulty="+that.state.difficulty)
             }
-            console.log('fetch')
-            console.log(queryParts)
             var prep = ''//this.props.hermodClient.config && this.props.hermodClient.config.webserver ? this.props.hermodClient.config.webserver : '';
             if (that.props.startWaiting) that.props.startWaiting()
             fetch(prep+'/api/crosswords?'+queryParts.join("&"))
                 .then(function(response) {
-                    //console.log(response.text())
                     return response.json()
                 }).then(function(list) {
-                    console.log(list)
                     that.setState({crosswords:list})
                 }).finally(function() {
                   if (that.props.stopWaiting) that.props.stopWaiting()  
@@ -83,8 +72,6 @@ export default class CrosswordListComponent extends Component {
     }
     
     sendForm(e) {
-        console.log('SEMD FORM')
-        //let that = this;
         e.preventDefault()
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout)
@@ -94,17 +81,13 @@ export default class CrosswordListComponent extends Component {
     }
     
     searchDifficulty(difficulty) {
-        console.log(['SD',difficulty])
         this.setState({difficulty:difficulty})
         this.searchCrosswords()
     }
-//<Button style={{float:'left', color:'yellow'}}>Difficulty {crossword.difficulty}</Button>
+
     render () {
         let that = this
         var searchResults = []
-        //var crosswordItemStyle = {
-            
-        //}
         var difficultyMap = {"1":"Kids","2":"Adult Easy","3":"Adult Medium","4":"Adult Hard","5":"Cryptic","10":"Junior Primary School","11":"Middle Primary School","12":"Upper Primary School","13":"Junior High School","14":"Senior High School"}
         var categoryItems={}
         for (var i in this.state.crosswords) {
@@ -119,17 +102,13 @@ export default class CrosswordListComponent extends Component {
         var categoryStyle={backgroundColor: 'orange', minWidth: '30%', float: 'left', minHeight: '7em', border: '1px solid blue', marginLeft: '0.8em' , marginTop: '0.8em' , fontSize:'2em', textAlign:'center', align:'center'
             }
             
-        console.log(categoryItems)  
         var categories = [
         ]
-        
-        
-        for (var i in categoryItems) {
-            categories.push(<div className='col-10 col-md-5' onClick={function(i) { return function() {that.searchDifficulty(i)}}(i)} style={categoryStyle} key={i} >{difficultyMap.hasOwnProperty(i) ? difficultyMap[i]:"Unknown"}
-                <div >{categoryItems[i]}</div>
+        for (var j in categoryItems) {
+            categories.push(<div className='col-10 col-md-5' onClick={function(j) { return function() {that.searchDifficulty(j)}}(j)} style={categoryStyle} key={j} >{difficultyMap.hasOwnProperty(j) ? difficultyMap[j]:"Unknown"}
+                <div >{categoryItems[j]}</div>
             </div>)
         }
-        
         
       return (
         <div className="crosswordListComponent row">
@@ -138,12 +117,12 @@ export default class CrosswordListComponent extends Component {
             </div> 
             <div className="crosswordSearchResults" style={{clear:'both', width: '100%'}}>
             {this.state.searchFor.length > 0 && searchResults}
-            {this.state.searchFor.length ==0 && categories}
+            {this.state.searchFor.length === 0 && categories}
             </div>
             <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
         </div>
       );
     }
 }
-//
+
             

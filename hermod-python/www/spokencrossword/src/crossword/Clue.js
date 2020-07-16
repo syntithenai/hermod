@@ -57,13 +57,13 @@ export default function Clue({
       onClick={handleClick}
       aria-label={`clue-${number}-${direction}`}
     >
-        {(props.clue_data.medialink && props.clue_data.autoshow_media === "true") && <div><img src={props.clue_data.medialink} alt='media' style={{float:'right',maxHeight:'3em'}}/></div>}
+        {(props.clue_data.medialink && props.clue_data.autoshow_media === "true") && <div><img src={props.clue_data.medialink} alt='Clue' style={{float:'right',height:'4em'}}/></div>}
       {props.clue_data.infolink && <Button style={{marginRight:'0.2em',zIndex:'500'}}  onClick={function(e) { window.open(props.clue_data.infolink) }} ><img src='/svg/external-link.svg' alt="More Information" style={{height  :'1.1em'}} /></Button>}
       {props.clue_data.extraclue &&  <Button style={{marginRight:'0.2em'}} onClick={handleShow} ><img src='/svg/question-mark.svg' alt="Memory Aid" style={{height  :'1.1em'}} /></Button>}
-      {(props.clue_data.medialink && props.clue_data.autoshow_media !== "true") && <Button style={{marginRight:'0.2em'}} onClick={handleShowImage} ><img src='/svg/image.svg' alt="Image" style={{height  :'1.1em'}} /></Button>}
-      {show==="true" &&      
+      {(props.clue_data.medialink && props.clue_data.autoshow_media !== "true") && <Button style={{marginRight:'0.2em'}} onClick={handleShowImage} ><img src='/svg/image.svg' alt="Show Clue" style={{height  :'1.1em'}} /></Button>}
+     {show==="true" &&      
 
-      <Modal show={show} onHide={handleClose}>
+      <Modal animation={false} show={show==="true"} onHide={handleClose}>
         <Modal.Header closeButton>
           <Modal.Title>Memory Aid</Modal.Title>
         </Modal.Header>
@@ -76,11 +76,11 @@ export default function Clue({
       </Modal>}
       {showImage==="true" &&      
 
-      <Modal show={show} onHide={handleCloseImage}>
+      <Modal show={show==="true"}  animation={false}  onHide={handleCloseImage}>
         <Modal.Header closeButton>
           <Modal.Title>Image</Modal.Title>
         </Modal.Header>
-        <Modal.Body><img src={props.clue_data.medialink} style={{width:'60%'}} /></Modal.Body>
+        <Modal.Body><img alt="Clue"  src={props.clue_data.medialink} style={{width:'60%'}} /></Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseImage}>
             Close

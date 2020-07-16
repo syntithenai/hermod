@@ -1,18 +1,6 @@
 import React from "react";
-import { BrowserRouter as Router, Link , Redirect} from "react-router-dom";
+import {  Redirect} from "react-router-dom";
 import YouTube from 'react-youtube';
-
-const divStyle = {
-    left: 0,
-    top: 0,
-     overflowY: 'hidden', 
-     width: '100%',
-     height: '100%',
-     minHeight: '400px',
-     minWidth: '400px',
-     overflow: 'hidden', 
-     border: 'None'
-}
 
 const opts = {
       height: '600',

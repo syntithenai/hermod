@@ -1,87 +1,13 @@
 import React from "react";
 import {Component} from 'react';
 import { Button } from "react-bootstrap";
-import { BrowserRouter as Router, Link, Redirect } from "react-router-dom";
+import {  Link, Redirect } from "react-router-dom";
 //import Crossword from '@jaredreisinger/react-crossword';
 import Crossword from './crossword'
-import  { useCallback, useRef, useState } from 'react';
 
 const data = {
   across: {},
   down: {}
-}
-
-const ddata = {
-  across: {
-    1: {
-      clue: 'capital of australia',
-      answer: 'canberra',
-      row: 0,
-      col: 0,
-    },
-    2: {
-        clue: 'capital of el salvador',
-        answer: 'sansalvador',
-        row: 2,
-        col: 1,
-    },
-    3: {
-        clue: 'capital of ecuador',
-        answer: 'quito',
-        row: 5,
-        col: 6,
-    },
-    4: {
-        clue: 'capital of iraq',
-        answer: 'baghdad',
-        row: 7,
-        col: 0,
-    },
-    5: {
-        clue: 'capital of portugal',
-        answer: 'lisbon',
-        row: 9,
-        col: 4,
-    },
-    6: {
-        clue: 'capital of vietnam',
-        answer: 'hanoi',
-        row: 10,
-        col: 0,
-    }
-  },
-  down: {
-    1: {
-      clue: 'capital of the netherlands',
-      answer: 'amsterdam',
-      row: 0,
-      col: 1,
-    },
-    2: {
-      clue: 'capital of thailand',
-      answer: 'bangkok',
-      row: 0,
-      col: 3,
-    },
-    3: {
-      clue: 'capital of liechtenstein',
-      answer: 'vaduz',
-      row: 2,
-      col: 7,
-    },
-    4: {
-      clue: 'capital of russia',
-      answer: 'moscow',
-      row: 1,
-      col: 10,
-    },
-    5: {
-      clue: 'capital of east timor',
-      answer: 'dili',
-      row: 7,
-      col: 4,
-    }
-  },
 }
     
 export default class CrosswordComponent extends Component {
@@ -97,57 +23,33 @@ export default class CrosswordComponent extends Component {
     }
     
     componentDidMount() {
-        let that = this;
-        console.log(['ATUPmnt',this.props.match])
         this.loadCrossword();
-        // wait for config to load
-         //setTimeout(function() {console.log('TRIGGER') ; that.setState({forcereload:23});  if (that.props.crosswordRef.current) that.props.crosswordRef.current.forceLoadGuesses()},50)
-	}
+    }
     
     componentDidUpdate(props,state) {
-        console.log(['ATUPDATE'])
-        console.log(state.forcereload)
-        console.log(this.state.forcereload)
-        console.log(props.api.connected)
-        console.log(this.props.api.connected)
-        //console.log(this.props.match.params.id)
-        if (props.hermodClient.connected != props.hermodClient.connected || this.state.forcereload != state.forcereload) { // || (this.props.match && this.props.match.params && this.state._id.length > 0 && this.props.match.params.id != this.state._id)) {
-		//	this.loadSubscribers();
-        console.log(['ATUPDATErea'])
+        if (this.props.hermodClient.connected !== props.hermodClient.connected 
+            || this.state.forcereload !== state.forcereload) { // || (this.props.match && this.props.match.params && this.state._id.length > 0 && this.props.match.params.id != this.state._id)) {
 			this.loadCrossword();
 		}
 		
 	
     }
     
-    //fillCrossword(e) {
-        ////for (var column in this.state.data) {
-            ////console.log(this.state.data[column])
-            ////for (var row in this.state.data[column]) {
-                ////console.log(this.state.data[column][row])
-            ////}
-        ////}
-        //if (this.props.crosswordRef.current) this.props.crosswordRef.current.fillAnswer('across','1','canberra');
-        
-    //}
-    
     onCorrect(e) {
-        console.log('oncorrect')
+        //console.log('oncorrect')
     }
     onLoadedCorrect(e) {
-        console.log('loadedcorrect')
+        //console.log('loadedcorrect')
     }
     onCrosswordCorrect(e) {
-        console.log('crosswordcorrect')
+        //console.log('crosswordcorrect')
     }
     onCellChange(e) {
-        console.log('cellchange')
+        //console.log('cellchange')
     }
     
      loadCrossword() {
-         console.log('LOADCW')
-         let that = this
-        
+        let that = this
         var stash = {}
         try {
             if (localStorage.getItem('crosswords')) {
@@ -156,11 +58,8 @@ export default class CrosswordComponent extends Component {
         } catch(e) {
             
         }
-        console.log(['GUESSES1 SEARCHcw',this.props])
-        console.log('GUESSES1 SEARCHcw')
         that.setState({_id:'',data:null, title:''})
         if (this.props.match && this.props.match.params && this.props.match.params.id && this.props.match.params.id.length > 0)  {
-            console.log('GUESSES1 SEARCHcwISD'+this.props.match.params.id)
             if (stash.hasOwnProperty(this.props.match.params.id))  {
                 var useStash = stash[this.props.match.params.id]
                 var across = useStash.data.across
@@ -168,41 +67,32 @@ export default class CrosswordComponent extends Component {
                 if (this.props.data) useStash.data = this.props.data
                 useStash.data.across = across 
                 useStash.data.down = down
-                //JSON.parse(JSON.stringify(this.props.data))
-               that.setState(useStash) 
-               console.log(['CROSSREF LOAD GUESSES1',that.props.crosswordRef])
-                //if (that.props.crosswordRef.current) {
-                    //that.props.crosswordRef.current.forceLoadGuesses()
-                //}
+                that.setState(useStash) 
             } else {
                 if (this.props.startWaiting) this.props.startWaiting()
-                console.log(this.props.hermodClient)
                 if (this.props.hermodClient && this.props.hermodClient.config && this.props.hermodClient.config.site) { 
                     fetch('/api/crossword?id='+this.props.match.params.id+"&site="+ this.props.hermodClient.config.site)
                     .then(function(response) {
-                        //console.log(response.text())
                         return response.json()
                     }).then(function(crossword) {
-                         console.log('LOADED CW******************************')
-                        console.log(crossword)
                         var saveMe = {_id:crossword._id,data:crossword.data, title:crossword.title, author:crossword.author, copyright:crossword.copyright ? crossword.copyright.replace(/[^\w\s!?]/g,'') : '', copyright_link:crossword.copyright_link, link:crossword.link}
                         stash[crossword._id] = saveMe
                         localStorage.setItem('crosswords',JSON.stringify(stash))
                         that.setState(saveMe)
-                        console.log(['CROSSREF LOAD GUESSES'])
-                        //that.props.crosswordRef.current.forceLoadGuesses()
                     }).finally(function() {
                         if (that.props.stopWaiting) that.props.stopWaiting()  
                     })
                 }
             }
-            console.log(['SENDMESSAGE',that.props,that.props.api,that.props.site,{slots:[{crossword:that.props.match.params.id}]}])
-            if (that.props.api && that.props.api.client) {
-                that.props.api.client.sendMessage(
-                'hermod/'+that.props.site+'/rasa/set_slots'
-                ,{slots:[{slot:'crossword',value:that.props.match.params.id}]}
-                )
-            }
+            setTimeout(function() {
+                if (that.props.api && that.props.api.client) {
+                //console.log(['SETPROPS',that.props.api.client.sendMessage,that.props.site,that.props.match.params.id])
+                    that.props.api.client.sendMessage(
+                    'hermod/'+that.props.site+'/rasa/set_slots'
+                    ,{slots:[{slot:'crossword',value:that.props.match.params.id}]}
+                    )
+                }
+            },300)
         }
     }
     
@@ -240,80 +130,3 @@ export default class CrosswordComponent extends Component {
     }
      
 }
-// {JSON.stringify(that.state)}
-               
-//onCorrect={that.onCorrect}
-                  //onLoadedCorrect={that.onLoadedCorrect}
-                  //onCrosswordCorrect={that.onCrosswordCorrect}
-                  //onCellChange={that.onCellChange}
-
- //across: {
-    //1: {
-      //clue: 'capital of australia',
-      //answer: 'canberra',
-      //row: 0,
-      //col: 0,
-    //},
-    //2: {
-        //clue: 'capital of el salvador',
-        //answer: 'sansalvador',
-        //row: 2,
-        //col: 1,
-    //},
-    //3: {
-        //clue: 'capital of ecuador',
-        //answer: 'quito',
-        //row: 5,
-        //col: 6,
-    //},
-    //4: {
-        //clue: 'capital of iraq',
-        //answer: 'baghdad',
-        //row: 7,
-        //col: 0,
-    //},
-    //5: {
-        //clue: 'capital of portugal',
-        //answer: 'lisbon',
-        //row: 9,
-        //col: 4,
-    //},
-    //6: {
-        //clue: 'capital of vietnam',
-        //answer: 'hanoi',
-        //row: 10,
-        //col: 0,
-    //}
-  //},
-  //down: {
-    //1: {
-      //clue: 'capital of the netherlands',
-      //answer: 'amsterdam',
-      //row: 0,
-      //col: 1,
-    //},
-    //2: {
-      //clue: 'capital of thailand',
-      //answer: 'bangkok',
-      //row: 0,
-      //col: 1,
-    //},
-    //3: {
-      //clue: 'capital of liechtenstein',
-      //answer: 'vaduz',
-      //row: 0,
-      //col: 1,
-    //},
-    //4: {
-      //clue: 'capital of russia',
-      //answer: 'moscow',
-      //row: 0,
-      //col: 1,
-    //},
-    //5: {
-      //clue: 'capital of east timor',
-      //answer: 'dili',
-      //row: 0,
-      //col: 1,
-    //}
-  //},
