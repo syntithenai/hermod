@@ -72,7 +72,8 @@ async def scrape_mnemo(table,filterQuery,config):
             'title' : config.get('title')(document),
             'medialink': config.get('medialink')(document), 
             'infolink': config.get('infolink')(document), 
-            'extraclue': config.get('extraclue')(document)
+            'extraclue': config.get('extraclue')(document),
+            'autoshow_media': config.get('autoshow_media')(document)
             })
             # print(new_crossword)
             # crosswords.append([word,clue])

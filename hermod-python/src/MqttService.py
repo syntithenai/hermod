@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 """
 Parent class for other mqtt based services implements connection and subscription

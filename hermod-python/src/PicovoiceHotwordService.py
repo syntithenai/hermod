@@ -40,7 +40,6 @@ class PicovoiceHotwordService(MqttService):
             PicovoiceHotwordService,
             self).__init__(config,loop)
         self.config = config
-        #self.thread_targets.append(self.start_main)
         self.also_run=[self.start_main]
         self.audio_stream = {}  # BytesLoop()
         self.porcupine = {}
@@ -82,55 +81,45 @@ class PicovoiceHotwordService(MqttService):
         topic = "{}".format(msg.topic)
         parts = topic.split('/')
         site = parts[1]
-        #self.log("MESSAGE {} -  {}".format(site,topic))
         if topic == 'hermod/' + site + '/hotword/activate':
             await self.activate(site)
         elif topic == 'hermod/' + site + '/hotword/deactivate':
             await self.deactivate(site)
         elif topic == 'hermod/' + site + '/hotword/start':
-            # self.log('started')
-            #if self.active[site]:
             self.started[site] = True
         elif topic == 'hermod/' + site + '/hotword/stop':
-            # self.log('stopped')
             self.started[site] = False
         elif topic == 'hermod/' + site + '/microphone/audio':
             if site in self.audio_stream:
                 self.audio_stream[site].write(msg.payload)
 
     async def activate(self, site):
-       # if not self.active[site]:
-            self.active[site] = True
-            self.started[site] = False
-            self.audio_stream[site] = BytesLoop()
-            await self.client.subscribe('hermod/' + site + '/microphone/audio')
-            self.porcupine[site] = Porcupine(
-                library_path=LIBRARY_PATH,
-                model_file_path=MODEL_FILE_PATH,
-                keyword_file_paths=self.keyword_file_paths,
-                sensitivities=self.sensitivities)
-            # self.log('activated')
-
+        self.active[site] = True
+        self.started[site] = False
+        self.audio_stream[site] = BytesLoop()
+        await self.client.subscribe('hermod/' + site + '/microphone/audio')
+        self.porcupine[site] = Porcupine(
+            library_path=LIBRARY_PATH,
+            model_file_path=MODEL_FILE_PATH,
+            keyword_file_paths=self.keyword_file_paths,
+            sensitivities=self.sensitivities)
+          
     async def deactivate(self, site):
-       # if self.active[site]:
-            self.active[site] = False
-            self.started[site] = False
-            # unsub audio
-            await self.client.unsubscribe('hermod/' + site + '/microphone/audio')
-            # destroy porcupine and audio
-            if self.porcupine[site] is not None:
-                self.porcupine[site].delete()
-            if self.audio_stream[site] is not None:
-                self.audio_stream[site].close()
-            # self.log('deactivated')
+        self.active[site] = False
+        self.started[site] = False
+        # unsub audio
+        await self.client.unsubscribe('hermod/' + site + '/microphone/audio')
+        # destroy porcupine and audio
+        if self.porcupine[site] is not None:
+            self.porcupine[site].delete()
+        if self.audio_stream[site] is not None:
+            self.audio_stream[site].close()
         
     async def start_main(self):
-        # self.log('start hotword main')
         try:
             while True :
                 await asyncio.sleep(0.001)
                 for site in self.active:
-                    #self.log(site)
                     if site in self.porcupine and self.active[site] and self.started[site] and self.audio_stream[site].has_bytes(
                             self.porcupine[site].frame_length * 2):
                         pcm = self.audio_stream[site].read(
@@ -138,13 +127,10 @@ class PicovoiceHotwordService(MqttService):
                         pcm = struct.unpack_from(
                             "h" * self.porcupine[site].frame_length, pcm)
                         result = self.porcupine[site].process(pcm)
-                        # self.log(result)
                         if self.num_keywords == 1 and result:
-                            # self.log('HOTWORD DETECTED')
                             await self.client.publish(
                                 'hermod/' + site + '/hotword/detected', json.dumps({'hotword': self.keyword_names[0]}))
                         elif self.num_keywords > 1 and result >= 0:
-                            # self.log('HOTWORD DETECTED')
                             await self.client.publish(
                                 'hermod/' + site + '/hotword/detected', json.dumps({'hotword': self.keyword_names[result]}))
 

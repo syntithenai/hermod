@@ -40,8 +40,8 @@ def clean_filename(filename, whitelist=valid_filename_chars, replace=' '):
     
     # keep only whitelisted chars
     cleaned_filename = ''.join(c for c in cleaned_filename if c in whitelist)
-    if len(cleaned_filename)>char_limit:
-        print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
+    # if len(cleaned_filename)>char_limit:
+        # print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
     return cleaned_filename[:char_limit]    
  
 
@@ -73,17 +73,10 @@ class Pico2wavTtsService(MqttService):
             payload = json.loads(msg.payload)
         except BaseException:
             pass
-        #self.log('message {} {}'.format(site,topic))
-        #self.log(payload)
         text = payload.get('text')
-        #self.log(text)
         if topic == 'hermod/' + site + '/tts/say':
             await self.generate_audio(site, text, payload)
         elif topic == 'hermod/' + site + '/speaker/finished':
-            # self.log('SPEAKER FINISHED')
-            # self.log(payload)
-            #self.play_requests[payload.get('id')] = value;
-          
             message = {"id": payload.get('id')}
             await asyncio.sleep(0.5)
             await self.client.publish(
@@ -91,9 +84,6 @@ class Pico2wavTtsService(MqttService):
                 json.dumps(message))
             await self.client.unsubscribe('hermod/{}/speaker/finished'.format(site))
         elif topic == 'hermod/' + site + '/dialog/init':
-            # self.log('PICO TTS CLIENT INIT')
-            # self.log(payload)
-            # self.log(site)
             self.clients[site] = payload
 
     async def cleanup_file(self,short_text,file_name):
@@ -101,8 +91,7 @@ class Pico2wavTtsService(MqttService):
          # cache short texts
         if len(short_text) > self.config.get('cache_max_letters',100):
              os.remove(file_name)
-        # self.log('CLEANUP TTS '+file_name)
-
+        
     """ Use system binary pico2wav to generate audio file from text then send audio as mqtt"""
     async def generate_audio(self, site, text, payload):
         cache_path = self.config['services']['Pico2wavTtsService'].get('cache_path','/tmp/tts_cache')
@@ -114,11 +103,7 @@ class Pico2wavTtsService(MqttService):
             say_text = text[0:300].replace('(','').replace(')','')
             short_file_name = clean_filename('tts-' + str(short_text)) + '.wav'
             file_name = os.path.join(cache_path, short_file_name)
-            
-            # short_text = text[0:100].replace(' ','_')
-            # short_file_name =clean_filename('tts-' + str(short_text) + '.wav')
-            # file_name = os.path.join(cache_path, short_file_name)
-            
+        
             # generate if file doesn't exist in cache
             if not os.path.isfile(file_name):
                 path = self.config['services']['Pico2wavTtsService']['binary_path']
@@ -131,13 +116,10 @@ class Pico2wavTtsService(MqttService):
             async with aiofiles.open(file_name, mode='rb') as f:
                 audio_file = await f.read()
                 await self.client.subscribe('hermod/{}/speaker/finished'.format(site))
-                # self.log(self.clients)
                 if site in self.clients and self.clients[site].get('platform','') == "web"  and self.clients[site].get('url',False) :
-                    # self.log('SEND TTS AS URL'+self.clients[site].get('url')+"/"+short_file_name)
                     await self.client.publish(
                         'hermod/{}/speaker/play/{}'.format(site, value), payload=json.dumps({"url":self.clients[site].get('url')+"/tts/"+short_file_name}), qos=0)
                 else:
-                    # self.log('SEND TTS AS packets')
                     slice_length = 2048
                     def chunker(seq, size):
                         return (seq[pos:pos + size] for pos in range(0, len(seq), size))

@@ -66,12 +66,7 @@ async def publish(topic,payload):
 
 
 def mongo_connect(collection):
-    # logger = logging.getLogger(__name__)
-    # print('MONGO CONNECT ')
-    # print(str(os.environ.get('MONGO_CONNECTION_STRING')))
-    
     client = motor.motor_asyncio.AsyncIOMotorClient(os.environ.get('MONGO_CONNECTION_STRING'))
-
     db = client['hermod']
     collection = db[collection]
     return collection
@@ -86,12 +81,9 @@ async def get_mosquitto_user(email):
     randomtag = get_password(4)
     email_clean = email.replace("@",'__')
     email_clean = email_clean.replace(".",'_') + '_' + randomtag
-    # print(email_clean)
-    # print('get mosq user')
     password = get_password()
     cmd = ['/usr/bin/mosquitto_passwd','-b','/etc/mosquitto/password',email_clean,password] 
     p = call(cmd)
-    # TODO async sleep
     await asyncio.sleep(0.5)
     return {"email":email,"email_clean":email_clean,"password":password}
 
@@ -109,18 +101,11 @@ secureredirector.add_route(catch_all,'/<path:path>')
 # # main web server
 app = Sanic("hermodweb")
 
-async def ssl_catch_all(request, path=''):
-    return await file('/app/www/spokencrossword/build/index.html')
-    
+   
 async def ssl_catch_all_root(request):
     return await file('/app/www/spokencrossword/build/index.html')
     
 async def ssl_serve_file(request,path):
-    # if path == "/" or path == "":
-        # return await file('/app/www/spokencrossword/build/index.html')
-    # elif path ==  "/vanilla" or path ==  "/vanilla/":
-        # return await file('/app/www/spokencrossword/vanilla/static/index.html')
-    # else:
     parts = path.split("/")
     root_path = '/app/www/spokencrossword/build/'
     file_path= path
@@ -136,28 +121,22 @@ async def ssl_serve_file(request,path):
             file_path = 'index.html'
         return await file_stream(root_path + file_path)
     except FileNotFoundError:
-        # raise ServerError("Not found", status_code=400)
         return await file_stream(root_path + 'index.html')
     except:
         raise ServerError("Server Error", status_code=500)
 
 app.add_route(ssl_catch_all_root,'/')    
-# app.add_route(ssl_catch_all,'/<path:path>') 
 app.add_route(ssl_serve_file,'/<path:path>')
 logging.getLogger('sanic_cors').level = logging.DEBUG
 
 # old plain javascript version
 app.static('/vanilla','/app/www/spokencrossword/vanilla/static', stream_large_files=True)
-#app.static('/react','/app/www/spokencrossword/build', stream_large_files=True)
-#app.static('/<path:path>','/app/www/spokencrossword/build/index.html')
-# config request - connection details for mqtt
-#app.static('/','/app/www/spokencrossword/build/index.html')
+
 # config request - connection details for mqtt
 async def get_hermod_config(request):
   data = await get_mosquitto_user("webuser")
   
   webconfig = {
-    # "server": "wss://peppertrees.asuscomm.com:9001", 
     "username": data.get('email_clean'),
     "password": data.get('password'),
     "subscribe": "hermod/"+data.get('email_clean')+"/#",
@@ -180,78 +159,54 @@ app.add_route(get_hermod_config, "/config")
 async def get_crosswords(request):
     search = request.args.get('search','')
     difficulty = request.args.get('difficulty','')
-    # print('CROSSWORDS')
-    # print(request)
-    print([search, difficulty])
+    print('GET CROSSWORD')
     try:
-        # print('FIND FACT conn')
         collection = mongo_connect('crosswords') 
-
-        # collection = mongo_connect('crosswords') 
-        # print('FIND FACT CONNECTED')
         andParts = []
         if len(search) > 0:
             andParts.append({'title':{'$regex':search}})
         if len(difficulty) > 0:
             andParts.append({'$or':[{'difficulty':difficulty},{'difficulty':int(difficulty)}]})
         andParts.append({ 'access': { '$exists': False, '$nin': [''] } })
-        
+        print('GET CROSSWORD ANDPARTS')
         query={}
         if len(andParts) > 0:
             query = {'$and':andParts}
-        # print(query)
+        print(query)
         crosswords = []
         cursor = collection.find(query)
+        print('DONE FIND')
         cursor.sort('title', 1).limit(2000)
         results_per_difficulty = 5
         # for empty search limit results per difficulty value to results_per_difficulty
         difficulty_tallies = {}
         async for document in cursor:
             document['_id'] = str(document.get('_id'))
-            # print(document)
             difficulty_tally = int(difficulty_tallies.get(str(document.get('difficulty')),'0'))
             difficulty_tallies[str(document.get('difficulty'))] = difficulty_tally + 1
-            # print(difficulty_tallies)
             if difficulty_tallies[str(document.get('difficulty'))] < results_per_difficulty or len(andParts) > 0:
                 crosswords.append(document)
-        #document = await collection.find_many(query)
-        # print(crosswords)
+        print('DONE FIND JSON')
+        print(crosswords)
+        sys.stdout.flush()
         return json(crosswords)
     except:
-        print('FIND FACT ERR')
         e = sys.exc_info()
         print(e)
         
         
 async def get_crossword(request):
-    print('CROSSWORD')
-    # print(request.args)
-    # print(request.args.get('id'))
     if request.args.get('id',False):
-        # crosswordId = None #request.getid
-        # print([crosswordId])
         try:
-            # print('FIND FACT conn')
             collection = mongo_connect('crosswords') 
-
-            # print('FIND FACT CONNECTED')
             query = {'_id':ObjectId(request.args.get('id'))}
-            # print(query)
             document = await collection.find_one(query)
-            # crosswords = []
-            # async for document in collection.find(query):
-                # print(document)
-                # crosswords.append(document)
-            # #document = await collection.find_many(query)
-            print(document)
             document['_id'] = str(document.get('_id'))
             if request.args.get('site',False):
-                print('SEND SET SLOTS')
                 e = sys.exc_info()
                 await publish('hermod'+request.args.get('site')+'rasa/setslots',{"slots":[{"crossword":document['_id']}]})
             return  json(document)
         except:
-            print('FIND FACT ERR')
             e = sys.exc_info()
             print(e)        
 
@@ -265,24 +220,14 @@ class WebService():
     def __init__(self,config,loop):
         self.config = config
         self.loop = loop
-        # print('INIT')
-        # generate_certificates(config['services']['WebService'].get('domain_name'),config['services']['WebService'].get('email'))
-                
+               
     async def run(self):
-        # print('RUN')
-        # print(self.config)
         cert_path = self.config['services']['WebService'].get('certificates_folder')
-        # print(cert_path)
         if os.path.isfile(cert_path+'/cert.pem')  and os.path.isfile(cert_path+'/privkey.pem'):
-            #hostname = self.config.get('hostname','localhost')
             ssl = {'cert': cert_path+"/cert.pem", 'key': cert_path+"/privkey.pem"}
             server = secureredirector.create_server(host="0.0.0.0", port=80, access_log = True, return_asyncio_server=True)
-            # cors = CORS(app) #, resources={r"/api/*": {"origins": "*"}})
-
             ssl_server = app.create_server(host="0.0.0.0", port=443, access_log = True, return_asyncio_server=True,ssl=ssl)
-            # print('RUN ssl')
             ssl_task = asyncio.ensure_future(ssl_server)
-            # print('RUN plain')
             task = asyncio.ensure_future(server)
             try:
                 while True:
@@ -294,22 +239,3 @@ class WebService():
         else:
             print("Failed to start web server - MISSING SSL CERTS")
             
-     
-
-# def logme(msg):
-    # logger.info(msg)
-
-# def start_server(config , run_event):
-    
-    # if os.environ.get('SSL_CERTIFICATES_FOLDER'):
-        # if os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem')) and os.path.isfile(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')):
-            # print('START SSL WEB SERVER')
-            # app.run(host='0.0.0.0',ssl_context=(os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'cert.pem'), os.path.join(os.environ.get('SSL_CERTIFICATES_FOLDER'),'privkey.pem')), port=443, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
-        # else:
-            # print('START WEB SERVER')
-            # app.run(host='0.0.0.0', port=80, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
-    
-    # else:
-        # print('START WEB SERVER')
-        # app.run(host='0.0.0.0', port=80, extra_files=[os.path.join(os.path.dirname(__file__),"index.html")])
-    

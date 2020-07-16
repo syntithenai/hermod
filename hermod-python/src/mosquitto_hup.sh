@@ -1,2 +1,0 @@
-kill -HUP `pidof mosquitto`
-
