@@ -1,6 +1,6 @@
 import puz
 from bs4 import BeautifulSoup
-
+import base64
 import json,random, re, time, string
 from copy import copy as duplicate
      
@@ -13,12 +13,16 @@ import motor
 import motor.motor_asyncio
 import os
 import sys
+import io
 import asyncio
 from metaphone import doublemetaphone
 from string import ascii_lowercase
 from crossword_generator import Crossword, Word
 from crossword_mongodb import save_crossword, scrape_mnemo
   
+#from cStringIO import StringIO
+from PIL import Image, ImageOps, ImageDraw
+
  
 # DESTINATION FORMAT (FOR REACT-CROSSWORD)
 # {
@@ -40,10 +44,19 @@ def last_word(sentence):
 def strip_after_bracket(text):
     parts = text.split("(")
     return parts[0]  
-    
+
+def strip_after_slash(text):
+    parts = text.split("/")
+    return parts[0]     
+
 def first_token_comma(sentence):                 
     parts = sentence.split(",")
     return parts[0]
+
+def first_token_space(sentence):                 
+    parts = sentence.split(" ")
+    return parts[0]
+
             
 # multiplechoice_question_queries = [
 # {topic:'English Vocab (junior high school) 101',word: lambda record:last_word(record.get('question')), clue: lambda record:record.get('answer')}
@@ -77,14 +90,7 @@ def first_token_comma(sentence):
 
 question_queries = []
 
-
-def strip_after_slash(text):
-    parts = text.split("/")
-    return parts[0] 
-    
-    
-
-    
+ 
 async def run(): 
     author = 'Captain Mnemo'
     copyrighttext = 'Public Domain'
@@ -95,7 +101,7 @@ async def run():
     queries = [
     # {
     # 'table':'multiplechoicequestions',
-    # 'queryFilter':{'topic':{'$regex':'English Vocab (junior high school)'}},
+    # 'queryFilter':{'topic':{'$regex':'junior high school'}},
     # 'word': lambda record:last_word(record.get('question')), 
     # 'clue': lambda record:record.get('answer'), 
     # 'author':lambda record:author,
@@ -109,6 +115,7 @@ async def run():
     # 'extraclue': lambda record:'', 
     # #'title': lambda record:record:record.get('topic'), 
     # 'title': lambda record:'English Vocab (Junior High School) ', 
+    # 'answer': lambda record:record.get('answer',''), 
     # 'difficulty':13,
     # 'width': 15,
     # 'height': 15,
@@ -116,7 +123,7 @@ async def run():
     # },
       # {
     # 'table':'multiplechoicequestions',
-    # 'queryFilter':{'topic':{'$regex':'English Vocab (senior high school)'}},
+    # 'queryFilter':{'topic':{'$regex':'senior high school'}},
     # 'word': lambda record:last_word(record.get('question')), 
     # 'clue': lambda record:record.get('answer'), 
     # 'author':lambda record:author,
@@ -130,11 +137,57 @@ async def run():
     # 'extraclue': lambda record:'', 
     # #'title': lambda record:record:record.get('topic'), 
     # 'title': lambda record:'English Vocab (Senior High School) ', 
+    # 'answer': lambda record:record.get('answer',''), 
     # 'difficulty':14,
     # 'width': 15,
     # 'height': 15,
     # 'country': country
+    # }
+    # {
+    # 'table':'multiplechoicequestions',
+    # 'queryFilter':{'topic':{'$regex':'junior high school'}},
+    # 'word': lambda record:last_word(record.get('question')), 
+    # 'clue': lambda record:record.get('answer'), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/multiplechoicequestions/'+record.get('topic',''),
+    # 'suggestions': lambda record:[], 
+    # 'medialink': lambda record:'', 
+    # 'autoshow_media': lambda record:'false',
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+record.get('topic')+'/'+str(record.get('questionId')), 
+    # 'extraclue': lambda record:'', 
+    # #'title': lambda record:record:record.get('topic'), 
+    # 'title': lambda record:'English Vocab (Junior High School) ', 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':13,
+    # 'width': 15,
+    # 'height': 15,
+    # 'country': country
     # },
+      # {
+    # 'table':'multiplechoicequestions',
+    # 'queryFilter':{'topic':{'$regex':'senior high school'}},
+    # 'word': lambda record:last_word(record.get('question')), 
+    # 'clue': lambda record:record.get('answer'), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/multiplechoicequestions/'+record.get('topic',''),
+    # 'suggestions': lambda record:[], 
+    # 'medialink': lambda record:'', 
+    # 'autoshow_media': lambda record:'false',
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+record.get('topic')+'/'+str(record.get('questionId')), 
+    # 'extraclue': lambda record:'', 
+    # #'title': lambda record:record:record.get('topic'), 
+    # 'title': lambda record:'English Vocab (Senior High School) ', 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':14,
+    # 'width': 15,
+    # 'height': 15,
+    # 'country': country
+    # }
+    # ,
     # {
     # 'table':'questions',
     # 'queryFilter':{'quiz':{'$regex':'Capital Cities'}},
@@ -151,7 +204,8 @@ async def run():
     # 'extraclue': lambda record:record.get('mnemonic',''), 
     # #'title': lambda record:record:record.get('topic'), 
     # 'title': lambda record:'Capital Cities ', 
-    # 'difficulty':14,
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':3,
     # 'width': 15,
     # 'height': 15,
     # 'country': country
@@ -173,58 +227,36 @@ async def run():
     # 'extraclue': lambda record:record.get('answer',''), 
     # #'title': lambda record:record:record.get('topic'), 
     # 'title': lambda record:'World History', 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':4,
+    # 'width': 20,
+    # 'height': 20,
+    # 'country': country
+    # }
+    
+     # ,
+    # {
+    # 'table':'questions',
+    # 'queryFilter':{"$and":[{'quiz':{"$regex":"Colour Names"}}]},
+    # 'clue': lambda record:record.get('question'), 
+    # 'word': lambda record:just_alphanum(strip_after_slash(strip_after_bracket(record.get('answer')))), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+    # 'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
+    # 'medialink': lambda record:record.get('image'), 
+    # 'autoshow_media': lambda record:'true', 
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
+    # 'extraclue': lambda record:record.get('answer',''), 
+    # #'title': lambda record:record:record.get('topic'), 
+    # 'title': lambda record:'Colour Names', 
+    # 'answer': lambda record:record.get('answer',''), 
     # 'difficulty':12,
     # 'width': 20,
     # 'height': 20,
     # 'country': country
     # }
-    # ,
-    
-    # {
-    # 'COMMENT':'GENERATES SINGLE DIAGONAL LINE',
-    # 'table':'questions',
-    # 'queryFilter':{"$and":[{'quiz':{"$regex":"Two Letter Words For Scrabble"}}]},
-    # 'clue': lambda record:strip_after_bracket(record.get('answer','').lower().replace(strip_after_bracket(record.get('question').lower()),'....')), 
-    # 'word': lambda record:just_alphanum(strip_after_bracket(record.get('question')).replace(' ','').replace('the','')), 
-    # 'author':lambda record:author,
-    # 'copyright':lambda record:copyrighttext,
-    # 'copyright_link':lambda record:copyright_link,
-    # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
-    # 'suggestions': lambda record:[], 
-    # 'medialink': lambda record:record.get('image'), 
-    # 'autoshow_media': lambda record:'false', 
-    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
-    # 'extraclue': lambda record:record.get('answer',''), 
-    # #'title': lambda record:record:record.get('topic'), 
-    # 'title': lambda record:'Two Letter Scrabble Words', 
-    # 'difficulty':12,
-    # 'width': 30,
-    # 'height': 30,
-    # 'country': country,
-    # 'cutoff': 15
-    # }
-     # ,
-    {
-    'table':'questions',
-    'queryFilter':{"$and":[{'quiz':{"$regex":"Colour Names"}}]},
-    'clue': lambda record:record.get('question'), 
-    'word': lambda record:just_alphanum(strip_after_slash(strip_after_bracket(record.get('answer')))), 
-    'author':lambda record:author,
-    'copyright':lambda record:copyrighttext,
-    'copyright_link':lambda record:copyright_link,
-    'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
-    'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
-    'medialink': lambda record:record.get('image'), 
-    'autoshow_media': lambda record:'true', 
-    'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
-    'extraclue': lambda record:record.get('answer',''), 
-    #'title': lambda record:record:record.get('topic'), 
-    'title': lambda record:'Colour Names', 
-    'difficulty':12,
-    'width': 20,
-    'height': 20,
-    'country': country
-    }
       # ,
     # {
     # 'table':'multiplechoicequestions',
@@ -242,30 +274,107 @@ async def run():
     # 'extraclue': lambda record:record.get('feedback',''), 
     # #'title': lambda record:record:record.get('topic'), 
     # 'title': lambda record:'Food Plant Origins For Beginners', 
+    # 'answer': lambda record:record.get('answer',''), 
     # 'difficulty':1,
     # 'width': 15,
     # 'height': 15,
     # 'country': country
     # }
+    # ,
+      # {
+    # 'table':'questions',
+    # 'queryFilter':{"$and":[{'quiz':{"$regex":"Ancient Rome for Beginners"}}]},
+    # 'clue': lambda record:record.get('specific_question'), 
+    # 'word': lambda record:just_alphanum(strip_after_slash(strip_after_bracket(first_token_space(record.get('specific_answer').replace('the',''))))), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+    # 'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
+    # 'medialink': lambda record:record.get('image'), 
+    # 'autoshow_media': lambda record:'false', 
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
+    # 'extraclue': lambda record:record.get('mnemonic',''), 
+    # 'title': lambda record:record.get('quiz',''), 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':12,
+    # 'width': 20,
+    # 'height': 20,
+    # 'country': country,
+    # 'cutoff':2,
+    # }
+    #
+    # ,
+               # {
+        # 'table':'questions',
+        # 'queryFilter':{"$and":[{'quiz':{"$regex":"Constellation Meanings"}}]},
+        # 'word': lambda record:record.get('question'), 
+        # # 
+        # #  
+        # 'clue': lambda record:record.get('answer').replace(record.get('question').lower(), '...').replace(record.get('question'), '...'), 
+        # 'author':lambda record:author,
+        # 'copyright':lambda record:copyrighttext,
+        # 'copyright_link':lambda record:copyright_link,
+        # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+        # 'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
+        # 'medialink': lambda record:resize_base64_image(record.get('image'),150,150), 
+        # 'autoshow_media': lambda record:'false', 
+        # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
+        # 'extraclue': lambda record:record.get('mnemonic',''), 
+        # 'title': lambda record:record.get('quiz',''), 
+        # 'answer': lambda record:record.get('answer',''), 
+        # 'difficulty':4,
+        # 'width': 20,
+        # 'height': 20,
+        # 'country': country,
+        # 'cutoff':8,
+        # }
+    # ,
+           # {
+    # 'table':'questions',
+    # 'queryFilter':{"$and":[{'quiz':{"$regex":"NATO Phonetic Alphabet"}}]},
+    # 'word': lambda record:just_alphanum(record.get('answer')), 
+    # # 
+    # #  
+    # 'clue': lambda record:record.get('question'), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+    # 'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
+    # 'medialink': lambda record:resize_base64_image(record.get('image'),150,150), 
+    # 'autoshow_media': lambda record:'false', 
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
+    # 'extraclue': lambda record:record.get('mnemonic',''), 
+    # 'title': lambda record:record.get('quiz',''), 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':2,
+    # 'width': 20,
+    # 'height': 20,
+    # 'country': country,
+    # 'cutoff':8,
+    # }
+   
     ]
     
     for config in queries:
-        # print('CONF')
-        # print(config)
+        print('CONF')
+        print(config)
 
         result = await scrape_mnemo(config.get('table'),config.get('queryFilter'),config)
-        # print('RES')
-        # print(result)
+        print('RES')
+        print(result)
         
         if result and not result == None:
             word_and_clue = []
             for r in result:
                 # print("EC"+r.get('extraclue',''))
-                word_and_clue.append([r.get('word'),r.get('clue'),r.get('extraclue',''),r.get('infolink',''),r.get('medialink',''),r.get('suggestions',[]),r.get('autoshow_media','')]) 
+                if r.get('word') and r.get('clue'):
+                    word_and_clue.append([r.get('word'),r.get('clue'),r.get('extraclue',''),r.get('infolink',''),r.get('medialink',''),r.get('suggestions',[]),r.get('autoshow_media','')]) 
             
             generated = generate_crosswords(config.get('width'),config.get('height'),word_and_clue,config.get('cutoff',10))
-            # print(generated)
-            # print(generated)
+            print('GEN')
+            print(generated)
             i=0
             for crossword in generated:
                 append_title=''
@@ -296,10 +405,12 @@ def generate_crosswords(width,height,word_list,cutoff):
     # hypotenuse = int(sqrt(width*width + height*height))
     # print(['hyp',str(hypotenuse)],width,height,height*height)
     last_fitted = len(word_list)
-    
+    print("GENERATE")
+    print(word_list)
     # max_repeats = int(len(word_list)/hypotenuse) + 1
     i = 0
     while len(word_list) >= last_fitted -1 and len(word_list) > cutoff and last_fitted >= cutoff:#and max_repeats > 0:
+        print("GENERATE LOOP")
         # max_repeats = max_repeats - 1
         i = i + 1
         a = Crossword(width, height, '-', 30000, word_list)
@@ -326,7 +437,35 @@ def generate_crosswords(width,height,word_list,cutoff):
     # print (a.json())
     return crosswords
 
-    
+
+
+def resize_base64_image(my_image,width,height):
+    print('resize')
+    if my_image.startswith('http'):
+        return my_image
+    # return None
+    size = (width,height)
+    mask = Image.new('L', size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rectangle((0, 0) + size, fill=255)
+
+    # From base64 to PIL
+    try:
+        image_string = io.StringIO(str(base64.b64decode(my_image)))   #str(my_image[22:]).decode('base64')) # 
+        im = Image.open(image_string)
+        output = ImageOps.fit(im, mask.size, centering=(0.5, 0.5))
+        output.putalpha(mask)
+
+        # From PIL to base64
+        output2 = io.StringIO()
+        output.save(output2, format='PNG')
+        im_data = output2.getvalue()
+        # im_data = im_data.encode('base64')
+        data_url = 'data:image/png;base64,' + im_data.encode('base64')
+        return data_url
+    except Exception as e:
+        print('FAILED IMAGE PROCESSING')
+        print(e)
 asyncio.run(run())  
 #run()
 
@@ -474,3 +613,80 @@ asyncio.run(run())
     # ['cat', 'A strand of twisted threads or a long elaborate narrative.'], \
     # ['chicken', 'A strand of twisted threads or a long elaborate narrative.'], \
     # ['snicker', 'A snide, slightly stifled laugh.'])
+
+
+
+# ,
+    
+    # {
+    # 'COMMENT':'GENERATES SINGLE DIAGONAL LINE',
+    # 'table':'questions',
+    # 'queryFilter':{"$and":[{'quiz':{"$regex":"Two Letter Words For Scrabble"}}]},
+    # 'clue': lambda record:strip_after_bracket(record.get('answer','').lower().replace(strip_after_bracket(record.get('question').lower()),'....')), 
+    # 'word': lambda record:just_alphanum(strip_after_bracket(record.get('question')).replace(' ','').replace('the','')), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+    # 'suggestions': lambda record:[], 
+    # 'medialink': lambda record:record.get('image'), 
+    # 'autoshow_media': lambda record:'false', 
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
+    # 'extraclue': lambda record:record.get('answer',''), 
+    # #'title': lambda record:record:record.get('topic'), 
+    # 'title': lambda record:'Two Letter Scrabble Words', 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':12,
+    # 'width': 30,
+    # 'height': 30,
+    # 'country': country,
+    # 'cutoff': 15
+    # }
+ # ,
+           # {
+    # 'table':'questions',
+    # 'queryFilter':{"$and":[{'quiz':{"$regex":"Space for Beginners"}}]},
+    # 'word': lambda record:just_alphanum(record.get('specific_answer')), 
+    # # 
+    # #  
+    # 'clue': lambda record:record.get('specific_question'), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+    # 'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
+    # 'medialink': lambda record:resize_base64_image(record.get('image'),150,150), 
+    # 'autoshow_media': lambda record:'false', 
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
+    # 'extraclue': lambda record:record.get('mnemonic',''), 
+    # 'title': lambda record:record.get('quiz',''), 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':3,
+    # 'width': 20,
+    # 'height': 20,
+    # 'country': country,
+    # 'cutoff':3,
+    # }
+ # ,
+       # {
+    # 'table':'questions',
+    # 'queryFilter':{"$and":[{'quiz':{"$regex":"Australian Animals"}}]},
+    # 'clue': lambda record:'What animal is ' + record.get('question'), 
+    # 'word': lambda record:just_alphanum(record.get('facts', {}).get('commonName', '')), 
+    # 'author':lambda record:author,
+    # 'copyright':lambda record:copyrighttext,
+    # 'copyright_link':lambda record:copyright_link,
+    # 'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+    # 'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
+    # 'medialink': lambda record:resize_base64_image(record.get('image'),150,150), 
+    # 'autoshow_media': lambda record:'false', 
+    # 'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
+    # 'extraclue': lambda record:record.get('mnemonic',''), 
+    # 'title': lambda record:record.get('quiz',''), 
+    # 'answer': lambda record:record.get('answer',''), 
+    # 'difficulty':3,
+    # 'width': 20,
+    # 'height': 20,
+    # 'country': country,
+    # 'cutoff':8,
+    # }

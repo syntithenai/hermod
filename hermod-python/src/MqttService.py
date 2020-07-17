@@ -57,7 +57,6 @@ class MqttService(object):
         self.loop = loop
         self.subscribe_to = ''
         self.client = None
-        self.connect_hook
         # self.log('construct ')
         # self.log(self)
 

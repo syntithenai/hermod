@@ -66,7 +66,6 @@ def to_csv(records):
             out.append(res)
     return out.join("\n")
 
-to_csv(a)
     
 async def run(): 
     author = 'Captain Mnemo'
@@ -79,20 +78,20 @@ async def run():
    
     {
     'table':'questions',
-    'queryFilter':{"$and":[{'quiz':{"$regex":"Colour Names"}}]},
+    'queryFilter':{"$and":[{'quiz':{"$regex":"Beginners"}}]},
     'clue': lambda record:record.get('question'), 
     'word': lambda record:just_alphanum(strip_after_slash(strip_after_bracket(record.get('answer')))), 
     'author':lambda record:author,
     'copyright':lambda record:copyrighttext,
     'copyright_link':lambda record:copyright_link,
-    'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz','')),
+    'link':lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz', '')),
     'suggestions': lambda record:record.get('multiple_choices','').split("|||"), 
-    'medialink': lambda record:record.get('image'), 
+    'medialink': lambda record:'', #record.get('image'), 
     'autoshow_media': lambda record:'true', 
-    'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz',''))+'/'+str(record.get('_id','')), 
-    'extraclue': lambda record:record.get('answer',''), 
+    'infolink': lambda record:'https://mnemolibrary.com/discover/topic/'+str(record.get('quiz', ''))+'/'+str(record.get('_id', '')), 
+    'extraclue': lambda record:record.get('answer', ''), 
     #'title': lambda record:record:record.get('topic'), 
-    'title': lambda record:'Colour Names', 
+    'title': lambda record:record.get('quiz'), 
     'difficulty':12,
     'width': 20,
     'height': 20,
@@ -105,7 +104,7 @@ async def run():
         # print('CONF')
         # print(config)
 
-        result = await scrape_mnemo(config.get('table'),config.get('queryFilter'),config)
+        result = await scrape_mnemo(config.get('table'), config.get('queryFilter'), config)
         # print('RES')
         # print(result)
         
@@ -113,70 +112,72 @@ async def run():
             word_and_clue = []
             for r in result:
                 # print("EC"+r.get('extraclue',''))
-                word_and_clue.append([r.get('word'),r.get('clue'),r.get('extraclue',''),r.get('infolink',''),r.get('medialink',''),r.get('suggestions',[]),r.get('autoshow_media','')]) 
+                word_and_clue.append([r.get('word'), r.get('clue'), r.get('extraclue',''), r.get('infolink',''), r.get('medialink',''), r.get('suggestions',[]), r.get('autoshow_media','')]) 
+        
+        print(word_and_clue)
             
-            generated = generate_crosswords(config.get('width'),config.get('height'),word_and_clue,config.get('cutoff',10))
-            # print(generated)
-            # print(generated)
-            i=0
-            for crossword in generated:
-                append_title=''
-                if (i > 0) :
-                    append_title=' ' +str(i+1)
-                final = {
-                  "import_id":uuid.uuid4().hex,
-                  "title":r.get('title')+append_title,
-                  "author":r.get('author'),
-                  "copyright":r.get('copyright'),
-                  "copyright_link":r.get('copyright_link'),
-                  "data":crossword,
-                  "difficulty":config.get('difficulty'),
-                  "country":config.get('country'),
-                  "link":r.get('link'),
-                }
-                # print(crossword)
-                print("==========================================================   ")
-                i = i + 1
-                await save_crossword(final)
+            # generated = generate_crosswords(config.get('width'), config.get('height'), word_and_clue,config.get('cutoff', 10))
+            # # print(generated)
+            # # print(generated)
+            # index=0
+            # for crossword in generated:
+                # append_title=''
+                # if (index > 0) :
+                    # append_title=' ' +str(index+1)
+                # final = {
+                  # "import_id":uuid.uuid4().hex,
+                  # "title":r.get('title')+append_title,
+                  # "author":r.get('author'),
+                  # "copyright":r.get('copyright'),
+                  # "copyright_link":r.get('copyright_link'),
+                  # "data":crossword,
+                  # "difficulty":config.get('difficulty'),
+                  # "country":config.get('country'),
+                  # "link":r.get('link'),
+                # }
+                # # print(crossword)
+                # print("==========================================================   ")
+                # index = index + 1
+                # await save_crossword(final)
             
         
         
     # await save_crossword(final)
     
-def generate_crosswords(width,height,word_list,cutoff):   
-    crosswords = [] 
-    # hypotenuse = int(sqrt(width*width + height*height))
-    # print(['hyp',str(hypotenuse)],width,height,height*height)
-    last_fitted = len(word_list)
+# def generate_crosswords(width,height,word_list,cutoff):   
+    # crosswords = [] 
+    # # hypotenuse = int(sqrt(width*width + height*height))
+    # # print(['hyp',str(hypotenuse)],width,height,height*height)
+    # last_fitted = len(word_list)
     
-    # max_repeats = int(len(word_list)/hypotenuse) + 1
-    i = 0
-    while len(word_list) >= last_fitted -1 and len(word_list) > cutoff and last_fitted >= cutoff:#and max_repeats > 0:
-        # max_repeats = max_repeats - 1
-        i = i + 1
-        a = Crossword(width, height, '-', 30000, word_list)
-        a.compute_crossword(60,8)
-        # a.word_bank()
-        # a.solution()
-        # a.word_find()
-        a.display()
-        print (len(a.current_word_list), 'out of', len(word_list))
-        #print (a.debug)
-        words,data = a.json()
-        print(data)
-        last_fitted=len(words)
-        crosswords.append(data)
-        new_wordlist = []
-        for word in word_list:
-            # print(word[0].lower())
-            cleanword = "{}".format(word[0]).lower()
-            if not cleanword in words:
-                new_wordlist.append(word)
+    # # max_repeats = int(len(word_list)/hypotenuse) + 1
+    # i = 0
+    # while len(word_list) >= last_fitted -1 and len(word_list) > cutoff and last_fitted >= cutoff:#and max_repeats > 0:
+        # # max_repeats = max_repeats - 1
+        # i = i + 1
+        # a = Crossword(width, height, '-', 30000, word_list)
+        # a.compute_crossword(60,8)
+        # # a.word_bank()
+        # # a.solution()
+        # # a.word_find()
+        # a.display()
+        # print (len(a.current_word_list), 'out of', len(word_list))
+        # #print (a.debug)
+        # words,data = a.json()
+        # print(data)
+        # last_fitted=len(words)
+        # crosswords.append(data)
+        # new_wordlist = []
+        # for word in word_list:
+            # # print(word[0].lower())
+            # cleanword = "{}".format(word[0]).lower()
+            # if not cleanword in words:
+                # new_wordlist.append(word)
                 
-        print(['UPDATED WL',last_fitted,len(words),len(word_list),len(new_wordlist)])
-        word_list = new_wordlist
-    # print (a.json())
-    return crosswords
+        # print(['UPDATED WL',last_fitted,len(words),len(word_list),len(new_wordlist)])
+        # word_list = new_wordlist
+    # # print (a.json())
+    # return crosswords
 
     
 asyncio.run(run())  

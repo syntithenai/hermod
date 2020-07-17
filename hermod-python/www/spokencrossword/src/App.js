@@ -54,6 +54,7 @@ export default class App extends Component {
                             <PropsRoute  exact={true} path="/crossword" connected={hermodClient.connected} site={hermodClient.config.site} api={api} hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
                             <PropsRoute  exact={true} path="/crossword/:id" connected={hermodClient.connected} site={hermodClient.config.site} api={api}  hermodClient={hermodClient}  component={CrosswordComponent} crosswordRef={this.crossword}  startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
                             <PropsRoute  exact={true} path="/crosswords"  hermodClient={hermodClient}  component={CrosswordListComponent} startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
+                            <PropsRoute  exact={true} path="/crosswords/:difficulty"  hermodClient={hermodClient}  component={CrosswordListComponent} startWaiting={api.startWaiting} stopWaiting={api.stopWaiting}  />
                             <PropsRoute  exact={true} path="/frame"  hermodClient={hermodClient}  component={IFrameComponent}   />
                             <PropsRoute  exact={true} path="/youtube"  hermodClient={hermodClient}  component={YoutubeComponent}   />
                             <PropsRoute  exact={true} path="/about"  hermodClient={hermodClient} component={AboutComponent}  />

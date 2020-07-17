@@ -24,6 +24,10 @@ export default function Clue({
   const handleClose = () => setShow('false');
   const handleShow = () => setShow('true');
   
+  const [showAnswer, setShowAnswer] = useState('false');
+  const handleCloseAnswer = () => setShowAnswer('false');
+  const handleShowAnswer = () => setShowAnswer('true');
+  
   const [showImage, setShowImage] = useState('false');
   const handleCloseImage = () => setShowImage('false');
   const handleShowImage = () => setShowImage('true');
@@ -57,12 +61,26 @@ export default function Clue({
       onClick={handleClick}
       aria-label={`clue-${number}-${direction}`}
     >
-        {(props.clue_data.medialink && props.clue_data.autoshow_media === "true") && <div><img src={props.clue_data.medialink} alt='Clue' style={{float:'right',height:'4em'}}/></div>}
+        {(props.clue_data.medialink && props.clue_data.autoshow_media === "true") && <div><img src={props.clue_data.medialink} alt='Clue' style={{float:'right',height:'2.5em'}}/></div>}
       {props.clue_data.infolink && <Button style={{marginRight:'0.2em',zIndex:'500'}}  onClick={function(e) { window.open(props.clue_data.infolink) }} ><img src='/svg/external-link.svg' alt="More Information" style={{height  :'1.1em'}} /></Button>}
-      {props.clue_data.extraclue &&  <Button style={{marginRight:'0.2em'}} onClick={handleShow} ><img src='/svg/question-mark.svg' alt="Memory Aid" style={{height  :'1.1em'}} /></Button>}
+      {props.clue_data.answer &&  <Button style={{marginRight:'0.2em'}} onClick={handleShowAnswer} ><img src='/svg/question-mark.svg' alt="Answer" style={{height  :'1.1em'}} /></Button>}
+      {props.clue_data.extraclue &&  <Button style={{marginRight:'0.2em'}} onClick={handleShow} ><img src='/svg/bell.svg' alt="Memory Aid" style={{height  :'1.1em'}} /></Button>}
       {(props.clue_data.medialink && props.clue_data.autoshow_media !== "true") && <Button style={{marginRight:'0.2em'}} onClick={handleShowImage} ><img src='/svg/image.svg' alt="Show Clue" style={{height  :'1.1em'}} /></Button>}
+     
+     {showAnswer==="true" &&      
+      <Modal animation={false} show={showAnswer==="true"} onHide={handleCloseAnswer}>
+        <Modal.Header closeButton>
+          <Modal.Title>Answer</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>{props.clue_data.answer}</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseAnswer}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>}
+     
      {show==="true" &&      
-
       <Modal animation={false} show={show==="true"} onHide={handleClose}>
         <Modal.Header closeButton>
           <Modal.Title>Memory Aid</Modal.Title>
@@ -74,9 +92,9 @@ export default function Clue({
           </Button>
         </Modal.Footer>
       </Modal>}
+      
       {showImage==="true" &&      
-
-      <Modal show={show==="true"}  animation={false}  onHide={handleCloseImage}>
+      <Modal show={showImage==="true"}  animation={false}  onHide={handleCloseImage}>
         <Modal.Header closeButton>
           <Modal.Title>Image</Modal.Title>
         </Modal.Header>

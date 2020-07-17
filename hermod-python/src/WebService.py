@@ -162,19 +162,23 @@ async def get_crosswords(request):
         collection = mongo_connect('crosswords')
         and_parts = []
         if search:
-            and_parts.append({'title': {'$regex': search}})
+            and_parts.append({'title': {'$regex': search, '$options': 'i'}})
         if difficulty:
             and_parts.append(
                 {'$or': [{'difficulty': difficulty}, {'difficulty': int(difficulty)}]})
-        and_parts.append({'access': {'$exists': False, '$nin': ['']}})
         print('GET CROSSWORD and_parts')
         query = {}
+        limit = 2000
         if and_parts:
+            and_parts.append({'access': {'$exists': False, '$nin': ['']}})
             query = {'$and': and_parts}
+        else: 
+            # ensure sufficient results for collation 
+            limit = 2000
         crosswords = []
-        cursor = collection.find(query)
-        cursor.sort('title', 1).limit(2000)
-        results_per_difficulty = 5
+        cursor = collection.find(query,{'title': 1, 'difficulty': 1})
+        cursor.sort('title', 1).limit(limit)
+        results_per_difficulty = 2
         # for empty search limit results per difficulty value to
         # results_per_difficulty
         difficulty_tallies = {}
@@ -185,7 +189,7 @@ async def get_crosswords(request):
             difficulty_tallies[str(document.get(
                 'difficulty'))] = difficulty_tally + 1
             if difficulty_tallies[str(document.get(
-                    'difficulty'))] < results_per_difficulty or and_parts:
+                    'difficulty'))] <= results_per_difficulty or and_parts:
                 crosswords.append(document)
         return json(crosswords)
     except BaseException:

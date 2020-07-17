@@ -22,6 +22,8 @@ sys.path.append(
         os.path.dirname(__file__),
         '../porcupine/resources/util/python'))
 
+#from util import KEYWORDS, KEYWORD_FILE_PATH, MODEL_FILE_PATH, LIBRARY_PATH
+from util import *
 
 class PicovoiceHotwordService(MqttService):
     """
