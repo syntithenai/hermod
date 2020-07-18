@@ -1041,12 +1041,27 @@ Online TTS implementation include Amazon Polly and Google. These services suppor
 
 
 
-## Links
-
-
 ## Wishlist
 
-	
+- generate crossword - also puz format for dl
+- search google for ...
+- story logging
+- osx bugs ?
+
+- oauth login
+- disambiguate wiki searches
+- quiz (like mnemo alexa quiz)
+- crossword tools - clues, anagrams, synonyms
+- crossword builder tool - select text from proxy scrape sites
+- jovo adapter
+- hbmqtt
+- pi4 rasa
+- intent filters ?
+- media crossword - bird sounds
+- unify entities person, place, thing -> thing
+
+
+
 - rasa 2 stage fallback
 https://rasa.com/docs/core/master/policies/#two-stage-fallback-policy
 
@@ -1157,3 +1172,4 @@ When the dialog manager hears 'hermod/<siteId>/hotword/detected' or 'hermod/<sit
       - https://medium.com/@lukasgrasse/deploying-mozilla-deepspeech-models-to-aws-lambda-using-serverless-b5405ccd546b
   - https://jasperproject.github.io/documentation/modules/   -   voice module plugins for movies, stocks, ...
   - http://doc.tock.ai/tock/en/ - java/kotlin bot framework 
+  - https://picovoice.ai/tutorials/using-picovoice-engines-with-react/. 
