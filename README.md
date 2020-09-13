@@ -1,6 +1,6 @@
 This repository provides a framework for building voice based applications. 
 
-It was created to simplify integrating custom speech services into a website. Demo [https://edison.syntithenai.com](https://edison.syntithenai.com)
+It was created to simplify integrating custom speech services into a website.
 
 It can also be used to build standalone alexa like devices that do not need a network. 
 
@@ -105,13 +105,13 @@ There are also operating system requirements including
 
 ### Installation on AWS
 
-Demo [https://edison.syntithenai.com](https://edison.syntithenai.com) runs on 
-
+At a bare minimum
 t3a.micro instance (1 cores, 1G memory)
 with a 16G root file system
 
 There is not enough memory to train a model on this type of instance so building locally and uploading model files is necessary.
 
+This hardware configuration is usable but significantly compromises the responsiveness.
 
 ### Mosquitto
 
