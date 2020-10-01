@@ -21,7 +21,7 @@ export default class HeaderComponent extends Component {
             <span  className="fixedButtons" id="fixedButtons" style={{float: "left", marginRight: "0.5em"}} >
                  <Link  to='/' ><Button style={{float: 'left'}} variant="secondary"  size="lg" >Home</Button></Link>
                  {(this.props.hermodClient.slots && this.props.hermodClient.slots.crossword) && <Link  to={'/crossword/'+this.props.hermodClient.slots.crossword} ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Crossword</Button></Link>}
-            {that.props.hermodClient.microphoneState !== 1 &&  <Link  to='/about_edison' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="secondary"   >Help</Button></Link>}
+            {that.props.hermodClient.microphoneState !== 1 &&  <Link  to='/about_edison' ><Button style={{marginLeft:'0.3em',float: 'left'}} variant="success"   >Help</Button></Link>}
             
             </span>
             <SuggestionButtonsComponent  buttons={that.props.hermodClient.buttons} sendMessage={that.props.sendMessage}  showFrame={that.props.showFrame}  showWindow={that.props.showWindow}/>
