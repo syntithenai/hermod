@@ -7,7 +7,7 @@
   "license": "ISC",
   "dependencies": {
     "analytics-node": "^3.4.0-beta.1",
-    "axios": "^0.19.2",
+    "axios": "^0.21.2",
     "brfs": "^2.0.2",
     "browser-get": "^0.2.0",
     "browser-request": "^0.3.3",
